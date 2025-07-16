@@ -1,0 +1,70 @@
+{
+  "name": "@mearie/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Type-safe, zero-overhead GraphQL client",
+  "keywords": [
+    "graphql",
+    "graphql-client",
+    "typescript",
+    "codegen",
+    "cache"
+  ],
+  "homepage": "https://github.com/devunt/mearie#readme",
+  "bugs": {
+    "url": "https://github.com/devunt/mearie/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devunt/mearie.git"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/devunt"
+  },
+  "license": "MIT",
+  "author": "Bae Junehyeon <finn@penxle.io>",
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "build": "turbo build",
+    "build:docs": "turbo build --filter=@mearie/docs",
+    "changeset": "changeset",
+    "changeset:publish": "changeset publish",
+    "changeset:version": "changeset version",
+    "dev": "turbo dev",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "publish:prepare": "node scripts/prepare-publish.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@eslint/js": "^9.38.0",
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsdoc": "^61.1.4",
+    "eslint-plugin-unicorn": "^61.0.2",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-packagejson": "^2.5.19",
+    "tinyglobby": "^0.2.15",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1",
+    "vitest": "catalog:",
+    "wrangler": "^4.43.0"
+  },
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d",
+  "engines": {
+    "bun": ">=1.2.0",
+    "deno": ">=2.2.0",
+    "node": ">=20.0.0"
+  }
+}

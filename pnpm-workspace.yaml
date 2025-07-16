@@ -1,0 +1,9 @@
+packages:
+  - docs
+  - crates/*
+  - examples/*
+  - packages/*
+
+catalog:
+  tsdown: ^0.15.8
+  vitest: ^3.2.4

@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  version:
+    name: Version packages
+    if: github.repository == 'devunt/mearie'
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      published_packages: ${{ steps.changesets.outputs.publishedPackages }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create version PR or get changed packages
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset:version
+          title: 'chore(release): version packages'
+          commit: 'chore(release): version packages'
+          commitMode: 'github-api'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-native:
+    name: Build native binaries
+    if: |
+      needs.version.outputs.published == 'true' &&
+      contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
+    needs: version
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-native.yml
+
+  publish:
+    name: Publish packages
+    if: |
+      always() &&
+      needs.version.outputs.published == 'true' &&
+      (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
+    needs: [version, build-native]
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Prepare publish
+        run: pnpm publish:prepare
+
+      - name: Download native artifacts
+        if: contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
+        uses: actions/download-artifact@v5
+        with:
+          path: crates/native/artifacts
+
+      - name: Publish native artifacts
+        if: contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
+        working-directory: crates/native
+        run: pnpm napi:publish
+
+      - name: Publish packages
+        run: pnpm changeset:publish
+        env:
+          NPM_CONFIG_PROVENANCE: true

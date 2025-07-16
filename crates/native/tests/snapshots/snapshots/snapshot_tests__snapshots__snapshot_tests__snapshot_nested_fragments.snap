@@ -1,0 +1,166 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "\n        query { user { ...UserWithPosts } }\n        fragment UserWithPosts on User { id ...UserBasic }\n        fragment UserBasic on User { name email }\n    ",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 9,
+                        end: 44,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 17,
+                                        end: 42,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "user",
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            FragmentSpread(
+                                                FragmentSpread {
+                                                    span: Span {
+                                                        start: 24,
+                                                        end: 42,
+                                                    },
+                                                    fragment_name: Name(
+                                                        "UserWithPosts",
+                                                    ),
+                                                    directives: [],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 53,
+                        end: 103,
+                    },
+                    name: Name(
+                        "UserWithPosts",
+                    ),
+                    type_condition: Name(
+                        "User",
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 86,
+                                        end: 92,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "id",
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                            FragmentSpread(
+                                FragmentSpread {
+                                    span: Span {
+                                        start: 89,
+                                        end: 103,
+                                    },
+                                    fragment_name: Name(
+                                        "UserBasic",
+                                    ),
+                                    directives: [],
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 112,
+                        end: 153,
+                    },
+                    name: Name(
+                        "UserBasic",
+                    ),
+                    type_condition: Name(
+                        "User",
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 141,
+                                        end: 151,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "name",
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 146,
+                                        end: 153,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "email",
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

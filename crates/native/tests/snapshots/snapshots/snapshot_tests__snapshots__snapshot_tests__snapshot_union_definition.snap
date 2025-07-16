@@ -1,0 +1,37 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "union SearchResult = User | Post | Comment",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Union(
+                    UnionTypeDefinition {
+                        description: None,
+                        name: Name(
+                            "SearchResult",
+                        ),
+                        directives: [],
+                        members: [
+                            Name(
+                                "User",
+                            ),
+                            Name(
+                                "Post",
+                            ),
+                            Name(
+                                "Comment",
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

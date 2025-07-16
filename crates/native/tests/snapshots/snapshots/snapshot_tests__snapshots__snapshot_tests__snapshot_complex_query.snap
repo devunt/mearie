@@ -1,0 +1,268 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "\n        query GetUserData($id: ID!, $includeEmail: Boolean = false) {\n            user(id: $id) {\n                id\n                name\n                email @include(if: $includeEmail)\n                posts(first: 10) {\n                    edges {\n                        node {\n                            title\n                        }\n                    }\n                }\n            }\n        }\n    ",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 9,
+                        end: 406,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUserData",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 27,
+                                end: 38,
+                            },
+                            variable: Name(
+                                "id",
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: "ID",
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 37,
+                                end: 68,
+                            },
+                            variable: Name(
+                                "includeEmail",
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: "Boolean",
+                                },
+                            ),
+                            default_value: Some(
+                                Boolean(
+                                    false,
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 83,
+                                        end: 396,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "user",
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 88,
+                                                end: 95,
+                                            },
+                                            name: Name(
+                                                "id",
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 115,
+                                                        end: 138,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "id",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 134,
+                                                        end: 160,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "name",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 155,
+                                                        end: 210,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "email",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [
+                                                        Directive {
+                                                            span: Span {
+                                                                start: 161,
+                                                                end: 188,
+                                                            },
+                                                            name: Name(
+                                                                "include",
+                                                            ),
+                                                            arguments: [
+                                                                Argument {
+                                                                    span: Span {
+                                                                        start: 170,
+                                                                        end: 187,
+                                                                    },
+                                                                    name: Name(
+                                                                        "if",
+                                                                    ),
+                                                                    value: Variable(
+                                                                        Name(
+                                                                            "includeEmail",
+                                                                        ),
+                                                                    ),
+                                                                },
+                                                            ],
+                                                        },
+                                                    ],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 205,
+                                                        end: 382,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "posts",
+                                                    ),
+                                                    arguments: [
+                                                        Argument {
+                                                            span: Span {
+                                                                start: 211,
+                                                                end: 220,
+                                                            },
+                                                            name: Name(
+                                                                "first",
+                                                            ),
+                                                            value: Int(
+                                                                "10",
+                                                            ),
+                                                        },
+                                                    ],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [
+                                                            Field(
+                                                                Field {
+                                                                    span: Span {
+                                                                        start: 244,
+                                                                        end: 364,
+                                                                    },
+                                                                    alias: None,
+                                                                    name: Name(
+                                                                        "edges",
+                                                                    ),
+                                                                    arguments: [],
+                                                                    directives: [],
+                                                                    selection_set: SelectionSet {
+                                                                        selections: [
+                                                                            Field(
+                                                                                Field {
+                                                                                    span: Span {
+                                                                                        start: 276,
+                                                                                        end: 342,
+                                                                                    },
+                                                                                    alias: None,
+                                                                                    name: Name(
+                                                                                        "node",
+                                                                                    ),
+                                                                                    arguments: [],
+                                                                                    directives: [],
+                                                                                    selection_set: SelectionSet {
+                                                                                        selections: [
+                                                                                            Field(
+                                                                                                Field {
+                                                                                                    span: Span {
+                                                                                                        start: 311,
+                                                                                                        end: 342,
+                                                                                                    },
+                                                                                                    alias: None,
+                                                                                                    name: Name(
+                                                                                                        "title",
+                                                                                                    ),
+                                                                                                    arguments: [],
+                                                                                                    directives: [],
+                                                                                                    selection_set: SelectionSet {
+                                                                                                        selections: [],
+                                                                                                    },
+                                                                                                },
+                                                                                            ),
+                                                                                        ],
+                                                                                    },
+                                                                                },
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,121 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "query GetUser($id: ID!) { user(id: $id) { id name } }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 53,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 14,
+                                end: 23,
+                            },
+                            variable: Name(
+                                "id",
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: "ID",
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 26,
+                                        end: 51,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "user",
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 31,
+                                                end: 38,
+                                            },
+                                            name: Name(
+                                                "id",
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 42,
+                                                        end: 49,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "id",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 45,
+                                                        end: 51,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "name",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

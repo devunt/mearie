@@ -1,0 +1,83 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "subscription { messageAdded { id content } }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 44,
+                    },
+                    operation_type: Subscription,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 15,
+                                        end: 42,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "messageAdded",
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 30,
+                                                        end: 40,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "id",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 33,
+                                                        end: 42,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "content",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

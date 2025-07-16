@@ -1,0 +1,71 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "type Query { users(first: Int, offset: Int): [User] }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: Name(
+                            "Query",
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: Name(
+                                    "users",
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: Name(
+                                            "first",
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: "Int",
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: Name(
+                                            "offset",
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: "Int",
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: List(
+                                    Named(
+                                        NamedType {
+                                            name: "User",
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,102 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "query($limit: Int = 10) { users(first: $limit) { id } }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 55,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 6,
+                                end: 23,
+                            },
+                            variable: Name(
+                                "limit",
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: "Int",
+                                },
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "10",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 26,
+                                        end: 53,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "users",
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 32,
+                                                end: 45,
+                                            },
+                                            name: Name(
+                                                "first",
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "limit",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 49,
+                                                        end: 53,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "id",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

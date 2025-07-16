@@ -1,0 +1,89 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "query { users(ids: [1, 2, 3]) { id } }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 38,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 36,
+                                    },
+                                    alias: None,
+                                    name: Name(
+                                        "users",
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 14,
+                                                end: 28,
+                                            },
+                                            name: Name(
+                                                "ids",
+                                            ),
+                                            value: List(
+                                                [
+                                                    Int(
+                                                        "1",
+                                                    ),
+                                                    Int(
+                                                        "2",
+                                                    ),
+                                                    Int(
+                                                        "3",
+                                                    ),
+                                                ],
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 32,
+                                                        end: 36,
+                                                    },
+                                                    alias: None,
+                                                    name: Name(
+                                                        "id",
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@mearie/svelte",
+  "version": "0.0.0",
+  "sideEffects": false,
+  "type": "module",
+  "main": "./src/index.svelte.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch"
+  },
+  "dependencies": {
+    "@mearie/client": "workspace:*"
+  },
+  "devDependencies": {
+    "svelte": "^5.41.0",
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.svelte.d.ts",
+        "import": "./dist/index.svelte.js",
+        "require": "./dist/index.svelte.cjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "main": "./dist/index.svelte.cjs",
+    "module": "./dist/index.svelte.js",
+    "types": "./dist/index.svelte.d.ts"
+  }
+}

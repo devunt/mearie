@@ -1,0 +1,50 @@
+type Query {
+  post(id: ID!): Post
+  posts(limit: Int, offset: Int): PostConnection!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  comments(first: Int): [Comment!]!
+  tags: [String!]!
+  metadata: PostMetadata
+}
+
+type User {
+  id: ID!
+  name: String!
+  posts: [Post!]!
+}
+
+type Comment {
+  id: ID!
+  text: String!
+  author: User!
+  createdAt: String!
+}
+
+type PostMetadata {
+  views: Int!
+  likes: Int!
+  shares: Int!
+}
+
+type PostConnection {
+  edges: [PostEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PostEdge {
+  node: Post!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}

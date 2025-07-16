@@ -1,0 +1,43 @@
+{
+  "name": "@mearie/extractor",
+  "version": "0.0.0",
+  "sideEffects": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mearie/core": "workspace:*",
+    "@mearie/native": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
+    "@vue/compiler-sfc": "^3.5.22",
+    "svelte": "^5.41.0",
+    "tsdown": "catalog:",
+    "typescript": "^5.9.3",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  }
+}

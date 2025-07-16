@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "strict": true,
+
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+
+    "module": "nodenext",
+    "moduleDetection": "force",
+    "moduleResolution": "nodenext",
+
+    "allowImportingTsExtensions": true,
+
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  }
+}

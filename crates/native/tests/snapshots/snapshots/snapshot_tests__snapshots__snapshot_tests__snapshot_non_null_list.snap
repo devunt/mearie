@@ -1,0 +1,48 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "type User { tags: [String!]! }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: Name(
+                            "User",
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: Name(
+                                    "tags",
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: "String",
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

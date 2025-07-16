@@ -1,0 +1,20 @@
+{
+  "name": "@mearie/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vitepress build",
+    "dev": "vitepress dev"
+  },
+  "devDependencies": {
+    "@mearie/react": "workspace:*",
+    "@mearie/vite": "workspace:*",
+    "@shikijs/vitepress-twoslash": "^3.13.0",
+    "@types/react": "^19.2.2",
+    "mearie": "workspace:*",
+    "react": "^19.2.0",
+    "vitepress": "2.0.0-alpha.12",
+    "vitepress-plugin-group-icons": "^1.6.4"
+  }
+}

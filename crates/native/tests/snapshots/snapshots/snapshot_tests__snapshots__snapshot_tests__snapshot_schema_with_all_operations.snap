@@ -1,0 +1,36 @@
+---
+source: native/tests/snapshots/snapshot_tests.rs
+expression: result
+---
+Document {
+    source: Source {
+        code: "schema { query: Query mutation: Mutation subscription: Subscription }",
+        file_path: "test.graphql",
+        start_line: 0,
+    },
+    definitions: [
+        TypeSystem(
+            Schema(
+                SchemaDefinition {
+                    description: None,
+                    directives: [],
+                    query: Some(
+                        Name(
+                            "Query",
+                        ),
+                    ),
+                    mutation: Some(
+                        Name(
+                            "Mutation",
+                        ),
+                    ),
+                    subscription: Some(
+                        Name(
+                            "Subscription",
+                        ),
+                    ),
+                },
+            ),
+        ),
+    ],
+}

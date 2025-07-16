@@ -1,0 +1,44 @@
+{
+  "name": "@mearie/vite",
+  "version": "0.0.0",
+  "sideEffects": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:all": "pnpm test && pnpm test:examples",
+    "test:examples": "tsx scripts/test-examples.ts",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mearie/codegen": "workspace:*",
+    "@mearie/config": "workspace:*",
+    "@mearie/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "tsx": "^4.20.6",
+    "vite": "^7.1.10",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  }
+}

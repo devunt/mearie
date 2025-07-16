@@ -1,0 +1,35 @@
+{
+  "name": "@mearie/native",
+  "version": "0.0.0",
+  "sideEffects": false,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "napi build --release --output-dir=dist --platform",
+    "napi:publish": "napi create-npm-dirs && napi artifacts && napi pre-publish",
+    "test": "cargo test --no-default-features"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "napi": {
+    "binaryName": "mearie-native",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu"
+    ]
+  }
+}

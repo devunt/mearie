@@ -1,5 +1,13 @@
 # @mearie/client
 
+## 0.0.1-next.3
+
+### Patch Changes
+
+- 45b907b: Fix native package publish pipeline
+- Updated dependencies [45b907b]
+  - @mearie/core@0.0.1-next.3
+
 ## 0.0.1-next.2
 
 ### Patch Changes

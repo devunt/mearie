@@ -1,5 +1,15 @@
 # @mearie/vite
 
+## 0.0.1-next.2
+
+### Patch Changes
+
+- 80fdb0c: Fix release pipeline
+- Updated dependencies [80fdb0c]
+  - @mearie/codegen@0.0.1-next.2
+  - @mearie/config@0.0.1-next.2
+  - @mearie/core@0.0.1-next.2
+
 ## 0.0.1-next.1
 
 ### Patch Changes

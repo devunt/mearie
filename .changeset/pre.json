@@ -19,6 +19,7 @@
     "@mearie/examples-basic": "0.0.0"
   },
   "changesets": [
-    "busy-shoes-listen"
+    "busy-shoes-listen",
+    "strong-games-warn"
   ]
 }

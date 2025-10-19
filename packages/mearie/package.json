@@ -4,23 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./config": {
-      "types": "./src/config.ts",
-      "import": "./src/config.ts",
-      "default": "./src/config.ts"
-    },
-    "./vite": {
-      "types": "./src/vite.ts",
-      "import": "./src/vite.ts",
-      "default": "./src/vite.ts"
-    }
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./vite": "./src/vite.ts"
   },
-  "main": "./src/index.ts",
   "files": [
     "dist",
     "package.json",

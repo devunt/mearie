@@ -1,6 +1,7 @@
 packages:
   - docs
   - crates/*
+  - crates/native/npm/*
   - examples/*
   - packages/*
 

@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "napi build --release --output-dir=dist --platform",
-    "napi:publish": "node scripts/publish.mts",
+    "napi:prepare": "napi create-npm-dirs && napi artifacts",
     "test": "cargo test --no-default-features"
   },
   "devDependencies": {

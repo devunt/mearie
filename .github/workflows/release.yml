@@ -94,10 +94,10 @@ jobs:
         with:
           path: crates/native/artifacts
 
-      - name: Publish native artifacts
+      - name: Prepare native artifacts
         if: needs.detect-release.outputs.native_updated == 'true'
         working-directory: crates/native
-        run: pnpm napi:publish
+        run: pnpm napi:prepare
 
       - name: Create version PR or publish packages
         uses: changesets/action@v1

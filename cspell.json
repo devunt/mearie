@@ -8,7 +8,15 @@
   },
   "enableGlobDot": true,
   "useGitignore": true,
-  "ignorePaths": [".git", ".gitignore", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "LICENSE"],
+  "ignorePaths": [
+    ".git",
+    ".gitignore",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "LICENSE",
+    ".changeset"
+  ],
   "dictionaries": ["cspell.txt"],
   "dictionaryDefinitions": [
     {

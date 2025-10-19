@@ -3,7 +3,9 @@
   "version": "0.0.1-next.3",
   "sideEffects": false,
   "type": "module",
-  "main": "./src/index.svelte.ts",
+  "exports": {
+    ".": "./src/index.svelte.ts"
+  },
   "files": [
     "dist",
     "package.json",

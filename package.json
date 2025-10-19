@@ -27,7 +27,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "build": "turbo build",
+    "build": "turbo build --filter=!@mearie/docs --filter=!@mearie/examples-*",
     "build:docs": "turbo build --filter=@mearie/docs",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",

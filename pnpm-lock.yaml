@@ -228,6 +228,9 @@ importers:
       '@mearie/core':
         specifier: workspace:*
         version: link:../core
+      '@mearie/vite':
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       tsdown:
         specifier: 'catalog:'

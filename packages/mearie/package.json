@@ -13,6 +13,11 @@
       "types": "./src/config.ts",
       "import": "./src/config.ts",
       "default": "./src/config.ts"
+    },
+    "./vite": {
+      "types": "./src/vite.ts",
+      "import": "./src/vite.ts",
+      "default": "./src/vite.ts"
     }
   },
   "main": "./src/index.ts",
@@ -29,7 +34,8 @@
   "dependencies": {
     "@mearie/client": "workspace:*",
     "@mearie/config": "workspace:*",
-    "@mearie/core": "workspace:*"
+    "@mearie/core": "workspace:*",
+    "@mearie/vite": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",
@@ -47,6 +53,11 @@
         "types": "./dist/config.d.ts",
         "import": "./dist/config.js",
         "require": "./dist/config.cjs"
+      },
+      "./vite": {
+        "types": "./dist/vite.d.ts",
+        "import": "./dist/vite.js",
+        "require": "./dist/vite.cjs"
       },
       "./package.json": "./package.json"
     },

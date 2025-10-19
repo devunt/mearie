@@ -1,6 +1,6 @@
 {
   "name": "@mearie/native",
-  "version": "0.0.1-next.2",
+  "version": "0.0.1-next.3",
   "sideEffects": false,
   "type": "commonjs",
   "main": "./dist/index.js",

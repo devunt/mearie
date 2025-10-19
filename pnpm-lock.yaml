@@ -107,9 +107,6 @@ importers:
       '@mearie/react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@mearie/vite':
-        specifier: workspace:*
-        version: link:../../packages/vite
       mearie:
         specifier: workspace:*
         version: link:../../packages/mearie

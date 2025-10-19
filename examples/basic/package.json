@@ -10,7 +10,6 @@
   },
   "devDependencies": {
     "@mearie/react": "workspace:*",
-    "@mearie/vite": "workspace:*",
     "mearie": "workspace:*",
     "vite": "^7.1.10"
   }

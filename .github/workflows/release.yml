@@ -104,9 +104,9 @@ jobs:
         with:
           version: pnpm changeset:version
           publish: pnpm changeset:publish
-          title: "chore(release): version packages"
-          commit: "chore(release): version packages"
-          commitMode: "github-api"
+          title: 'chore(release): version packages'
+          commit: 'chore(release): version packages'
+          commitMode: 'github-api'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

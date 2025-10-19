@@ -8,16 +8,60 @@ on:
 permissions: {}
 
 jobs:
-  version:
-    name: Version packages
+  detect-release:
+    name: Detect release commit
     if: github.repository == 'devunt/mearie'
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+      native_updated: ${{ steps.check.outputs.native_updated }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Check if this is a release commit
+        id: check
+        run: |
+          commit_msg=$(git log -1 --pretty=%s)
+
+          if echo "$commit_msg" | grep -q "^chore(release): version packages"; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "Release commit detected"
+
+            if git diff HEAD^ HEAD --name-only | grep -q "crates/native/package.json"; then
+              echo "native_updated=true" >> $GITHUB_OUTPUT
+              echo "Native package updated"
+            else
+              echo "native_updated=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "native_updated=false" >> $GITHUB_OUTPUT
+            echo "Regular commit, not a release"
+          fi
+
+  build-native:
+    name: Build native binaries
+    if: needs.detect-release.outputs.native_updated == 'true'
+    needs: detect-release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-native.yml
+
+  publish:
+    name: Version or publish packages
+    if: |
+      github.repository == 'devunt/mearie' &&
+      always() &&
+      (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
+    needs: [detect-release, build-native]
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     runs-on: ubuntu-latest
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      published_packages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -36,72 +80,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Create version PR or get changed packages
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: pnpm changeset:version
-          title: 'chore(release): version packages'
-          commit: 'chore(release): version packages'
-          commitMode: 'github-api'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-native:
-    name: Build native binaries
-    if: |
-      needs.version.outputs.published == 'true' &&
-      contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
-    needs: version
-    permissions:
-      contents: read
-    uses: ./.github/workflows/build-native.yml
-
-  publish:
-    name: Publish packages
-    if: |
-      always() &&
-      needs.version.outputs.published == 'true' &&
-      (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
-    needs: [version, build-native]
-    permissions:
-      contents: write
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Build packages
+        if: needs.detect-release.outputs.is_release == 'true'
         run: pnpm build
 
       - name: Prepare publish
+        if: needs.detect-release.outputs.is_release == 'true'
         run: pnpm publish:prepare
 
       - name: Download native artifacts
-        if: contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
+        if: needs.detect-release.outputs.native_updated == 'true'
         uses: actions/download-artifact@v5
         with:
           path: crates/native/artifacts
 
       - name: Publish native artifacts
-        if: contains(fromJSON(needs.version.outputs.published_packages).*.name, '@mearie/native')
+        if: needs.detect-release.outputs.native_updated == 'true'
         working-directory: crates/native
         run: pnpm napi:publish
 
-      - name: Publish packages
-        run: pnpm changeset:publish
+      - name: Create version PR or publish packages
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset:version
+          publish: pnpm changeset:publish
+          title: "chore(release): version packages"
+          commit: "chore(release): version packages"
+          commitMode: "github-api"
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

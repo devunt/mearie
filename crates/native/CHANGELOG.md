@@ -1,5 +1,11 @@
 # @mearie/native
 
+## 0.0.1-next.2
+
+### Patch Changes
+
+- 80fdb0c: Fix release pipeline
+
 ## 0.0.1-next.1
 
 ### Patch Changes

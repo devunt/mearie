@@ -1,5 +1,13 @@
 # @mearie/solid
 
+## 0.0.1-next.1
+
+### Patch Changes
+
+- 7dd09dd: chore(release): version packages
+- Updated dependencies [7dd09dd]
+  - @mearie/client@0.0.1-next.1
+
 ## 0.0.1-next.0
 
 ### Patch Changes

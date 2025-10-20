@@ -1,6 +1,7 @@
 use super::{
-    CodegenContext, EnumGenerator, FragmentGenerator, InputObjectGenerator, ModuleAugmentationGenerator,
-    OperationGenerator, OperationVariablesGenerator, Registry, Result, ScalarsGenerator, SelectionSetGenerator,
+    CodegenContext, DocumentNodeGenerator, EnumGenerator, FragmentGenerator, InputObjectGenerator,
+    ModuleAugmentationGenerator, OperationGenerator, OperationVariablesGenerator, Registry, Result, ScalarsGenerator,
+    SelectionSetGenerator,
 };
 use crate::span::SourceOwned;
 use oxc_ast::ast::Statement;
@@ -71,6 +72,11 @@ impl<'a, 'b> Builder<'a, 'b> {
         let augmentation_generator = ModuleAugmentationGenerator::new(self.ctx, self.registry);
         let module_augmentation = augmentation_generator.generate()?;
 
+        let document_node_generator = DocumentNodeGenerator::new(self.ctx, self.registry);
+        let documents_statements = document_node_generator.generate()?;
+        let documents_program = self.create_program(&ast, ast.vec_from_iter(documents_statements));
+        let documents_code = self.print_program(&documents_program);
+
         Ok(vec![
             SourceOwned {
                 code,
@@ -85,6 +91,11 @@ impl<'a, 'b> Builder<'a, 'b> {
             SourceOwned {
                 code: enum_code,
                 file_path: "enums.d.ts".to_string(),
+                start_line: 1,
+            },
+            SourceOwned {
+                code: documents_code,
+                file_path: "documents.js".to_string(),
                 start_line: 1,
             },
         ])

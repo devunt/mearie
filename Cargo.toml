@@ -6,6 +6,9 @@ resolver = "3"
 version = "0.0.1"
 edition = "2024"
 
+[workspace.lints.clippy]
+only_used_in_recursion = "allow"
+
 [profile.release]
 lto = true
 opt-level = 3

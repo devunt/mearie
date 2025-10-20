@@ -20,8 +20,7 @@
   },
   "dependencies": {
     "@mearie/codegen": "workspace:*",
-    "@mearie/config": "workspace:*",
-    "@mearie/core": "workspace:*"
+    "@mearie/config": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",

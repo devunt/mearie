@@ -1,8 +1,7 @@
 import path from 'node:path';
 import type { Plugin, ResolvedConfig } from 'vite';
 import { loadConfig, mergeConfig, type ResolvedMearieConfig } from '@mearie/config';
-import { CodegenContext, createMatcher, findFiles } from '@mearie/codegen';
-import { logger, report } from '@mearie/core';
+import { CodegenContext, createMatcher, findFiles, logger, report } from '@mearie/codegen';
 import type { MearieOptions } from './types.ts';
 
 /**

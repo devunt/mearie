@@ -1,4 +1,4 @@
-import type { SelectionNode } from '../types.ts';
+import type { Selection } from '@mearie/shared';
 import { makeFieldKey, isEntityLink } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey } from './types.ts';
@@ -13,7 +13,7 @@ import type { StorageKey } from './types.ts';
  */
 const denormalizeValue = (
   value: unknown,
-  selection: SelectionNode,
+  selection: Selection,
   storage: Map<StorageKey, Record<string, unknown>>,
   variables: Record<string, unknown>,
   sourceData?: Record<string | symbol, unknown>,
@@ -70,7 +70,7 @@ const denormalizeValue = (
  * @returns The denormalized data.
  */
 export const denormalize = (
-  selections: readonly SelectionNode[],
+  selections: readonly Selection[],
   storage: Map<StorageKey, Record<string, unknown>>,
   variables: Record<string, unknown>,
 ): unknown => {

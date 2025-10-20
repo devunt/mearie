@@ -1,4 +1,6 @@
-import type { DocumentNode, SchemaMetadata } from '../types.ts';
+import type { Artifact } from '@mearie/shared';
+import type { SchemaMeta } from '../types.ts';
+import { hashString } from '../utils.ts';
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
 import { makeFieldKey, makeQueryKey, makeDependencyKey } from './utils.ts';
@@ -15,24 +17,24 @@ export class Cache {
   #storage = new Map<StorageKey, Fields>();
   #dependencies = new Map<DependencyKey, Set<QueryKey>>();
   #listeners = new Map<QueryKey, Set<CacheListener>>();
-  #schemaMetadata: SchemaMetadata;
+  #schemaMetadata: SchemaMeta;
 
-  constructor(schemaMetadata: SchemaMetadata) {
+  constructor(schemaMetadata: SchemaMeta) {
     this.#schemaMetadata = schemaMetadata;
   }
 
   /**
    * Writes a query result to the cache, normalizing entities and tracking dependencies.
-   * @param document - GraphQL document node.
+   * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    * @param result - Query result data.
    */
   writeQuery<TResult, TVariables>(
-    document: DocumentNode<TResult, TVariables>,
+    document: Artifact,
     variables: TVariables,
     result: TResult,
   ): void {
-    const queryKey = makeQueryKey(document.hash, variables);
+    const queryKey = makeQueryKey(hashString(document.source), variables);
 
     normalize(
       result,
@@ -50,27 +52,27 @@ export class Cache {
 
   /**
    * Reads a query result from the cache, denormalizing entities if available.
-   * @param document - GraphQL document node.
+   * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    * @returns Denormalized query result or null if not found.
    */
-  readQuery<TResult, TVariables>(document: DocumentNode<TResult, TVariables>, variables: TVariables): TResult | null {
+  readQuery<TResult, TVariables>(document: Artifact, variables: TVariables): TResult | null {
     return denormalize(document.selections, this.#storage, variables as Record<string, unknown>) as TResult | null;
   }
 
   /**
    * Subscribes to cache invalidations for a specific query.
-   * @param document - GraphQL document node.
+   * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    * @param callback - Callback function to invoke on cache invalidation.
    * @returns Unsubscribe function.
    */
   subscribe<TVariables>(
-    document: DocumentNode<unknown, TVariables>,
+    document: Artifact,
     variables: TVariables,
     callback: CacheListener,
   ): () => void {
-    const queryKey = makeQueryKey(document.hash, variables);
+    const queryKey = makeQueryKey(hashString(document.source), variables);
 
     let listeners = this.#listeners.get(queryKey);
     if (!listeners) {
@@ -90,11 +92,11 @@ export class Cache {
 
   /**
    * Evicts a query from the cache and notifies listeners.
-   * @param document - GraphQL document node.
+   * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    */
-  evictQuery<TVariables>(document: DocumentNode<unknown, TVariables>, variables: TVariables): void {
-    const queryKey = makeQueryKey(document.hash, variables);
+  evictQuery<TVariables>(document: Artifact, variables: TVariables): void {
+    const queryKey = makeQueryKey(hashString(document.source), variables);
     const queryRoot = this.#storage.get(RootFieldKey);
 
     if (queryRoot) {

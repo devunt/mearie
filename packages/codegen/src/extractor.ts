@@ -1,15 +1,7 @@
 import { extractGraphQLSources as extractGraphQLSourcesNative } from '@mearie/native';
-import { MearieError, type Source } from '@mearie/core';
+import { MearieError } from './errors.ts';
 import { extractAstroScripts, extractMarkdownCodeBlocks, extractSvelteScript, extractVueScript } from './parsers.ts';
-
-export type { ExtractionError } from './types.ts';
-export {
-  MissingVueCompilerError,
-  MissingSvelteCompilerError,
-  MissingTypeScriptError,
-  InterpolationNotAllowedError,
-  JavaScriptParseError,
-} from './errors.ts';
+import type { Source } from './types.ts';
 
 type ExtractGraphQLSourcesResult = {
   sources: Source[];

@@ -1,4 +1,5 @@
-import type { Operation, MaybePromise } from './types.ts';
+import type { MaybePromise } from '@mearie/shared';
+import type { Operation } from './types.ts';
 
 export type GraphQLError = {
   message: string;

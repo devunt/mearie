@@ -1,6 +1,6 @@
 import { generateCode } from '@mearie/native';
-import { MearieError } from '@mearie/core';
-import type { Source } from '@mearie/core';
+import { MearieError } from './errors.ts';
+import type { Source } from './types.ts';
 
 export type GenerateOptions = {
   schemas: Source[];

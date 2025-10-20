@@ -1,4 +1,5 @@
-import type { SelectionNode, SchemaMetadata, ArgumentValue, EntityMetadata } from '../types.ts';
+import type { Selection, Argument } from '@mearie/shared';
+import type { SchemaMeta, EntityMeta } from '../types.ts';
 import { stableStringify, hashString, combineHashes } from '../utils.ts';
 import { EntityLinkKey } from './constants.ts';
 import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
@@ -22,7 +23,7 @@ export const makeEntityKey = (typename: string, keyValues: unknown[]): EntityKey
  * @returns Object with all arguments resolved to their actual values.
  */
 export const resolveArguments = (
-  args: Record<string, ArgumentValue>,
+  args: Record<string, Argument>,
   variables: Record<string, unknown>,
 ): Record<string, unknown> => {
   const resolved: Record<string, unknown> = {};
@@ -42,7 +43,7 @@ export const resolveArguments = (
  * @param variables - Variable values for resolving argument references.
  * @returns Field cache key string in "fieldName@argsHash" format.
  */
-export const makeFieldKey = (selection: SelectionNode, variables: Record<string, unknown>): FieldKey => {
+export const makeFieldKey = (selection: Selection, variables: Record<string, unknown>): FieldKey => {
   const resolvedArgs = selection.args ? resolveArguments(selection.args, variables) : {};
   const argsHash = hashString(stableStringify(resolvedArgs));
   return `${selection.name}@${argsHash}`;
@@ -57,8 +58,8 @@ export const makeFieldKey = (selection: SelectionNode, variables: Record<string,
  */
 export const getEntityMetadata = (
   typename: string | undefined,
-  schemaMetadata: SchemaMetadata,
-): EntityMetadata | undefined => {
+  schemaMetadata: SchemaMeta,
+): EntityMeta | undefined => {
   return typename ? schemaMetadata.entities[typename] : undefined;
 };
 
@@ -69,7 +70,7 @@ export const getEntityMetadata = (
  * @param schemaMetadata - The schema metadata containing entity configurations.
  * @returns True if the selection's type is defined as an entity in the schema.
  */
-export const isEntity = (selection: SelectionNode, schemaMetadata: SchemaMetadata): boolean => {
+export const isEntity = (selection: Selection, schemaMetadata: SchemaMeta): boolean => {
   return selection.type !== undefined && schemaMetadata.entities[selection.type] !== undefined;
 };
 

@@ -17,9 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@logtape/logtape": "^1.1.1",
-    "picocolors": "^1.1.1",
-    "zod": "^4.1.12"
+    "@mearie/shared": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",

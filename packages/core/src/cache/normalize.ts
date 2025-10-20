@@ -1,4 +1,5 @@
-import type { SelectionNode, SchemaMetadata } from '../types.ts';
+import type { Selection } from '@mearie/shared';
+import type { SchemaMeta } from '../types.ts';
 import { makeEntityKey, makeFieldKey, getEntityMetadata } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage, Fields } from './types.ts';
@@ -15,13 +16,13 @@ type Accessor = (storageKey: StorageKey, fieldKey: FieldKey) => void;
  */
 export const normalize = (
   data: unknown,
-  selections: readonly SelectionNode[],
-  schemaMetadata: SchemaMetadata,
+  selections: readonly Selection[],
+  schemaMetadata: SchemaMeta,
   storage: Storage,
   variables: Record<string, unknown>,
   accessor: Accessor,
 ): void => {
-  const normalizeField = (parentKey: StorageKey, selections: readonly SelectionNode[], value: unknown): unknown => {
+  const normalizeField = (parentKey: StorageKey, selections: readonly Selection[], value: unknown): unknown => {
     if (value === null || value === undefined) {
       return value;
     }

@@ -43,8 +43,10 @@ impl<'a, 'b> Builder<'a, 'b> {
         let operation_generator = OperationGenerator::new(self.ctx, &variables_generator, &selection_set_generator);
 
         for fragment in self.registry.fragments() {
-            let stmt = fragment_generator.generate_fragment(fragment)?;
-            statements.push(stmt);
+            let stmts = fragment_generator.generate_fragment(fragment)?;
+            for stmt in stmts {
+                statements.push(stmt);
+            }
         }
 
         for operation in self.registry.operations() {
@@ -293,8 +295,11 @@ mod tests {
         let files = result.unwrap();
         let code = &files[0].code;
         assert_contains!(code, "UserFieldsFragment");
+        assert_contains!(code, "UserFieldsFragment$doc");
         assert_contains!(code, "GetUser$vars");
         assert_contains!(code, "GetUser$data");
+        assert_contains!(code, " $fragmentRefs");
+        assert_contains!(code, "\"UserFields\"");
     }
 
     #[test]

@@ -1,8 +1,12 @@
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import type { Plugin, ResolvedConfig } from 'vite';
 import { loadConfig, mergeConfig, type ResolvedMearieConfig } from '@mearie/config';
 import { CodegenContext, createMatcher, findFiles, logger, report } from '@mearie/codegen';
 import type { MearieOptions } from './types.ts';
+
+const VIRTUAL_MODULE_ID = '$graphql';
+const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
 /**
  * Vite plugin for Mearie GraphQL code generation.
@@ -28,7 +32,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
 
     const { schema, document, exclude } = mearieConfig;
 
-    context = new CodegenContext();
+    context = new CodegenContext(viteConfig.root);
 
     const schemaFiles = await findFiles(viteConfig.root, {
       include: schema,
@@ -128,6 +132,22 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
         scheduleGenerate();
       } catch (error) {
         report(logger, error);
+      }
+    },
+    resolveId(id) {
+      if (id === VIRTUAL_MODULE_ID) {
+        return RESOLVED_VIRTUAL_MODULE_ID;
+      }
+    },
+
+    async load(id) {
+      if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+        const jsPath = path.join(viteConfig.root, '.mearie', 'graphql.js');
+        try {
+          return await readFile(jsPath, 'utf8');
+        } catch {
+          return 'export function graphql() { throw new Error("Mearie: graphql file not generated yet"); }';
+        }
       }
     },
   };

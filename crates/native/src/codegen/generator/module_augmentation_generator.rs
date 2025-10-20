@@ -19,41 +19,62 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
     }
 
     pub fn generate(&self) -> Result<String> {
-        let mut statements = self.ast.vec();
+        self.generate_with_additional(self.ast.vec(), self.ast.vec())
+    }
 
-        // First, create type aliases for all operations and fragments
+    pub fn generate_with_additional(
+        &self,
+        enum_statements: oxc_allocator::Vec<'b, Statement<'b>>,
+        public_statements: oxc_allocator::Vec<'b, Statement<'b>>,
+    ) -> Result<String> {
+        // First, create type aliases for all operations and fragments (outside module)
+        let mut outside_statements = self.ast.vec();
+
         for operation in self.registry.operations() {
             if let Some(stmt) = self.create_type_alias(operation) {
-                statements.push(stmt);
+                outside_statements.push(stmt);
             }
         }
 
         for fragment in self.registry.fragments() {
             if let Some(stmt) = self.create_type_alias_for_fragment(fragment) {
-                statements.push(stmt);
+                outside_statements.push(stmt);
             }
         }
 
-        // Then, create function overloads
+        // Now create module body statements
+        let mut module_statements = self.ast.vec();
+
+        // Add enum types inside module
+        for enum_stmt in enum_statements {
+            module_statements.push(enum_stmt);
+        }
+
+        // Add public types (fragment $key exports) inside module
+        for public_stmt in public_statements {
+            module_statements.push(public_stmt);
+        }
+
+        // Add function overloads inside module
         for operation in self.registry.operations() {
             if let Some(stmt) = self.create_function_overload(operation) {
-                statements.push(stmt);
+                module_statements.push(stmt);
             }
         }
 
         for fragment in self.registry.fragments() {
             if let Some(stmt) = self.create_function_overload_for_fragment(fragment) {
-                statements.push(stmt);
+                module_statements.push(stmt);
             }
         }
 
         let module_body = self
             .ast
-            .ts_module_declaration_body_module_block(SPAN, self.ast.vec(), statements);
+            .ts_module_declaration_body_module_block(SPAN, self.ast.vec(), module_statements);
 
         let module_name = self
             .ast
-            .ts_module_declaration_name_string_literal(SPAN, "@mearie/client", None::<Atom>);
+            .ts_module_declaration_name_string_literal(SPAN, "$graphql", None::<Atom>);
 
         let module_decl = self.ast.ts_module_declaration(
             SPAN,
@@ -65,7 +86,11 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
 
         let declare_stmt = Statement::from(Declaration::TSModuleDeclaration(self.ast.alloc(module_decl)));
 
+        // Combine outside statements and module declaration
         let mut all_statements = self.ast.vec();
+        for stmt in outside_statements {
+            all_statements.push(stmt);
+        }
         all_statements.push(declare_stmt);
 
         let program = self.ast.program(
@@ -395,7 +420,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"@mearie/client\"");
+        assert_contains!(code, "declare module \"$graphql\"");
         assert_contains!(code, "export function graphql");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");
@@ -447,7 +472,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"@mearie/client\"");
+        assert_contains!(code, "declare module \"$graphql\"");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "type GetAllUsers");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");
@@ -498,7 +523,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"@mearie/client\"");
+        assert_contains!(code, "declare module \"$graphql\"");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "type UserFields");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");

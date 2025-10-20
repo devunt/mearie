@@ -1,1 +1,1 @@
-export type * from '@mearie/client/types';
+export type { Artifact, Nullable, List, FragmentRefs } from '@mearie/core';

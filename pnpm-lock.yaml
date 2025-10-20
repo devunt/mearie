@@ -117,12 +117,6 @@ importers:
         specifier: ^7.1.10
         version: 7.1.10(@types/node@24.8.1)(jiti@2.6.1)(tsx@4.20.6)
 
-  packages/client:
-    dependencies:
-      '@mearie/core':
-        specifier: workspace:*
-        version: link:../core
-
   packages/codegen:
     dependencies:
       '@logtape/logtape':
@@ -200,9 +194,6 @@ importers:
 
   packages/mearie:
     dependencies:
-      '@mearie/client':
-        specifier: workspace:*
-        version: link:../client
       '@mearie/config':
         specifier: workspace:*
         version: link:../config

@@ -1,7 +1,11 @@
 import { createSignal, type Accessor } from 'solid-js';
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { Artifact, VariablesOf, DataOf } from '@mearie/core';
 
-export type CreateQueryReturn<Document extends DocumentNode> =
+export type CreateQueryOptions = {
+  skip?: boolean;
+};
+
+export type Query<T extends Artifact<'query'>> =
   | {
       data: undefined;
       loading: true;
@@ -9,23 +13,25 @@ export type CreateQueryReturn<Document extends DocumentNode> =
       refetch: () => void;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T>;
       loading: false;
       error: undefined;
       refetch: () => void;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
       refetch: () => void;
     };
 
-export const createQuery = <Document extends DocumentNode>(
-  document: Document,
-  variables: Accessor<VariablesOf<Document>>,
-): CreateQueryReturn<Document> => {
-  const [data] = createSignal<DataOf<Document>>();
+export const createQuery = <T extends Artifact<'query'>>(
+  query: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, CreateQueryOptions?]
+    : [Accessor<VariablesOf<T>>, CreateQueryOptions?]
+): Query<T> => {
+  const [data] = createSignal<DataOf<T>>();
   const [loading] = createSignal(true);
   const [error] = createSignal<Error>();
 

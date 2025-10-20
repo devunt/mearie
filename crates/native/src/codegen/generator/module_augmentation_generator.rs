@@ -21,6 +21,20 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
     pub fn generate(&self) -> Result<String> {
         let mut statements = self.ast.vec();
 
+        // First, create type aliases for all operations and fragments
+        for operation in self.registry.operations() {
+            if let Some(stmt) = self.create_type_alias(operation) {
+                statements.push(stmt);
+            }
+        }
+
+        for fragment in self.registry.fragments() {
+            if let Some(stmt) = self.create_type_alias_for_fragment(fragment) {
+                statements.push(stmt);
+            }
+        }
+
+        // Then, create function overloads
         for operation in self.registry.operations() {
             if let Some(stmt) = self.create_function_overload(operation) {
                 statements.push(stmt);
@@ -67,11 +81,55 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         Ok(Codegen::new().build(&program).code)
     }
 
+    fn create_type_alias(&self, operation: &OperationDefinition<'b>) -> Option<Statement<'b>> {
+        let operation_name = operation.name.as_ref()?.as_str();
+        let operation_name_str = self.ast.allocator.alloc_str(operation_name);
+
+        // Create the import type
+        let import_type = self.create_import_type(operation_name);
+
+        // Create type alias: type GetUser = import("./types.d.ts").GetUser
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::TSTypeParameterDeclaration;
+
+        let ts_type_alias = self.ast.ts_type_alias_declaration(
+            SPAN,
+            self.ast.binding_identifier(SPAN, operation_name_str),
+            None::<OxcBox<TSTypeParameterDeclaration>>,
+            import_type,
+            false,
+        );
+
+        Some(Statement::from(Declaration::TSTypeAliasDeclaration(self.ast.alloc(ts_type_alias))))
+    }
+
+    fn create_type_alias_for_fragment(&self, fragment: &FragmentDefinition<'b>) -> Option<Statement<'b>> {
+        let fragment_name = fragment.name.as_str();
+        let fragment_name_str = self.ast.allocator.alloc_str(fragment_name);
+
+        // Create the import type
+        let import_type = self.create_import_type(fragment_name);
+
+        // Create type alias: type UserProfile = import("./types.d.ts").UserProfile
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::TSTypeParameterDeclaration;
+
+        let ts_type_alias = self.ast.ts_type_alias_declaration(
+            SPAN,
+            self.ast.binding_identifier(SPAN, fragment_name_str),
+            None::<OxcBox<TSTypeParameterDeclaration>>,
+            import_type,
+            false,
+        );
+
+        Some(Statement::from(Declaration::TSTypeAliasDeclaration(self.ast.alloc(ts_type_alias))))
+    }
+
     fn create_function_overload(&self, operation: &OperationDefinition<'b>) -> Option<Statement<'b>> {
         let operation_name = operation.name.as_ref()?.as_str();
         let source = self.get_operation_source(operation)?;
 
-        let return_type = self.create_return_type(operation_name, operation);
+        let return_type = self.create_simple_return_type(operation_name);
         let return_type_annotation = self.ast.ts_type_annotation(SPAN, return_type);
 
         let string_literal_type = self
@@ -139,7 +197,7 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         let fragment_name = fragment.name.as_str();
         let source = self.get_fragment_source(fragment)?;
 
-        let return_type = self.create_fragment_return_type(fragment_name);
+        let return_type = self.create_simple_fragment_return_type(fragment_name);
         let return_type_annotation = self.ast.ts_type_annotation(SPAN, return_type);
 
         let string_literal_type = self
@@ -229,14 +287,12 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         None
     }
 
-    fn create_return_type(&self, operation_name: &str, _operation: &OperationDefinition<'b>) -> TSType<'b> {
+    fn create_import_type(&self, type_name: &str) -> TSType<'b> {
         use oxc_allocator::Box as OxcBox;
         use oxc_ast::ast::{ObjectExpression, TSTypeParameterInstantiation};
 
-        let doc_type_name = format!("{}$doc", operation_name);
-        let doc_type_name_str = self.ast.allocator.alloc_str(&doc_type_name);
-
-        let qualifier = self.ast.ts_import_type_qualifier_identifier(SPAN, doc_type_name_str);
+        let type_name_str = self.ast.allocator.alloc_str(type_name);
+        let qualifier = self.ast.ts_import_type_qualifier_identifier(SPAN, type_name_str);
 
         self.ast.ts_type_import_type(
             SPAN,
@@ -250,23 +306,28 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         )
     }
 
-    fn create_fragment_return_type(&self, fragment_name: &str) -> TSType<'b> {
+    fn create_simple_return_type(&self, operation_name: &str) -> TSType<'b> {
         use oxc_allocator::Box as OxcBox;
-        use oxc_ast::ast::{ObjectExpression, TSTypeParameterInstantiation};
+        use oxc_ast::ast::TSTypeParameterInstantiation;
 
-        let doc_type_name = format!("{}Fragment$doc", fragment_name);
-        let doc_type_name_str = self.ast.allocator.alloc_str(&doc_type_name);
+        let operation_name_str = self.ast.allocator.alloc_str(operation_name);
 
-        let qualifier = self.ast.ts_import_type_qualifier_identifier(SPAN, doc_type_name_str);
-
-        self.ast.ts_type_import_type(
+        self.ast.ts_type_type_reference(
             SPAN,
-            self.ast.ts_type_literal_type(
-                SPAN,
-                self.ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>),
-            ),
-            None::<OxcBox<ObjectExpression>>,
-            Some(qualifier),
+            self.ast.ts_type_name_identifier_reference(SPAN, operation_name_str),
+            None::<OxcBox<TSTypeParameterInstantiation>>,
+        )
+    }
+
+    fn create_simple_fragment_return_type(&self, fragment_name: &str) -> TSType<'b> {
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::TSTypeParameterInstantiation;
+
+        let fragment_name_str = self.ast.allocator.alloc_str(fragment_name);
+
+        self.ast.ts_type_type_reference(
+            SPAN,
+            self.ast.ts_type_name_identifier_reference(SPAN, fragment_name_str),
             None::<OxcBox<TSTypeParameterInstantiation>>,
         )
     }
@@ -336,7 +397,8 @@ mod tests {
 
         assert_contains!(code, "declare module \"@mearie/client\"");
         assert_contains!(code, "export function graphql");
-        assert_contains!(code, "import(\"./types.d.ts\").GetUser$doc");
+        assert_contains!(code, "type GetUser");
+        assert_contains!(code, "import(\"./types.d.ts\").GetUser");
     }
 
     #[test]
@@ -386,8 +448,10 @@ mod tests {
         let code = result.unwrap();
 
         assert_contains!(code, "declare module \"@mearie/client\"");
-        assert_contains!(code, "import(\"./types.d.ts\").GetUser$doc");
-        assert_contains!(code, "import(\"./types.d.ts\").GetAllUsers$doc");
+        assert_contains!(code, "type GetUser");
+        assert_contains!(code, "type GetAllUsers");
+        assert_contains!(code, "import(\"./types.d.ts\").GetUser");
+        assert_contains!(code, "import(\"./types.d.ts\").GetAllUsers");
     }
 
     #[test]
@@ -435,7 +499,9 @@ mod tests {
         let code = result.unwrap();
 
         assert_contains!(code, "declare module \"@mearie/client\"");
-        assert_contains!(code, "import(\"./types.d.ts\").GetUser$doc");
-        assert_contains!(code, "import(\"./types.d.ts\").UserFieldsFragment$doc");
+        assert_contains!(code, "type GetUser");
+        assert_contains!(code, "type UserFields");
+        assert_contains!(code, "import(\"./types.d.ts\").GetUser");
+        assert_contains!(code, "import(\"./types.d.ts\").UserFields");
     }
 }

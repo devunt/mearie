@@ -53,7 +53,7 @@ impl<'a> Visitor<'a, ValidationContext<'a>> for FragmentSpreadTargetDefined<'a> 
 
     fn leave_document(&mut self, ctx: &mut ValidationContext<'a>, _document: &Document<'a>) -> Control {
         for (spread_name, spread_span) in &self.fragment_spreads {
-            if !self.fragment_names.contains(spread_name) {
+            if !self.fragment_names.contains(spread_name) && ctx.schema().get_fragment(spread_name).is_none() {
                 ctx.add_error(MearieError {
                     kind: ErrorKind::ValidationError {
                         message: "Only known fragments may occur in fragment spreads.".to_string(),

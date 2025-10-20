@@ -27,32 +27,43 @@ impl<'a, 'b> OperationGenerator<'a, 'b> {
     pub fn generate_operation(&self, operation: &OperationDefinition<'b>) -> Result<Vec<Statement<'b>>> {
         let mut statements = Vec::new();
 
-        let operation_name = match operation.name {
+        let operation_name_temp = match operation.name {
             Some(name) => name.as_str(),
             None => "Anonymous",
         };
+        let operation_name = self.ast.allocator.alloc_str(operation_name_temp);
 
-        if !operation.variable_definitions.is_empty() {
-            let variables_type_name = format!("{}$vars", operation_name);
-            let variables_type = self
-                .variables_generator
-                .generate_variables(&operation.variable_definitions);
-            let variables_stmt = type_builder::export_type_alias(&self.ast, &variables_type_name, variables_type);
-            statements.push(variables_stmt);
-        }
+        let kind_str = match operation.operation_type {
+            OperationType::Query => "query",
+            OperationType::Mutation => "mutation",
+            OperationType::Subscription => "subscription",
+        };
 
-        let result_type_name = format!("{}$data", operation_name);
+        // $data type
+        let data_type_name = format!("{}$data", operation_name);
         let root_type = self.get_root_type(operation.operation_type);
-        let result_type = self
+        let data_type = self
             .selection_set_generator
             .generate_selection_set(&operation.selection_set, root_type)?;
-        let result_stmt = type_builder::export_type_alias(&self.ast, &result_type_name, result_type);
-        statements.push(result_stmt);
+        let data_stmt = type_builder::export_type_alias(&self.ast, &data_type_name, data_type);
+        statements.push(data_stmt);
 
-        let doc_type_name = format!("{}$doc", operation_name);
-        let doc_type = self.create_document_node_type(operation_name, operation);
-        let doc_stmt = type_builder::export_type_alias(&self.ast, &doc_type_name, doc_type);
-        statements.push(doc_stmt);
+        // $vars type (if needed)
+        if !operation.variable_definitions.is_empty() {
+            let vars_type_name = format!("{}$vars", operation_name);
+            let vars_type = self
+                .variables_generator
+                .generate_variables(&operation.variable_definitions);
+            let vars_stmt = type_builder::export_type_alias(&self.ast, &vars_type_name, vars_type);
+            statements.push(vars_stmt);
+        }
+
+        // artifact type (without $doc suffix)
+        let data_type_name_str = self.ast.allocator.alloc_str(&data_type_name);
+        let data_type_ref = type_builder::create_type_reference(&self.ast, data_type_name_str);
+        let artifact_type = self.create_document_node_type(kind_str, operation_name, data_type_ref, operation);
+        let artifact_stmt = type_builder::export_type_alias(&self.ast, operation_name, artifact_type);
+        statements.push(artifact_stmt);
 
         Ok(statements)
     }
@@ -67,28 +78,47 @@ impl<'a, 'b> OperationGenerator<'a, 'b> {
 
     fn create_document_node_type(
         &self,
-        operation_name: &str,
+        kind: &'b str,
+        name: &'b str,
+        data_type: oxc_ast::ast::TSType<'b>,
         operation: &OperationDefinition<'b>,
     ) -> oxc_ast::ast::TSType<'b> {
-        let data_type_name = self.ast.allocator.alloc_str(&format!("{}$data", operation_name));
-        let data_type = type_builder::create_type_reference(&self.ast, data_type_name);
+        use oxc_span::Atom;
 
         let mut type_params = self.ast.vec();
+
+        // 1. kind type literal
+        let kind_literal = self.ast.ts_literal_string_literal(oxc_span::SPAN, kind, None::<Atom>);
+        let kind_type = self.ast.ts_type_literal_type(oxc_span::SPAN, kind_literal);
+        type_params.push(kind_type);
+
+        // 2. name type literal
+        let name_literal = self.ast.ts_literal_string_literal(oxc_span::SPAN, name, None::<Atom>);
+        let name_type = self.ast.ts_type_literal_type(oxc_span::SPAN, name_literal);
+        type_params.push(name_type);
+
+        // 3. Data type reference
         type_params.push(data_type);
 
+        // 4. Variables type (if exists) or never
         if !operation.variable_definitions.is_empty() {
+            let operation_name = operation.name.unwrap().as_str();
             let vars_type_name = self.ast.allocator.alloc_str(&format!("{}$vars", operation_name));
             let vars_type = type_builder::create_type_reference(&self.ast, vars_type_name);
             type_params.push(vars_type);
+        } else {
+            let never_type = self.ast.ts_type_never_keyword(oxc_span::SPAN);
+            type_params.push(never_type);
         }
 
         self.ast.ts_type_type_reference(
             oxc_span::SPAN,
             self.ast
-                .ts_type_name_identifier_reference(oxc_span::SPAN, "DocumentNode"),
+                .ts_type_name_identifier_reference(oxc_span::SPAN, "Artifact"),
             Some(self.ast.ts_type_parameter_instantiation(oxc_span::SPAN, type_params)),
         )
     }
+
 }
 
 #[cfg(test)]
@@ -383,8 +413,8 @@ mod tests {
             assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
             assert_contains!(code, "name: Scalars[\"String\"]");
             assert_contains!(code, "id: Scalars[\"ID\"]");
-            assert_contains!(code, "export type GetUser$doc");
-            assert_contains!(code, "DocumentNode<GetUser$data, GetUser$vars>");
+            assert_contains!(code, "export type GetUser");
+            assert_contains!(code, "Artifact<\"query\", \"GetUser\", GetUser$data, GetUser$vars>");
         } else {
             panic!("Expected operation definition");
         }
@@ -451,8 +481,8 @@ mod tests {
             assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
             assert_contains!(code, "export type CreateUser$data");
             assert_contains!(code, "createUser: {");
-            assert_contains!(code, "export type CreateUser$doc");
-            assert_contains!(code, "DocumentNode<CreateUser$data, CreateUser$vars>");
+            assert_contains!(code, "export type CreateUser");
+            assert_contains!(code, "Artifact<\"mutation\", \"CreateUser\", CreateUser$data, CreateUser$vars>");
         } else {
             panic!("Expected operation definition");
         }

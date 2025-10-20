@@ -84,7 +84,7 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
             let base_type = type_builder::map_type(&self.ast, graphql_type);
             let inner_type_name = Self::get_inner_type_name(graphql_type);
             let selection_type = self.generate_selection_set(&field.selection_set, inner_type_name)?;
-            self.replace_innermost_type(base_type, selection_type)
+            self.replace_innermost_type(&base_type, selection_type)
         } else {
             self.map_type_direct_scalar(graphql_type)
         };
@@ -117,16 +117,33 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
         }
     }
 
-    fn replace_innermost_type(&self, wrapper_type: TSType<'b>, replacement: TSType<'b>) -> TSType<'b> {
+    fn replace_innermost_type(&self, wrapper_type: &TSType<'b>, replacement: TSType<'b>) -> TSType<'b> {
         match wrapper_type {
-            TSType::TSTypeReference(ref type_ref) => {
+            TSType::TSTypeReference(type_ref) => {
                 let type_name = match &type_ref.type_name {
                     oxc_ast::ast::TSTypeName::IdentifierReference(ident) => ident.name.as_str(),
                     _ => return replacement,
                 };
 
                 match type_name {
-                    "Nullable" | "List" => type_builder::wrap_nullable(&self.ast, replacement),
+                    "Nullable" => {
+                        if let Some(ref params) = type_ref.type_arguments {
+                            if let Some(inner) = params.params.first() {
+                                let replaced_inner = self.replace_innermost_type(inner, replacement);
+                                return type_builder::wrap_nullable(&self.ast, replaced_inner);
+                            }
+                        }
+                        type_builder::wrap_nullable(&self.ast, replacement)
+                    }
+                    "List" => {
+                        if let Some(ref params) = type_ref.type_arguments {
+                            if let Some(inner) = params.params.first() {
+                                let replaced_inner = self.replace_innermost_type(inner, replacement);
+                                return type_builder::wrap_list(&self.ast, replaced_inner);
+                            }
+                        }
+                        type_builder::wrap_list(&self.ast, replacement)
+                    }
                     _ => replacement,
                 }
             }

@@ -53,16 +53,25 @@ pub fn napi_generate_code(schemas: Vec<SourceOwned>, documents: Vec<SourceOwned>
         }
     }
 
+    let mut parsed_documents = Vec::new();
     for source in documents.iter() {
         match Document::parse(&ctx, source) {
             Ok(document) => {
-                if let Err(validation_errors) = registry.load_document(document) {
-                    errors.extend(validation_errors);
-                }
+                parsed_documents.push(document);
             }
             Err(e) => {
                 errors.push(e);
             }
+        }
+    }
+
+    for document in parsed_documents.iter() {
+        registry.register_fragments(document);
+    }
+
+    for document in parsed_documents.iter() {
+        if let Err(validation_errors) = registry.validate_and_load_document(*document) {
+            errors.extend(validation_errors);
         }
     }
 

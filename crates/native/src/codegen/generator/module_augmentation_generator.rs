@@ -27,6 +27,12 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
             }
         }
 
+        for fragment in self.registry.fragments() {
+            if let Some(stmt) = self.create_function_overload_for_fragment(fragment) {
+                statements.push(stmt);
+            }
+        }
+
         let module_body = self
             .ast
             .ts_module_declaration_body_module_block(SPAN, self.ast.vec(), statements);
@@ -129,6 +135,74 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         Some(Statement::ExportNamedDeclaration(self.ast.alloc(export_decl)))
     }
 
+    fn create_function_overload_for_fragment(&self, fragment: &FragmentDefinition<'b>) -> Option<Statement<'b>> {
+        let fragment_name = fragment.name.as_str();
+        let source = self.get_fragment_source(fragment)?;
+
+        let return_type = self.create_fragment_return_type(fragment_name);
+        let return_type_annotation = self.ast.ts_type_annotation(SPAN, return_type);
+
+        let string_literal_type = self
+            .ast
+            .ts_type_literal_type(SPAN, self.ast.ts_literal_string_literal(SPAN, source, None::<Atom>));
+
+        let type_annotation = self.ast.ts_type_annotation(SPAN, string_literal_type);
+
+        let param_pattern = self.ast.binding_pattern(
+            self.ast
+                .binding_pattern_kind_binding_identifier(SPAN, Atom::from("document")),
+            Some(type_annotation),
+            false,
+        );
+
+        let param = self
+            .ast
+            .formal_parameter(SPAN, self.ast.vec(), param_pattern, None, false, false);
+
+        let mut params = self.ast.vec();
+        params.push(param);
+
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::{BindingRestElement, WithClause};
+
+        let formal_params = self.ast.formal_parameters(
+            SPAN,
+            FormalParameterKind::Signature,
+            params,
+            None::<OxcBox<BindingRestElement>>,
+        );
+
+        let function_id = self.ast.binding_identifier(SPAN, Atom::from("graphql"));
+
+        let function = Function {
+            span: SPAN,
+            r#type: FunctionType::FunctionDeclaration,
+            id: Some(function_id),
+            generator: false,
+            r#async: false,
+            declare: false,
+            type_parameters: None,
+            this_param: None,
+            params: self.ast.alloc(formal_params),
+            return_type: Some(self.ast.alloc(return_type_annotation)),
+            body: None,
+            scope_id: std::cell::Cell::new(None),
+            pife: false,
+            pure: false,
+        };
+
+        let export_decl = self.ast.export_named_declaration(
+            SPAN,
+            Some(Declaration::FunctionDeclaration(self.ast.alloc(function))),
+            self.ast.vec(),
+            None,
+            ImportOrExportKind::Value,
+            None::<OxcBox<WithClause>>,
+        );
+
+        Some(Statement::ExportNamedDeclaration(self.ast.alloc(export_decl)))
+    }
+
     fn get_operation_source(&self, operation: &OperationDefinition<'b>) -> Option<&'b str> {
         for doc in self.registry.documents() {
             for definition in &doc.definitions {
@@ -142,11 +216,45 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
         None
     }
 
+    fn get_fragment_source(&self, fragment: &FragmentDefinition<'b>) -> Option<&'b str> {
+        for doc in self.registry.documents() {
+            for definition in &doc.definitions {
+                if let Definition::Executable(ExecutableDefinition::Fragment(frag)) = definition
+                    && std::ptr::eq(frag as *const _, fragment as *const _)
+                {
+                    return Some(doc.source.code);
+                }
+            }
+        }
+        None
+    }
+
     fn create_return_type(&self, operation_name: &str, _operation: &OperationDefinition<'b>) -> TSType<'b> {
         use oxc_allocator::Box as OxcBox;
         use oxc_ast::ast::{ObjectExpression, TSTypeParameterInstantiation};
 
         let doc_type_name = format!("{}$doc", operation_name);
+        let doc_type_name_str = self.ast.allocator.alloc_str(&doc_type_name);
+
+        let qualifier = self.ast.ts_import_type_qualifier_identifier(SPAN, doc_type_name_str);
+
+        self.ast.ts_type_import_type(
+            SPAN,
+            self.ast.ts_type_literal_type(
+                SPAN,
+                self.ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>),
+            ),
+            None::<OxcBox<ObjectExpression>>,
+            Some(qualifier),
+            None::<OxcBox<TSTypeParameterInstantiation>>,
+        )
+    }
+
+    fn create_fragment_return_type(&self, fragment_name: &str) -> TSType<'b> {
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::{ObjectExpression, TSTypeParameterInstantiation};
+
+        let doc_type_name = format!("{}Fragment$doc", fragment_name);
         let doc_type_name_str = self.ast.allocator.alloc_str(&doc_type_name);
 
         let qualifier = self.ast.ts_import_type_qualifier_identifier(SPAN, doc_type_name_str);
@@ -280,5 +388,54 @@ mod tests {
         assert_contains!(code, "declare module \"@mearie/client\"");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser$doc");
         assert_contains!(code, "import(\"./types.d.ts\").GetAllUsers$doc");
+    }
+
+    #[test]
+    fn test_generate_with_fragments() {
+        let schema = r#"
+            type Query {
+                user(id: ID!): User
+            }
+            type User {
+                id: ID!
+                name: String!
+                email: String
+            }
+        "#;
+
+        let operations = r#"
+            fragment UserFields on User {
+                id
+                name
+                email
+            }
+
+            query GetUser($id: ID!) {
+                user(id: $id) {
+                    ...UserFields
+                }
+            }
+        "#;
+
+        let graphql_ctx = GraphQLContext::new();
+        let schema_source = parse_source(schema);
+        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
+        let operations_source = parse_source(operations);
+        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+
+        let mut registry = Registry::new();
+        registry.load_schema(schema_document);
+        registry.load_document(operations_document).unwrap();
+
+        let ctx = CodegenContext::new();
+        let generator = ModuleAugmentationGenerator::new(&ctx, &registry);
+
+        let result = generator.generate();
+        assert_ok!(&result);
+        let code = result.unwrap();
+
+        assert_contains!(code, "declare module \"@mearie/client\"");
+        assert_contains!(code, "import(\"./types.d.ts\").GetUser$doc");
+        assert_contains!(code, "import(\"./types.d.ts\").UserFieldsFragment$doc");
     }
 }

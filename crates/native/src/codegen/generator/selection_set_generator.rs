@@ -25,6 +25,7 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
 
         let mut field_map: FxHashMap<&'b str, (TSType<'b>, bool)> = FxHashMap::default();
         let mut inline_fragment_types: Vec<TSType<'b>> = Vec::new();
+        let mut fragment_refs: Vec<&'b str> = Vec::new();
 
         for selection in &selection_set.selections {
             match selection {
@@ -33,8 +34,14 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
                     field_map.insert(field_name, (field_type, is_optional));
                 }
                 Selection::FragmentSpread(spread) => {
-                    let fragment_type = self.generate_fragment_spread(spread)?;
-                    inline_fragment_types.push(fragment_type);
+                    let fragment_name = spread.fragment_name.as_str();
+                    self.registry.get_fragment(fragment_name).ok_or_else(|| MearieError {
+                        kind: ErrorKind::FragmentNotFound {
+                            name: fragment_name.to_string(),
+                        },
+                        location: None,
+                    })?;
+                    fragment_refs.push(fragment_name);
                 }
                 Selection::InlineFragment(inline_fragment) => {
                     let fragment_type = self.generate_inline_fragment(inline_fragment, parent_type)?;
@@ -49,11 +56,17 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
             type_builder::create_empty_object(&self.ast)
         };
 
-        if inline_fragment_types.is_empty() {
-            Ok(base_type)
+        let mut all_types = vec![base_type];
+        all_types.extend(inline_fragment_types);
+
+        if !fragment_refs.is_empty() {
+            let fragment_refs_type = type_builder::create_fragment_refs_type(&self.ast, fragment_refs);
+            all_types.push(fragment_refs_type);
+        }
+
+        if all_types.len() == 1 {
+            Ok(all_types.into_iter().next().unwrap())
         } else {
-            let mut all_types = vec![base_type];
-            all_types.extend(inline_fragment_types);
             Ok(type_builder::create_intersection_type(&self.ast, all_types))
         }
     }
@@ -79,20 +92,6 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
         Ok((field_name, field_type, is_optional))
     }
 
-    fn generate_fragment_spread(&self, spread: &FragmentSpread<'b>) -> Result<TSType<'b>> {
-        let fragment_name = spread.fragment_name.as_str();
-        let fragment = self.registry.get_fragment(fragment_name).ok_or_else(|| MearieError {
-            kind: ErrorKind::FragmentNotFound {
-                name: fragment_name.to_string(),
-            },
-            location: None,
-        })?;
-
-        let type_condition = fragment.type_condition.as_str();
-        let selection_type = self.generate_selection_set(&fragment.selection_set, type_condition)?;
-
-        Ok(selection_type)
-    }
 
     fn generate_inline_fragment(
         &self,

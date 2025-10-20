@@ -17,7 +17,7 @@ impl<'a, 'b> FragmentGenerator<'a, 'b> {
         }
     }
 
-    pub fn generate_fragment(&self, fragment: &FragmentDefinition<'b>) -> Result<Statement<'b>> {
+    pub fn generate_fragment(&self, fragment: &FragmentDefinition<'b>) -> Result<Vec<Statement<'b>>> {
         let fragment_name = fragment.name.as_str();
         let type_name = format!("{}Fragment", fragment_name);
         let type_condition = fragment.type_condition.as_str();
@@ -26,7 +26,27 @@ impl<'a, 'b> FragmentGenerator<'a, 'b> {
             .selection_set_generator
             .generate_selection_set(&fragment.selection_set, type_condition)?;
 
-        Ok(type_builder::export_type_alias(&self.ast, &type_name, ts_type))
+        let type_stmt = type_builder::export_type_alias(&self.ast, &type_name, ts_type);
+
+        let doc_type_name = format!("{}Fragment$doc", fragment_name);
+        let type_name_str = self.ast.allocator.alloc_str(&type_name);
+        let fragment_type_ref = type_builder::create_type_reference(&self.ast, type_name_str);
+        let doc_type = self.create_document_node_type(fragment_type_ref);
+        let doc_stmt = type_builder::export_type_alias(&self.ast, &doc_type_name, doc_type);
+
+        Ok(vec![type_stmt, doc_stmt])
+    }
+
+    fn create_document_node_type(&self, fragment_type: oxc_ast::ast::TSType<'b>) -> oxc_ast::ast::TSType<'b> {
+        let mut type_params = self.ast.vec();
+        type_params.push(fragment_type);
+
+        self.ast.ts_type_type_reference(
+            oxc_span::SPAN,
+            self.ast
+                .ts_type_name_identifier_reference(oxc_span::SPAN, "DocumentNode"),
+            Some(self.ast.ts_type_parameter_instantiation(oxc_span::SPAN, type_params)),
+        )
     }
 }
 
@@ -95,8 +115,10 @@ mod tests {
         {
             let result = generator.generate_fragment(fragment);
             assert_ok!(&result);
-            let stmt = result.unwrap();
-            assert_matches!(stmt, Statement::ExportNamedDeclaration(_));
+            let stmts = result.unwrap();
+            assert_eq!(stmts.len(), 2);
+            assert_matches!(stmts[0], Statement::ExportNamedDeclaration(_));
+            assert_matches!(stmts[1], Statement::ExportNamedDeclaration(_));
         } else {
             panic!("Expected fragment definition");
         }
@@ -147,6 +169,8 @@ mod tests {
         {
             let result = generator.generate_fragment(fragment);
             assert_ok!(&result);
+            let stmts = result.unwrap();
+            assert_eq!(stmts.len(), 2);
         } else {
             panic!("Expected fragment definition");
         }
@@ -190,6 +214,8 @@ mod tests {
         {
             let result = generator.generate_fragment(fragment);
             assert_ok!(&result);
+            let stmts = result.unwrap();
+            assert_eq!(stmts.len(), 2);
         } else {
             panic!("Expected fragment definition");
         }

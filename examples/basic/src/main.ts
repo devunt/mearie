@@ -36,6 +36,12 @@ const createPostMutation = graphql(`
   }
 `);
 
+const UserProfileFragment = graphql(`
+  fragment UserProfile on User {
+    name
+  }
+`);
+
 console.log('GraphQL operations defined:', {
   getUserQuery,
   getPostsQuery,

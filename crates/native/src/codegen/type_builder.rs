@@ -147,6 +147,38 @@ pub fn create_empty_object<'a>(ast: &AstBuilder<'a>) -> TSType<'a> {
     ast.ts_type_type_literal(SPAN, ast.vec())
 }
 
+pub fn create_fragment_refs_type<'a>(ast: &AstBuilder<'a>, fragment_names: Vec<&'a str>) -> TSType<'a> {
+    use oxc_span::Atom;
+
+    if fragment_names.is_empty() {
+        return create_empty_object(ast);
+    }
+
+    let mut union_types = ast.vec();
+    for name in fragment_names {
+        let literal = ast.ts_literal_string_literal(SPAN, name, None::<Atom>);
+        let literal_type = ast.ts_type_literal_type(SPAN, literal);
+        union_types.push(literal_type);
+    }
+
+    let value_type = if union_types.len() == 1 {
+        union_types.into_iter().next().unwrap()
+    } else {
+        ast.ts_type_union_type(SPAN, union_types)
+    };
+
+    let key_atom = ast.atom(" $fragmentRefs");
+    let key = ast.property_key_static_identifier(SPAN, key_atom);
+    let type_annotation = ast.ts_type_annotation(SPAN, value_type);
+
+    let sig = ast.ts_signature_property_signature(SPAN, true, false, false, key, Some(type_annotation));
+
+    let mut signatures = ast.vec();
+    signatures.push(sig);
+
+    ast.ts_type_type_literal(SPAN, signatures)
+}
+
 pub fn export_type_alias<'a>(ast: &AstBuilder<'a>, name: &str, ts_type: TSType<'a>) -> oxc_ast::ast::Statement<'a> {
     use oxc_ast::ast::{Declaration, Statement};
 

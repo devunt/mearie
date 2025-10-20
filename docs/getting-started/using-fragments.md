@@ -1,3 +1,7 @@
+---
+description: Split complex queries into reusable fragments and colocate data requirements with components for better maintainability and type safety.
+---
+
 # Using Fragments
 
 Fragments let you split complex queries into reusable pieces and colocate data requirements with components.

@@ -1,3 +1,7 @@
+---
+description: Learn how to modify data with GraphQL mutations, implement optimistic updates, and handle loading states with automatic cache updates.
+---
+
 # Mutations
 
 Learn how to modify data with mutations.

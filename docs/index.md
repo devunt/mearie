@@ -2,16 +2,9 @@
 layout: home
 
 title: Mearie - The GraphQL client that feels like magic
-titleTemplate: ':title'
+description: Zero-boilerplate GraphQL client with complete type safety and zero runtime overhead. Supports React, Vue, Svelte, and Solid with automatic code generation and intelligent caching.
 
-head:
-  - [
-      'meta',
-      {
-        property: 'og:description',
-        content: 'Zero-boilerplate GraphQL client with complete type safety and zero runtime overhead. Supports React, Vue, Svelte, and Solid with automatic code generation and intelligent caching.',
-      },
-    ]
+titleTemplate: ':title'
 
 hero:
   name: Mearie

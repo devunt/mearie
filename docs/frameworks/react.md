@@ -1,3 +1,7 @@
+---
+description: React hooks for queries, mutations, fragments, and subscriptions with full type safety and React Suspense support. Learn about useQuery, useMutation, useFragment, and useSubscription.
+---
+
 # React Integration
 
 Mearie provides React hooks for queries, mutations, fragments, and subscriptions with full type safety and React Suspense support.

@@ -1,3 +1,7 @@
+---
+description: Vue composables that integrate seamlessly with Vue's reactive system for automatic query refetching and full type safety. Learn about useQuery, useMutation, useFragment, and useSubscription.
+---
+
 # Vue Integration
 
 Mearie provides Vue composables that integrate seamlessly with Vue's reactive system for automatic query refetching and full type safety.

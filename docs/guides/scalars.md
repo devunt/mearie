@@ -1,3 +1,7 @@
+---
+description: Transform custom GraphQL scalars like DateTime, JSON, and UUID into native JavaScript types with automatic parsing and serialization.
+---
+
 # Scalars
 
 Transform custom GraphQL scalars into native JavaScript types automatically.

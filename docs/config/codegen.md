@@ -1,3 +1,7 @@
+---
+description: Configure Mearie's build plugin for automatic type generation from your GraphQL schema. Learn about schema, document, exclude, and scalars options.
+---
+
 # Codegen Config
 
 Configure Mearie's build plugin for automatic type generation from your GraphQL schema.

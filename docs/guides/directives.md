@@ -1,3 +1,7 @@
+---
+description: Customize GraphQL behavior on the client side with special directives like @required. Learn how directives work at code generation and runtime.
+---
+
 # Directives
 
 Customize GraphQL behavior on the client side with special directives.

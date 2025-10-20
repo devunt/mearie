@@ -1,3 +1,7 @@
+---
+description: Send GraphQL operations to a server over HTTP. Configure URL, headers, credentials, and request cancellation for your GraphQL endpoint.
+---
+
 # HTTP Link
 
 Send GraphQL operations to a server over HTTP.

@@ -1,3 +1,7 @@
+---
+description: Learn how to handle real-time data updates with GraphQL subscriptions using Server-Sent Events or WebSocket. Combine queries with subscriptions for initial data.
+---
+
 # Subscriptions
 
 Learn how to handle real-time data updates with subscriptions.

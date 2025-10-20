@@ -1,3 +1,7 @@
+---
+description: Write your first GraphQL query and mutation with full type safety and automatic type generation. Learn how to handle loading states and errors.
+---
+
 # Your First Query
 
 Write your first GraphQL query with full type safety.

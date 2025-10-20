@@ -1,3 +1,7 @@
+---
+description: Use Server-Sent Events for real-time GraphQL subscriptions. Configure URL, headers, credentials, and automatic reconnection for streaming updates.
+---
+
 # SSE Link
 
 Use Server-Sent Events for real-time GraphQL subscriptions.

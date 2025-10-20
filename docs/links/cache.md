@@ -1,3 +1,7 @@
+---
+description: Normalized caching with automatic dependency tracking and fine-grained updates. Configure fetch policies and enable progressive enhancement.
+---
+
 # Cache Link
 
 Normalized caching with automatic dependency tracking and fine-grained updates.

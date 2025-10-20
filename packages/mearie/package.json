@@ -20,7 +20,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@mearie/client": "workspace:*",
     "@mearie/config": "workspace:*",
     "@mearie/core": "workspace:*",
     "@mearie/vite": "workspace:*"

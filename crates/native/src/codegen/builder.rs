@@ -4,7 +4,7 @@ use super::{
     SelectionSetGenerator,
 };
 use crate::span::SourceOwned;
-use oxc_ast::ast::Statement;
+use oxc_ast::ast::{Statement, TSType};
 use oxc_codegen::Codegen;
 use oxc_span::{SPAN, SourceType};
 
@@ -59,7 +59,7 @@ impl<'a, 'b> Builder<'a, 'b> {
         let program = self.create_program(&ast, statements);
         let code = self.print_program(&program);
 
-        // Generate enums separately
+        // Generate enums
         let mut enum_statements = ast.vec();
         for schema_document in self.registry.schemas() {
             let enum_generator = EnumGenerator::new(self.ctx, schema_document);
@@ -68,20 +68,16 @@ impl<'a, 'b> Builder<'a, 'b> {
                 enum_statements.push(stmt);
             }
         }
-        let enum_program = self.create_program(&ast, enum_statements);
-        let enum_code = self.print_program(&enum_program);
+
+        // Generate public types (fragment $key exports)
+        let public_statements = self.generate_public_types_statements(&ast);
 
         let augmentation_generator = ModuleAugmentationGenerator::new(self.ctx, self.registry);
-        let module_augmentation = augmentation_generator.generate()?;
+        let module_augmentation = augmentation_generator.generate_with_additional(enum_statements, public_statements)?;
 
         let document_node_generator = DocumentNodeGenerator::new(self.ctx, self.registry);
         let documents_statements = document_node_generator.generate()?;
-        let documents_program = self.create_program(&ast, ast.vec_from_iter(documents_statements));
-        let documents_code = self.print_program(&documents_program);
-
-        let public_statements = self.generate_public_dts_statements(&ast);
-        let public_program = self.create_program(&ast, public_statements);
-        let public_code = self.print_program(&public_program);
+        let documents_code = self.generate_graphql_js(documents_statements);
 
         Ok(vec![
             SourceOwned {
@@ -91,22 +87,12 @@ impl<'a, 'b> Builder<'a, 'b> {
             },
             SourceOwned {
                 code: module_augmentation,
-                file_path: "ambient.d.ts".to_string(),
-                start_line: 1,
-            },
-            SourceOwned {
-                code: enum_code,
-                file_path: "enums.d.ts".to_string(),
+                file_path: "graphql.d.ts".to_string(),
                 start_line: 1,
             },
             SourceOwned {
                 code: documents_code,
-                file_path: "documents.js".to_string(),
-                start_line: 1,
-            },
-            SourceOwned {
-                code: public_code,
-                file_path: "public.d.ts".to_string(),
+                file_path: "graphql.js".to_string(),
                 start_line: 1,
             },
         ])
@@ -124,13 +110,24 @@ impl<'a, 'b> Builder<'a, 'b> {
         Codegen::new().build(program).code
     }
 
-    fn generate_public_dts_statements<'c>(
-        &self,
-        ast: &oxc_ast::AstBuilder<'c>,
-    ) -> oxc_allocator::Vec<'c, Statement<'c>> {
+    fn generate_graphql_js(&self, statements: Vec<Statement<'b>>) -> String {
+        let ast = self.ctx.ast();
+
+        // Add graphql function at the end
+        let mut all_statements = ast.vec_from_iter(statements);
+
+        // export const graphql = (document) => documentMap[document];
+        let graphql_function = self.create_graphql_function(&ast);
+        all_statements.push(graphql_function);
+
+        let program = self.create_program(&ast, all_statements);
+        self.print_program(&program)
+    }
+
+    fn generate_public_types_statements<'c>(&self, ast: &oxc_ast::AstBuilder<'c>) -> oxc_allocator::Vec<'c, Statement<'c>> {
         use oxc_allocator::Box as OxcBox;
-        use oxc_ast::ast::{ExportSpecifier, ImportOrExportKind, WithClause};
-        use oxc_span::{Atom, SPAN};
+        use oxc_ast::ast::{Declaration, ImportOrExportKind, TSTypeParameterDeclaration, WithClause};
+        use oxc_span::SPAN;
 
         let mut statements = ast.vec();
 
@@ -139,22 +136,23 @@ impl<'a, 'b> Builder<'a, 'b> {
             let type_name_str = format!("{}$key", fragment_name);
             let type_name = ast.allocator.alloc_str(&type_name_str);
 
-            let mut specifiers = ast.vec();
-            let local = ast.module_export_name_identifier_name(SPAN, type_name);
-            let exported = ast.module_export_name_identifier_name(SPAN, type_name);
-            let specifier = ExportSpecifier {
-                span: SPAN,
-                local,
-                exported,
-                export_kind: ImportOrExportKind::Value,
-            };
-            specifiers.push(specifier);
+            // Create import type: import("./types.d.ts").UserProfile$key
+            let import_type = self.create_import_type_for_key(ast, &type_name_str);
+
+            // Create type alias: export type UserProfile$key = import("./types.d.ts").UserProfile$key
+            let ts_type_alias = ast.ts_type_alias_declaration(
+                SPAN,
+                ast.binding_identifier(SPAN, type_name),
+                None::<OxcBox<TSTypeParameterDeclaration>>,
+                import_type,
+                false,
+            );
 
             let export_decl = ast.export_named_declaration(
                 SPAN,
+                Some(Declaration::TSTypeAliasDeclaration(ast.alloc(ts_type_alias))),
+                ast.vec(),
                 None,
-                specifiers,
-                Some(ast.string_literal(SPAN, "./types.d.ts", None::<Atom>)),
                 ImportOrExportKind::Type,
                 None::<OxcBox<WithClause>>,
             );
@@ -163,6 +161,108 @@ impl<'a, 'b> Builder<'a, 'b> {
         }
 
         statements
+    }
+
+    fn create_import_type_for_key<'c>(&self, ast: &oxc_ast::AstBuilder<'c>, type_name: &str) -> TSType<'c> {
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::{ObjectExpression, TSType, TSTypeParameterInstantiation};
+        use oxc_span::Atom;
+
+        let type_name_str = ast.allocator.alloc_str(type_name);
+        let qualifier = ast.ts_import_type_qualifier_identifier(SPAN, type_name_str);
+
+        ast.ts_type_import_type(
+            SPAN,
+            ast.ts_type_literal_type(
+                SPAN,
+                ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>),
+            ),
+            None::<OxcBox<ObjectExpression>>,
+            Some(qualifier),
+            None::<OxcBox<TSTypeParameterInstantiation>>,
+        )
+    }
+
+    fn create_graphql_function<'c>(&self, ast: &oxc_ast::AstBuilder<'c>) -> Statement<'c> {
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::{
+            BindingRestElement, Declaration, Expression, FormalParameterKind, FunctionBody, ImportOrExportKind,
+            Statement as StmtInner, VariableDeclarationKind, WithClause,
+        };
+        use oxc_span::Atom;
+
+        // Parameter: document
+        use oxc_ast::ast::TSTypeAnnotation;
+        let param_pattern = ast.binding_pattern(
+            ast.binding_pattern_kind_binding_identifier(SPAN, Atom::from("document")),
+            None::<OxcBox<TSTypeAnnotation>>,
+            false,
+        );
+        let param = ast.formal_parameter(SPAN, ast.vec(), param_pattern, None, false, false);
+        let mut params_vec = ast.vec();
+        params_vec.push(param);
+        let formal_params = ast.formal_parameters(
+            SPAN,
+            FormalParameterKind::ArrowFormalParameters,
+            params_vec,
+            None::<OxcBox<BindingRestElement>>,
+        );
+
+        // Body: documentMap[document]
+        let document_map_expr = Expression::Identifier(ast.alloc(ast.identifier_reference(SPAN, "documentMap")));
+        let document_expr = Expression::Identifier(ast.alloc(ast.identifier_reference(SPAN, "document")));
+        let member_expr = ast.member_expression_computed(SPAN, document_map_expr, document_expr, false);
+
+        // For expression body arrow function
+        let expression_body = member_expr.into();
+        let function_body = FunctionBody {
+            span: SPAN,
+            directives: ast.vec(),
+            statements: ast.vec_from_iter(vec![StmtInner::ExpressionStatement(
+                ast.alloc(ast.expression_statement(SPAN, expression_body))
+            )]),
+        };
+
+        // Arrow function
+        use oxc_ast::ast::TSTypeParameterDeclaration;
+        let arrow_function = ast.arrow_function_expression(
+            SPAN,
+            true, // expression
+            false, // async
+            None::<OxcBox<TSTypeParameterDeclaration>>, // type_parameters
+            ast.alloc(formal_params),
+            None::<OxcBox<TSTypeAnnotation>>, // return_type
+            ast.alloc(function_body),
+        );
+
+        // const graphql = ...
+        let var_declarator = ast.variable_declarator(
+            SPAN,
+            VariableDeclarationKind::Const,
+            ast.binding_pattern(
+                ast.binding_pattern_kind_binding_identifier(SPAN, Atom::from("graphql")),
+                None::<OxcBox<TSTypeAnnotation>>,
+                false,
+            ),
+            Some(Expression::ArrowFunctionExpression(ast.alloc(arrow_function))),
+            false,
+        );
+
+        let mut declarations = ast.vec();
+        declarations.push(var_declarator);
+        let var_decl = ast.variable_declaration(SPAN, VariableDeclarationKind::Const, declarations, false);
+
+        // export const graphql = ...
+        let export_decl = ast.export_named_declaration(
+            SPAN,
+            Some(Declaration::VariableDeclaration(ast.alloc(var_decl))),
+            ast.vec(),
+            None,
+            ImportOrExportKind::Value,
+            None::<OxcBox<WithClause>>,
+        );
+
+        Statement::ExportNamedDeclaration(ast.alloc(export_decl))
     }
 
     fn create_core_types_import<'c>(&self, ast: &oxc_ast::AstBuilder<'c>) -> Statement<'c> {
@@ -184,7 +284,7 @@ impl<'a, 'b> Builder<'a, 'b> {
         let import_decl = ast.import_declaration(
             SPAN,
             Some(specifiers),
-            ast.string_literal(SPAN, "@mearie/core", None::<Atom>),
+            ast.string_literal(SPAN, "mearie/types", None::<Atom>),
             None,
             None::<OxcBox<WithClause>>,
             ImportOrExportKind::Type,

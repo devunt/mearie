@@ -1,10 +1,8 @@
 ---
 '@mearie/native': patch
-'@mearie/client': patch
 '@mearie/codegen': patch
 '@mearie/config': patch
 '@mearie/core': patch
-'@mearie/extractor': patch
 'mearie': patch
 '@mearie/react': patch
 '@mearie/solid': patch

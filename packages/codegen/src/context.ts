@@ -12,6 +12,11 @@ import type { Source } from './types.ts';
 export class CodegenContext {
   private schemas = new Map<string, Source>();
   private documents = new Map<string, Source[]>();
+  private cwd: string;
+
+  constructor(cwd: string = process.cwd()) {
+    this.cwd = cwd;
+  }
 
   /**
    * Adds a schema file by reading it.
@@ -64,7 +69,7 @@ export class CodegenContext {
 
     const { sources, errors } = generate({ schemas, documents });
 
-    await writeFiles(sources);
+    await writeFiles(this.cwd, sources);
 
     if (errors.length > 0) {
       throw new MearieAggregateError(errors);

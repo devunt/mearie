@@ -1,5 +1,4 @@
 ---
-"@mearie/client": minor
 "@mearie/codegen": minor
 "@mearie/core": minor
 "@mearie/native": minor

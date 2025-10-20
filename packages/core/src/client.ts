@@ -1,4 +1,5 @@
-import type { DocumentNode, Operation } from './types.ts';
+import type { Artifact } from '@mearie/shared';
+import type { Operation } from './types.ts';
 import type { Link, LinkContext } from './link.ts';
 import { executeLinks } from './link.ts';
 import type { Cache } from './cache/cache.ts';
@@ -42,48 +43,48 @@ export class Client {
   }
 
   /**
-   * @param document - The query document.
+   * @param document - The query document artifact.
    * @param variables - The query variables.
    * @returns The query result.
    */
   async query<TResult, TVariables = Record<string, never>>(
-    document: DocumentNode<TResult, TVariables>,
+    document: Artifact,
     variables?: TVariables,
   ): Promise<{ data: TResult }> {
     return { data: {} as TResult };
   }
 
   /**
-   * @param document - The mutation document.
+   * @param document - The mutation document artifact.
    * @param variables - The mutation variables.
    * @returns The mutation result.
    */
   async mutate<TResult, TVariables = Record<string, never>>(
-    document: DocumentNode<TResult, TVariables>,
+    document: Artifact,
     variables?: TVariables,
   ): Promise<{ data: TResult }> {
     return { data: {} as TResult };
   }
 
   /**
-   * @param document - The mutation document.
+   * @param document - The mutation document artifact.
    * @param variables - The mutation variables.
    * @returns The mutation result.
    */
   async mutation<TResult, TVariables = Record<string, never>>(
-    document: DocumentNode<TResult, TVariables>,
+    document: Artifact,
     variables?: TVariables,
   ): Promise<{ data: TResult }> {
     return { data: {} as TResult };
   }
 
   /**
-   * @param document - The subscription document.
+   * @param document - The subscription document artifact.
    * @param variables - The subscription variables.
    * @returns An observable of subscription results.
    */
   subscription<TResult, TVariables = Record<string, never>>(
-    document: DocumentNode<TResult, TVariables>,
+    document: Artifact,
     variables?: TVariables,
   ): Observable<{ data: TResult }> {
     return {
@@ -94,11 +95,11 @@ export class Client {
   }
 
   /**
-   * @param fragment - The fragment document.
+   * @param fragment - The fragment document artifact.
    * @param fragmentRef - The fragment reference data.
    * @returns The fragment data.
    */
-  readFragment<TResult>(fragment: DocumentNode<TResult>, fragmentRef: TResult): TResult {
+  readFragment<TResult>(fragment: Artifact, fragmentRef: TResult): TResult {
     return {} as TResult;
   }
 

@@ -1,7 +1,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import type { Source } from '@mearie/core';
+import type { Source } from './types.ts';
 
 export const writeFiles = async (sources: Source[]): Promise<void> => {
   const requireFromCwd = createRequire(path.resolve(process.cwd(), 'package.json'));

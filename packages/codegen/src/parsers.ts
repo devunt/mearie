@@ -1,5 +1,5 @@
 import { loadSvelteCompiler, loadTypeScript, loadVueCompiler } from './loaders.ts';
-import type { Source } from '@mearie/core';
+import type { Source } from './types.ts';
 
 export const extractVueScript = async (source: Source): Promise<Source[]> => {
   const [vueCompiler, typescript] = await Promise.all([loadVueCompiler(), loadTypeScript()]);

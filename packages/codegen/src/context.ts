@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { extractGraphQLSources } from '@mearie/extractor';
-import { MearieAggregateError, type Source } from '@mearie/core';
+import { extractGraphQLSources } from './extractor.ts';
+import { MearieAggregateError } from './errors.ts';
 import { generate } from './generator.ts';
 import { writeFiles } from './writer.ts';
+import type { Source } from './types.ts';
 
 /**
  * Stateful context for incremental code generation.

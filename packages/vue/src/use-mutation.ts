@@ -1,39 +1,47 @@
 import { ref, type Ref } from 'vue';
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type UseMutationResult<Document extends DocumentNode> =
+export type MutationResult<T extends Artifact<'mutation'>> =
   | {
       data: Ref<undefined>;
       loading: Ref<true>;
       error: Ref<undefined>;
     }
   | {
-      data: Ref<DataOf<Document>>;
+      data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<undefined>;
     }
   | {
-      data: Ref<DataOf<Document> | undefined>;
+      data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<Error>;
     };
 
-export type UseMutationReturn<Document extends DocumentNode> = [
-  (variables: VariablesOf<Document>) => Promise<DataOf<Document>>,
-  UseMutationResult<Document>,
+export type UseMutationOptions = {
+  skip?: boolean;
+};
+
+export type Mutation<T extends Artifact<'mutation'>> = [
+  (
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, UseMutationOptions?]
+      : [VariablesOf<T>, UseMutationOptions?]
+  ) => Promise<DataOf<T>>,
+  MutationResult<T>,
 ];
 
-export const useMutation = <Document extends DocumentNode>(document: Document): UseMutationReturn<Document> => {
-  const data = ref<DataOf<Document> | undefined>(undefined);
+export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
+  const data = ref<DataOf<T> | undefined>(undefined);
   const loading = ref(false);
   const error = ref<Error | undefined>(undefined);
 
   return [
-    async () => ({}) as DataOf<Document>,
+    async () => ({}) as DataOf<T>,
     {
       data,
       loading,
       error,
-    } as UseMutationResult<Document>,
+    } as MutationResult<T>,
   ];
 };

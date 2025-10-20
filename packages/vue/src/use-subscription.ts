@@ -1,34 +1,36 @@
 import { ref, type Ref, type MaybeRefOrGetter } from 'vue';
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type UseSubscriptionReturn<Document extends DocumentNode> =
+export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: Ref<undefined>;
       loading: Ref<true>;
       error: Ref<undefined>;
     }
   | {
-      data: Ref<DataOf<Document>>;
+      data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<undefined>;
     }
   | {
-      data: Ref<DataOf<Document> | undefined>;
+      data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<Error>;
     };
 
-export type UseSubscriptionOptions<Document extends DocumentNode> = {
-  onData?: (data: DataOf<Document>) => void;
+export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = {
+  skip?: boolean;
+  onData?: (data: DataOf<T>) => void;
   onError?: (error: Error) => void;
 };
 
-export const useSubscription = <Document extends DocumentNode>(
-  document: Document,
-  variables: MaybeRefOrGetter<VariablesOf<Document>>,
-  options?: UseSubscriptionOptions<Document>,
-): UseSubscriptionReturn<Document> => {
-  const data = ref<DataOf<Document> | undefined>(undefined);
+export const useSubscription = <T extends Artifact<'subscription'>>(
+  subscription: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, UseSubscriptionOptions<T>?]
+    : [MaybeRefOrGetter<VariablesOf<T>>, UseSubscriptionOptions<T>?]
+): Subscription<T> => {
+  const data = ref<DataOf<T> | undefined>(undefined);
   const loading = ref(true);
   const error = ref<Error | undefined>(undefined);
 
@@ -36,5 +38,5 @@ export const useSubscription = <Document extends DocumentNode>(
     data,
     loading,
     error,
-  } as UseSubscriptionReturn<Document>;
+  } as Subscription<T>;
 };

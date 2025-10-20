@@ -1,27 +1,35 @@
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type UseMutationResult<Document extends DocumentNode> =
+export type MutationResult<T extends Artifact<'mutation'>> =
   | {
       data: undefined;
       loading: true;
       error: undefined;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
     };
 
-export type UseMutationReturn<Document extends DocumentNode> = [
-  (variables: VariablesOf<Document>) => Promise<DataOf<Document>>,
-  UseMutationResult<Document>,
+export type UseMutationOptions = {
+  skip?: boolean;
+};
+
+export type Mutation<T extends Artifact<'mutation'>> = [
+  (
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, UseMutationOptions?]
+      : [VariablesOf<T>, UseMutationOptions?]
+  ) => Promise<DataOf<T>>,
+  MutationResult<T>,
 ];
 
-export const useMutation = <Document extends DocumentNode>(document: Document): UseMutationReturn<Document> => {
-  return [async () => ({}) as DataOf<Document>, { data: undefined, loading: false, error: undefined }];
+export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
+  return [async () => ({}) as DataOf<T>, { data: undefined, loading: false, error: undefined }];
 };

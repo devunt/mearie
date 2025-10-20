@@ -1,11 +1,11 @@
 import { computed, type MaybeRefOrGetter, type ComputedRef } from 'vue';
-import type { DocumentNode, DataOf, FragmentRef } from '@mearie/core';
+import type { Artifact, DataOf, FragmentRefs } from '@mearie/core';
 
-export type UseFragmentReturn<Document extends DocumentNode> = ComputedRef<DataOf<Document>>;
+export type Fragment<T extends Artifact<'fragment'>> = ComputedRef<DataOf<T>>;
 
-export const useFragment = <Document extends DocumentNode>(
-  document: Document,
-  fragmentRef: MaybeRefOrGetter<FragmentRef<Document>>,
-): UseFragmentReturn<Document> => {
-  return computed(() => ({}) as DataOf<Document>);
+export const useFragment = <T extends Artifact<'fragment'>>(
+  fragment: T,
+  fragmentRef: MaybeRefOrGetter<FragmentRefs<T['name']>>,
+): Fragment<T> => {
+  return computed(() => ({}) as DataOf<T>);
 };

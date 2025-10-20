@@ -1,11 +1,11 @@
 import { ref, type Ref, type MaybeRefOrGetter } from 'vue';
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { Artifact, VariablesOf, DataOf } from '@mearie/core';
 
 export type UseQueryOptions = {
   skip?: MaybeRefOrGetter<boolean>;
 };
 
-export type UseQueryReturn<Document extends DocumentNode> =
+export type Query<T extends Artifact<'query'>> =
   | {
       data: Ref<undefined>;
       loading: Ref<true>;
@@ -13,23 +13,24 @@ export type UseQueryReturn<Document extends DocumentNode> =
       refetch: () => void;
     }
   | {
-      data: Ref<DataOf<Document>>;
+      data: Ref<DataOf<T>>;
       loading: Ref<false>;
       error: Ref<undefined>;
       refetch: () => void;
     }
   | {
-      data: Ref<DataOf<Document> | undefined>;
+      data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<Error>;
       refetch: () => void;
     };
 
-export const useQuery = <Document extends DocumentNode>(
-  document: Document,
-  variables: MaybeRefOrGetter<VariablesOf<Document>>,
-  options?: UseQueryOptions,
-): UseQueryReturn<Document> => {
+export const useQuery = <T extends Artifact<'query'>>(
+  query: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, UseQueryOptions?]
+    : [MaybeRefOrGetter<VariablesOf<T>>, UseQueryOptions?]
+): Query<T> => {
   return {
     data: ref(undefined),
     loading: ref(true),

@@ -3,6 +3,7 @@ import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-i
 import { transformerTwoslash } from '@shikijs/vitepress-twoslash';
 import { createFileSystemTypesCache } from '@shikijs/vitepress-twoslash/cache-fs';
 import { mearie } from '@mearie/vite';
+import { ModuleResolutionKind } from 'typescript';
 
 export default defineConfig({
   title: 'Mearie',
@@ -35,6 +36,7 @@ export default defineConfig({
           compilerOptions: {
             jsx: 5,
             jsxImportSource: 'react',
+            moduleResolution: ModuleResolutionKind.Bundler,
           },
         },
       }),

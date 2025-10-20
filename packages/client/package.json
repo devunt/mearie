@@ -8,6 +8,9 @@
       "types": "./index.d.ts",
       "import": "./index.js"
     },
+    "./types": {
+      "types": "./public.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [

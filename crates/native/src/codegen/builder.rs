@@ -79,6 +79,10 @@ impl<'a, 'b> Builder<'a, 'b> {
         let documents_program = self.create_program(&ast, ast.vec_from_iter(documents_statements));
         let documents_code = self.print_program(&documents_program);
 
+        let public_statements = self.generate_public_dts_statements(&ast);
+        let public_program = self.create_program(&ast, public_statements);
+        let public_code = self.print_program(&public_program);
+
         Ok(vec![
             SourceOwned {
                 code,
@@ -100,6 +104,11 @@ impl<'a, 'b> Builder<'a, 'b> {
                 file_path: "documents.js".to_string(),
                 start_line: 1,
             },
+            SourceOwned {
+                code: public_code,
+                file_path: "public.d.ts".to_string(),
+                start_line: 1,
+            },
         ])
     }
 
@@ -115,6 +124,47 @@ impl<'a, 'b> Builder<'a, 'b> {
         Codegen::new().build(program).code
     }
 
+    fn generate_public_dts_statements<'c>(
+        &self,
+        ast: &oxc_ast::AstBuilder<'c>,
+    ) -> oxc_allocator::Vec<'c, Statement<'c>> {
+        use oxc_allocator::Box as OxcBox;
+        use oxc_ast::ast::{ExportSpecifier, ImportOrExportKind, WithClause};
+        use oxc_span::{Atom, SPAN};
+
+        let mut statements = ast.vec();
+
+        for fragment in self.registry.fragments() {
+            let fragment_name = fragment.name.as_str();
+            let type_name_str = format!("{}$key", fragment_name);
+            let type_name = ast.allocator.alloc_str(&type_name_str);
+
+            let mut specifiers = ast.vec();
+            let local = ast.module_export_name_identifier_name(SPAN, type_name);
+            let exported = ast.module_export_name_identifier_name(SPAN, type_name);
+            let specifier = ExportSpecifier {
+                span: SPAN,
+                local,
+                exported,
+                export_kind: ImportOrExportKind::Value,
+            };
+            specifiers.push(specifier);
+
+            let export_decl = ast.export_named_declaration(
+                SPAN,
+                None,
+                specifiers,
+                Some(ast.string_literal(SPAN, "./types.d.ts", None::<Atom>)),
+                ImportOrExportKind::Type,
+                None::<OxcBox<WithClause>>,
+            );
+
+            statements.push(Statement::ExportNamedDeclaration(ast.alloc(export_decl)));
+        }
+
+        statements
+    }
+
     fn create_core_types_import<'c>(&self, ast: &oxc_ast::AstBuilder<'c>) -> Statement<'c> {
         use oxc_allocator::Box as OxcBox;
         use oxc_ast::ast::{ImportOrExportKind, Statement, WithClause};
@@ -122,7 +172,7 @@ impl<'a, 'b> Builder<'a, 'b> {
 
         let mut specifiers = ast.vec();
 
-        let type_names = ["DocumentNode", "Nullable", "List", "Exact"];
+        let type_names = ["Artifact", "Nullable", "List", "FragmentRefs"];
         for type_name in type_names {
             let local = ast.binding_identifier(SPAN, Atom::from(type_name));
             let imported = ast.module_export_name_identifier_name(SPAN, type_name);
@@ -294,12 +344,12 @@ mod tests {
         assert_ok!(&result);
         let files = result.unwrap();
         let code = &files[0].code;
-        assert_contains!(code, "UserFieldsFragment");
-        assert_contains!(code, "UserFieldsFragment$doc");
-        assert_contains!(code, "GetUser$vars");
-        assert_contains!(code, "GetUser$data");
-        assert_contains!(code, " $fragmentRefs");
-        assert_contains!(code, "\"UserFields\"");
+        assert_contains!(code, "export type UserFields$data");
+        assert_contains!(code, "export type UserFields =");
+        assert_contains!(code, "export type GetUser$vars");
+        assert_contains!(code, "export type GetUser$data");
+        assert_contains!(code, "FragmentRefs<\"UserFields\">");
+        assert_contains!(code, "UserFields$key");
     }
 
     #[test]
@@ -430,7 +480,7 @@ mod tests {
         assert_contains!(code, "id: Scalars[\"ID\"]");
 
         assert_contains!(code, "export type GetAllUsers$data = {");
-        assert_contains!(code, "users: Nullable<{");
+        assert_contains!(code, "users: List<{");
 
         assert_contains!(code, "export type CreateUser$vars = {");
         assert_contains!(code, "name: Scalars[\"String\"]");
@@ -742,7 +792,7 @@ mod tests {
         let files = result.unwrap();
         let code = &files[0].code;
 
-        assert_contains!(code, "export type UserFieldsFragment");
+        assert_contains!(code, "export type UserFields$data");
         assert_contains!(code, "id: Scalars[\"ID\"]");
         assert_contains!(code, "name: Scalars[\"String\"]");
         assert_contains!(code, "createdAt: Scalars[\"DateTime\"]");

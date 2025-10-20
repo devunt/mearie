@@ -12,11 +12,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch"
+    "build": "tsdown"
   },
   "dependencies": {
-    "@mearie/client": "workspace:*"
+    "@mearie/core": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",

@@ -260,9 +260,9 @@ importers:
 
   packages/solid:
     dependencies:
-      '@mearie/client':
+      '@mearie/core':
         specifier: workspace:*
-        version: link:../client
+        version: link:../core
     devDependencies:
       solid-js:
         specifier: ^1.9.9
@@ -273,9 +273,9 @@ importers:
 
   packages/svelte:
     dependencies:
-      '@mearie/client':
+      '@mearie/core':
         specifier: workspace:*
-        version: link:../client
+        version: link:../core
     devDependencies:
       svelte:
         specifier: ^5.41.0
@@ -311,9 +311,9 @@ importers:
 
   packages/vue:
     dependencies:
-      '@mearie/client':
+      '@mearie/core':
         specifier: workspace:*
-        version: link:../client
+        version: link:../core
     devDependencies:
       tsdown:
         specifier: 'catalog:'

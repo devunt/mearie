@@ -1,10 +1,10 @@
-import type { DocumentNode, DataOf, FragmentRef } from '@mearie/core';
+import type { Artifact, DataOf, FragmentRefs } from '@mearie/core';
 
-export type CreateFragmentReturn<Document extends DocumentNode> = DataOf<Document>;
+export type Fragment<T extends Artifact<'fragment'>> = DataOf<T>;
 
-export const createFragment = <Document extends DocumentNode>(
-  document: Document,
-  fragmentRef: () => FragmentRef<Document>,
-): CreateFragmentReturn<Document> => {
-  return $derived.by(() => ({}) as DataOf<Document>);
+export const createFragment = <T extends Artifact<'fragment'>>(
+  fragment: T,
+  fragmentRef: () => FragmentRefs<T['name']>,
+): Fragment<T> => {
+  return $derived.by(() => ({}) as DataOf<T>);
 };

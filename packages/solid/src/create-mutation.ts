@@ -1,28 +1,44 @@
 import { createSignal } from 'solid-js';
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type CreateMutationReturn<Document extends DocumentNode> =
+export type CreateMutationOptions = {
+  skip?: boolean;
+};
+
+export type Mutation<T extends Artifact<'mutation'>> =
   | {
       data: undefined;
       loading: true;
       error: undefined;
-      mutate: (variables: VariablesOf<Document>) => Promise<DataOf<Document>>;
+      mutate: (
+        ...[variables, options]: VariablesOf<T> extends undefined
+          ? [undefined?, CreateMutationOptions?]
+          : [VariablesOf<T>, CreateMutationOptions?]
+      ) => Promise<DataOf<T>>;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
-      mutate: (variables: VariablesOf<Document>) => Promise<DataOf<Document>>;
+      mutate: (
+        ...[variables, options]: VariablesOf<T> extends undefined
+          ? [undefined?, CreateMutationOptions?]
+          : [VariablesOf<T>, CreateMutationOptions?]
+      ) => Promise<DataOf<T>>;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
-      mutate: (variables: VariablesOf<Document>) => Promise<DataOf<Document>>;
+      mutate: (
+        ...[variables, options]: VariablesOf<T> extends undefined
+          ? [undefined?, CreateMutationOptions?]
+          : [VariablesOf<T>, CreateMutationOptions?]
+      ) => Promise<DataOf<T>>;
     };
 
-export const createMutation = <Document extends DocumentNode>(document: Document): CreateMutationReturn<Document> => {
-  const [data] = createSignal<DataOf<Document>>();
+export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
+  const [data] = createSignal<DataOf<T>>();
   const [loading] = createSignal(false);
   const [error] = createSignal<Error>();
 
@@ -36,6 +52,6 @@ export const createMutation = <Document extends DocumentNode>(document: Document
     get error() {
       return error();
     },
-    mutate: async () => ({}) as DataOf<Document>,
-  } as CreateMutationReturn<Document>;
+    mutate: async () => ({}) as DataOf<T>,
+  } as Mutation<T>;
 };

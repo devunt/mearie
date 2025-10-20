@@ -1,33 +1,35 @@
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type CreateSubscriptionReturn<Document extends DocumentNode> =
+export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: undefined;
       loading: true;
       error: undefined;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
     };
 
-export type CreateSubscriptionOptions<Document extends DocumentNode> = {
-  onData?: (data: DataOf<Document>) => void;
+export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = {
+  skip?: boolean;
+  onData?: (data: DataOf<T>) => void;
   onError?: (error: Error) => void;
 };
 
-export const createSubscription = <Document extends DocumentNode>(
-  document: Document,
-  variables: () => VariablesOf<Document>,
-  options?: CreateSubscriptionOptions<Document>,
-): CreateSubscriptionReturn<Document> => {
-  let data = $state<DataOf<Document> | undefined>(undefined);
+export const createSubscription = <T extends Artifact<'subscription'>>(
+  subscription: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, CreateSubscriptionOptions<T>?]
+    : [() => VariablesOf<T>, CreateSubscriptionOptions<T>?]
+): Subscription<T> => {
+  let data = $state<DataOf<T> | undefined>(undefined);
   let loading = $state(true);
   let error = $state<Error | undefined>(undefined);
 
@@ -41,5 +43,5 @@ export const createSubscription = <Document extends DocumentNode>(
     get error() {
       return error;
     },
-  } as CreateSubscriptionReturn<Document>;
+  } as Subscription<T>;
 };

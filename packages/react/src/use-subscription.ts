@@ -1,31 +1,33 @@
-import type { DocumentNode, VariablesOf, DataOf } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
 
-export type UseSubscriptionReturn<Document extends DocumentNode> =
+export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: undefined;
       loading: true;
       error: undefined;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
     };
 
-export type UseSubscriptionOptions<Document extends DocumentNode> = {
-  onData?: (data: DataOf<Document>) => void;
+export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = {
+  skip?: boolean;
+  onData?: (data: DataOf<T>) => void;
   onError?: (error: Error) => void;
 };
 
-export const useSubscription = <Document extends DocumentNode>(
-  document: Document,
-  variables: VariablesOf<Document>,
-  options?: UseSubscriptionOptions<Document>,
-): UseSubscriptionReturn<Document> => {
+export const useSubscription = <T extends Artifact<'subscription'>>(
+  subscription: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, UseSubscriptionOptions<T>?]
+    : [VariablesOf<T>, UseSubscriptionOptions<T>?]
+): Subscription<T> => {
   return { data: undefined, loading: true, error: undefined };
 };

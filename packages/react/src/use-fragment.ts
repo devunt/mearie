@@ -1,10 +1,10 @@
-import type { DocumentNode, DataOf, FragmentRef } from '@mearie/core';
+import type { Artifact, DataOf, FragmentRefs } from '@mearie/core';
 
-export type UseFragmentReturn<Document extends DocumentNode> = DataOf<Document>;
+export type Fragment<T extends Artifact<'fragment'>> = DataOf<T>;
 
-export const useFragment = <Document extends DocumentNode>(
-  document: Document,
-  fragmentRef: FragmentRef<Document>,
-): UseFragmentReturn<Document> => {
-  return {} as DataOf<Document>;
+export const useFragment = <T extends Artifact<'fragment'>>(
+  fragment: T,
+  fragmentRef: FragmentRefs<T['name']>,
+): Fragment<T> => {
+  return {} as Fragment<T>;
 };

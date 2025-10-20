@@ -1,6 +1,6 @@
-import type { DocumentNode, DataOf, VariablesOf } from '@mearie/core';
+import type { Artifact, DataOf, VariablesOf } from '@mearie/core';
 
-export type UseQueryReturn<Document extends DocumentNode> =
+export type Query<T extends Artifact<'query'>> =
   | {
       data: undefined;
       loading: true;
@@ -8,22 +8,28 @@ export type UseQueryReturn<Document extends DocumentNode> =
       refetch: () => void;
     }
   | {
-      data: DataOf<Document>;
+      data: DataOf<T>;
       loading: false;
       error: undefined;
       refetch: () => void;
     }
   | {
-      data: DataOf<Document> | undefined;
+      data: DataOf<T> | undefined;
       loading: false;
       error: Error;
       refetch: () => void;
     };
 
-export const useQuery = <Document extends DocumentNode>(
-  document: Document,
-  variables: VariablesOf<Document>,
-): UseQueryReturn<Document> => {
+export type UseQueryOptions = {
+  skip?: boolean;
+};
+
+export const useQuery = <T extends Artifact<'query'>>(
+  query: T,
+  ...[variables, options]: VariablesOf<T> extends undefined
+    ? [undefined?, UseQueryOptions?]
+    : [VariablesOf<T>, UseQueryOptions?]
+): Query<T> => {
   return {
     data: undefined,
     loading: true,

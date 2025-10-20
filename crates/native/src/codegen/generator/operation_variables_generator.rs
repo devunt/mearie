@@ -29,8 +29,7 @@ impl<'a, 'b> OperationVariablesGenerator<'a, 'b> {
             signatures.push(signature);
         }
 
-        let type_literal = self.ast.ts_type_type_literal(SPAN, signatures);
-        type_builder::wrap_exact(&self.ast, type_literal)
+        self.ast.ts_type_type_literal(SPAN, signatures)
     }
 
     fn generate_empty_object(&self) -> TSType<'b> {

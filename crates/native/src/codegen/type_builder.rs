@@ -1,4 +1,4 @@
-use super::constants::{EXACT_TYPE, LIST_TYPE, NULLABLE_TYPE, SCALARS_TYPE};
+use super::constants::{LIST_TYPE, NULLABLE_TYPE, SCALARS_TYPE};
 use crate::ast::*;
 use oxc_ast::AstBuilder;
 use oxc_ast::ast::TSType;
@@ -59,16 +59,6 @@ pub fn wrap_list<'a>(ast: &AstBuilder<'a>, inner_type: TSType<'a>) -> TSType<'a>
     ast.ts_type_type_reference(
         SPAN,
         ast.ts_type_name_identifier_reference(SPAN, LIST_TYPE),
-        Some(type_param_instantiation),
-    )
-}
-
-pub fn wrap_exact<'a>(ast: &AstBuilder<'a>, inner_type: TSType<'a>) -> TSType<'a> {
-    let type_param_instantiation = ast.ts_type_parameter_instantiation(SPAN, ast.vec_from_array([inner_type]));
-
-    ast.ts_type_type_reference(
-        SPAN,
-        ast.ts_type_name_identifier_reference(SPAN, EXACT_TYPE),
         Some(type_param_instantiation),
     )
 }
@@ -167,16 +157,13 @@ pub fn create_fragment_refs_type<'a>(ast: &AstBuilder<'a>, fragment_names: Vec<&
         ast.ts_type_union_type(SPAN, union_types)
     };
 
-    let key_atom = ast.atom(" $fragmentRefs");
-    let key = ast.property_key_static_identifier(SPAN, key_atom);
-    let type_annotation = ast.ts_type_annotation(SPAN, value_type);
+    let type_param_instantiation = ast.ts_type_parameter_instantiation(SPAN, ast.vec_from_array([value_type]));
 
-    let sig = ast.ts_signature_property_signature(SPAN, true, false, false, key, Some(type_annotation));
-
-    let mut signatures = ast.vec();
-    signatures.push(sig);
-
-    ast.ts_type_type_literal(SPAN, signatures)
+    ast.ts_type_type_reference(
+        SPAN,
+        ast.ts_type_name_identifier_reference(SPAN, "FragmentRefs"),
+        Some(type_param_instantiation),
+    )
 }
 
 pub fn export_type_alias<'a>(ast: &AstBuilder<'a>, name: &str, ts_type: TSType<'a>) -> oxc_ast::ast::Statement<'a> {

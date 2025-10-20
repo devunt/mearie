@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
+    "./types": "./src/types.ts",
     "./vite": "./src/vite.ts"
   },
   "files": [

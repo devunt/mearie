@@ -46,6 +46,27 @@ impl<'a> Registry<'a> {
         self.schemas.push(document);
     }
 
+    pub fn register_fragments(&mut self, document: &'a Document<'a>) {
+        for definition in &document.definitions {
+            if let Definition::Executable(ExecutableDefinition::Fragment(fragment)) = definition {
+                self.fragments.insert(fragment.name.as_str(), fragment);
+            }
+        }
+    }
+
+    pub fn validate_and_load_document(&mut self, document: &'a Document<'a>) -> Result<(), Vec<MearieError>> {
+        self.validate_document(document)?;
+
+        for definition in &document.definitions {
+            if let Definition::Executable(ExecutableDefinition::Operation(operation)) = definition {
+                self.operations.push(operation);
+            }
+        }
+
+        self.documents.push(document);
+        Ok(())
+    }
+
     pub fn load_document(&mut self, document: &'a Document<'a>) -> Result<(), Vec<MearieError>> {
         self.validate_document(document)?;
 

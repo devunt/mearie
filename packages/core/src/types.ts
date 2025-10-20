@@ -1,10 +1,10 @@
 export type MaybePromise<T> = T | Promise<T>;
 
-export type Exact<T extends Record<string, unknown>> = { [K in keyof T]: T[K] };
-
 export type Nullable<T> = T | null;
 
-export type List<T> = ReadonlyArray<T>;
+export type List<T> = readonly T[];
+
+export type Opaque<T> = T & { readonly ' $opaque'?: unique symbol };
 
 export type Source = {
   code: string;
@@ -12,48 +12,53 @@ export type Source = {
   startLine: number;
 };
 
-export type DocumentNode<Data = unknown, Variables = unknown> = {
-  readonly hash: number;
-  readonly name: string;
-  readonly body: string;
-  readonly kind: 'query' | 'mutation' | 'subscription' | 'fragment';
-  readonly selections: readonly SelectionNode[];
-  readonly __data?: Data;
-  readonly __variables?: Variables;
+export type ArtifactKind = 'query' | 'mutation' | 'subscription' | 'fragment';
+
+export type Artifact<
+  Kind extends ArtifactKind = ArtifactKind,
+  Name extends string = string,
+  Data = unknown,
+  Variables = unknown,
+> = {
+  readonly kind: Kind;
+  readonly name: Name;
+  readonly source: string;
+  readonly selections: readonly Selection[];
+
+  readonly ' $data'?: Data;
+  readonly ' $variables'?: Variables;
 };
 
-export type SelectionNode = {
+export type Selection = {
   name: string;
   type?: string;
   array?: boolean;
   on?: string[];
   alias?: string;
-  args?: Record<string, ArgumentValue>;
-  selections?: readonly SelectionNode[];
+  args?: Record<string, Argument>;
+  selections?: Selection[];
 };
 
-export type ArgumentValue = { kind: 'literal'; value: unknown } | { kind: 'variable'; name: string };
+export type Argument = { kind: 'literal'; value: unknown } | { kind: 'variable'; name: string };
 
-export type SchemaMetadata = {
-  entities: Record<string, EntityMetadata>;
+export type SchemaMeta = {
+  entities: Record<string, EntityMeta>;
 };
 
-export type EntityMetadata = {
+export type EntityMeta = {
   keyFields: string[];
 };
 
-export type Operation<Data = unknown, Variables = unknown> = {
-  kind: 'query' | 'mutation' | 'subscription';
-  document: DocumentNode<Data, Variables>;
-  variables?: Variables;
-  name?: string;
-  headers?: Record<string, string>;
+export type Operation<T extends Artifact<'query' | 'mutation' | 'subscription'>> = {
+  kind: T['kind'];
+  artifact: T;
+  variables?: T[' $variables'];
   signal?: AbortSignal;
 };
 
-export type DataOf<Document extends DocumentNode> = Document extends DocumentNode<infer D, unknown> ? D : never;
-export type VariablesOf<Document extends DocumentNode> = Document extends DocumentNode<unknown, infer V> ? V : never;
-
-export type FragmentRef<Document extends DocumentNode> = {
-  readonly ' $fragmentRefs': Readonly<Record<Document['name'], true>>;
+export type FragmentRefs<T extends string> = {
+  readonly ' $fragmentRefs': T;
 };
+
+export type DataOf<T extends Artifact> = NonNullable<T[' $data']>;
+export type VariablesOf<T extends Artifact> = NonNullable<T[' $variables']>;

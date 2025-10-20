@@ -10,6 +10,7 @@
     "moduleResolution": "nodenext",
 
     "allowImportingTsExtensions": true,
+    "allowSyntheticDefaultImports": true,
 
     "noEmit": true,
     "skipLibCheck": true,

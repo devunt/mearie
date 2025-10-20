@@ -1,7 +1,6 @@
 pub const SCALARS_TYPE: &str = "Scalars";
 pub const NULLABLE_TYPE: &str = "Nullable";
 pub const LIST_TYPE: &str = "List";
-pub const EXACT_TYPE: &str = "Exact";
 
 pub const QUERY_ROOT: &str = "Query";
 pub const MUTATION_ROOT: &str = "Mutation";

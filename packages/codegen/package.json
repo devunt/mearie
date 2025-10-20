@@ -25,6 +25,7 @@
     "tinyglobby": "^0.2.15"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@types/picomatch": "^4.0.2",
     "tsdown": "catalog:",
     "vitest": "catalog:"

@@ -1,3 +1,7 @@
+---
+description: Customize how GraphQL operations are executed with composable middleware. Learn about terminating and non-terminating links, execution order, and built-in links.
+---
+
 # Links
 
 Customize how GraphQL operations are executed with composable middleware.

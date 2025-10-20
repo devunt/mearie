@@ -1,3 +1,7 @@
+---
+description: Solid primitives that leverage fine-grained reactivity for optimal performance and full type safety. Learn about createQuery, createMutation, createFragment, and createSubscription.
+---
+
 # Solid Integration
 
 Mearie provides Solid primitives that leverage fine-grained reactivity for optimal performance and full type safety.

@@ -1,3 +1,7 @@
+---
+description: Automatically retry failed requests with exponential backoff. Configure max attempts, backoff strategy, jitter, and retry conditions for network errors.
+---
+
 # Retry Link
 
 Automatically retry failed requests with exponential backoff.

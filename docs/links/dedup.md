@@ -1,3 +1,7 @@
+---
+description: Prevent duplicate concurrent requests to reduce unnecessary network traffic. Automatically deduplicates identical queries while preserving mutation safety.
+---
+
 # Deduplication Link
 
 Prevent duplicate concurrent requests, reducing unnecessary network traffic.

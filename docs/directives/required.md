@@ -1,3 +1,7 @@
+---
+description: Control field nullability on the client side with the @required directive. Choose between THROW and CASCADE actions to handle null values.
+---
+
 # `@required` Directive
 
 Control field nullability on the client side.

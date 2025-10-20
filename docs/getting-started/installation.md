@@ -1,3 +1,7 @@
+---
+description: Install Mearie and your framework integration for React, Vue, Svelte, or Solid using npm, yarn, pnpm, bun, or deno.
+---
+
 # Installation
 
 Install Mearie and your framework integration.

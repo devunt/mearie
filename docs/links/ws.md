@@ -1,3 +1,7 @@
+---
+description: Use WebSocket connections for real-time GraphQL subscriptions. Configure URL, connection parameters, lazy connection, keep-alive, and automatic reconnection.
+---
+
 # WebSocket Link
 
 Use WebSocket connections for real-time GraphQL subscriptions.

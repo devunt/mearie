@@ -1,3 +1,7 @@
+---
+description: Svelte stores that work seamlessly with Svelte's fine-grained reactivity and runes for full type safety. Learn about createQuery, createMutation, createFragment, and createSubscription.
+---
+
 # Svelte Integration
 
 Mearie provides Svelte stores that work seamlessly with Svelte's fine-grained reactivity and runes for full type safety.

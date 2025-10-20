@@ -1,3 +1,7 @@
+---
+description: Configure the GraphQL client with links for networking, caching, and custom behavior. Learn basic and recommended production configurations.
+---
+
 # Client Config
 
 Configure the GraphQL client with links for networking, caching, and custom behavior.

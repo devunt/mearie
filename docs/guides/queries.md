@@ -1,3 +1,7 @@
+---
+description: Learn how to fetch data with GraphQL queries, handle loading states and errors, implement pagination, and use query options like fetch policies.
+---
+
 # Queries
 
 Learn how to fetch data with queries.

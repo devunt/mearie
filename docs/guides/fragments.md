@@ -1,3 +1,7 @@
+---
+description: Learn how to co-locate data requirements with components using fragments. Explore fragment composition, nested fragments, and inline fragments for unions.
+---
+
 # Fragments
 
 Learn how to co-locate data requirements with components using fragments.

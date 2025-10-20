@@ -1,3 +1,7 @@
+---
+description: Create your own links to add custom behavior to GraphQL operations. Learn about logging, headers, performance monitoring, rate limiting, and error handling.
+---
+
 # Custom Links
 
 Create your own links to add custom behavior to GraphQL operations.

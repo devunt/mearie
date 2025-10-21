@@ -1,1 +1,1 @@
-export { createClient, dedupLink, retryLink, httpLink, authLink, cacheLink } from '@mearie/core';
+export { defineConfig, type MearieConfig } from '@mearie/config';

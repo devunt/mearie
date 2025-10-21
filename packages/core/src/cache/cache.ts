@@ -31,6 +31,7 @@ export class Cache {
    */
   writeQuery<T extends Artifact>(document: T, variables: VariablesOf<T>, result: DataOf<T>): void {
     const queryKey = makeQueryKey(hashString(document.source), variables);
+    const affectedKeys = new Set<QueryKey>();
 
     normalize(
       result,
@@ -40,10 +41,19 @@ export class Cache {
       variables as Record<string, unknown>,
       (storageKey, fieldKey) => {
         this.#trackDependency(queryKey, storageKey, fieldKey);
+        const dependencyKey = makeDependencyKey(storageKey, fieldKey);
+        const dependentQueries = this.#dependencies.get(dependencyKey);
+        if (dependentQueries) {
+          for (const key of dependentQueries) {
+            affectedKeys.add(key);
+          }
+        }
       },
     );
 
-    this.#notifyListeners(queryKey);
+    for (const key of affectedKeys) {
+      this.#notifyListeners(key);
+    }
   }
 
   /**
@@ -84,6 +94,8 @@ export class Cache {
 
   /**
    * Evicts a query from the cache and notifies listeners.
+   * Only Field selections are evicted from the root. FragmentSpread and InlineFragment
+   * selections are not directly stored at the root level, so they are skipped.
    * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    */
@@ -105,10 +117,12 @@ export class Cache {
 
   /**
    * Reads a fragment from the cache for a specific entity.
+   * Returns null for invalid or missing fragment references, making it safe for
+   * defensive reads. For subscriptions, use subscribeFragment which throws errors.
    * @param document - GraphQL fragment artifact.
    * @param fragmentRef - Fragment reference containing entity key.
    * @param variables - Fragment variables.
-   * @returns Denormalized fragment data or null if not found.
+   * @returns Denormalized fragment data or null if not found or invalid.
    */
   readFragment<T extends Artifact>(document: T, fragmentRef: unknown, variables: VariablesOf<T>): DataOf<T> | null {
     if (!fragmentRef || typeof fragmentRef !== 'object') {
@@ -146,11 +160,14 @@ export class Cache {
 
   /**
    * Subscribes to fragment field changes.
+   * Throws errors for invalid fragment references to catch programming errors early.
+   * For defensive reads that handle missing data gracefully, use readFragment instead.
    * @param document - Fragment document artifact.
    * @param fragmentRef - Fragment reference containing entity key.
    * @param variables - Fragment variables.
    * @param callback - Callback function to invoke on cache invalidation.
    * @returns Unsubscribe function.
+   * @throws Error if fragmentRef is invalid or missing entity key.
    */
   subscribeFragment<T extends Artifact>(
     document: T,

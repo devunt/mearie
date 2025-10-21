@@ -634,4 +634,93 @@ describe('NormalizedCache', () => {
       expect(listener).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('readFragment', () => {
+    const createUserFragment = (): Artifact<'fragment', 'UserFragment', { id: string; name: string }, Record<string, never>> => ({
+      kind: 'fragment' as const,
+      name: 'UserFragment',
+      source: 'fragment UserFragment on User { id name }',
+      selections: [
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
+      ],
+    });
+
+    it('should return null for invalid fragment reference', () => {
+      const fragment = createUserFragment();
+
+      expect(cache.readFragment(fragment, null, {})).toBeNull();
+      expect(cache.readFragment(fragment, undefined, {})).toBeNull();
+      expect(cache.readFragment(fragment, 'not-an-object', {})).toBeNull();
+    });
+
+    it('should return null when entity key is missing', () => {
+      const fragment = createUserFragment();
+      const fragmentRef = { someOtherKey: 'value' };
+
+      expect(cache.readFragment(fragment, fragmentRef, {})).toBeNull();
+    });
+
+    it('should return null when entity does not exist in cache', () => {
+      const fragment = createUserFragment();
+      const fragmentRef = { __ref: 'User:999' };
+
+      expect(cache.readFragment(fragment, fragmentRef, {})).toBeNull();
+    });
+
+    it('should read fragment data from cache', () => {
+      const userQuery = createUserQuery();
+      cache.writeQuery(
+        userQuery,
+        { id: '1' },
+        {
+          user: {
+            __typename: 'User' as const,
+            id: '1',
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
+        },
+      );
+
+      const fragment = createUserFragment();
+      const fragmentRef = { __ref: 'User:1' };
+
+      const result = cache.readFragment(fragment, fragmentRef, {});
+
+      expect(result).toEqual({
+        id: '1',
+        name: 'Alice',
+      });
+    });
+  });
+
+  describe('subscribeFragment', () => {
+    const createUserFragment = (): Artifact<'fragment', 'UserFragment', { id: string; name: string }, Record<string, never>> => ({
+      kind: 'fragment' as const,
+      name: 'UserFragment',
+      source: 'fragment UserFragment on User { id name }',
+      selections: [
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
+      ],
+    });
+
+    it('should throw for invalid fragment reference', () => {
+      const fragment = createUserFragment();
+      const listener = vi.fn();
+
+      expect(() => cache.subscribeFragment(fragment, null, {}, listener)).toThrow('Fragment reference must be an object');
+      expect(() => cache.subscribeFragment(fragment, undefined, {}, listener)).toThrow('Fragment reference must be an object');
+      expect(() => cache.subscribeFragment(fragment, 'not-an-object', {}, listener)).toThrow('Fragment reference must be an object');
+    });
+
+    it('should throw when entity key is missing', () => {
+      const fragment = createUserFragment();
+      const fragmentRef = { someOtherKey: 'value' };
+      const listener = vi.fn();
+
+      expect(() => cache.subscribeFragment(fragment, fragmentRef, {}, listener)).toThrow('Fragment reference missing entity key');
+    });
+  });
 });

@@ -35,23 +35,36 @@ export const normalize = (
     const fields: Record<string, unknown> = {};
 
     for (const selection of selections) {
-      const fieldKey = makeFieldKey(selection, variables);
-      const fieldValue = data[selection.alias ?? selection.name];
+      if (selection.kind === 'Field') {
+        const fieldKey = makeFieldKey(selection, variables);
+        const fieldValue = data[selection.alias ?? selection.name];
 
-      accessor(parentKey, fieldKey);
+        accessor(parentKey, fieldKey);
 
-      if (fieldValue === undefined) {
-        continue;
-      }
+        if (fieldValue === undefined) {
+          continue;
+        }
 
-      if (Array.isArray(fieldValue)) {
-        fields[fieldKey] = fieldValue.map((item: unknown) =>
-          selection.selections ? normalizeField(parentKey, selection.selections, item) : item,
-        );
-      } else if (selection.selections) {
-        fields[fieldKey] = normalizeField(parentKey, selection.selections, fieldValue);
-      } else {
-        fields[fieldKey] = fieldValue;
+        if (Array.isArray(fieldValue)) {
+          fields[fieldKey] = fieldValue.map((item: unknown) =>
+            selection.selections ? normalizeField(parentKey, selection.selections, item) : item,
+          );
+        } else if (selection.selections) {
+          fields[fieldKey] = normalizeField(parentKey, selection.selections, fieldValue);
+        } else {
+          fields[fieldKey] = fieldValue;
+        }
+      } else if (selection.kind === 'FragmentSpread') {
+        // FragmentSpread: selections를 재귀 처리하여 캐시에 저장
+        const fragmentResult = normalizeField(parentKey, selection.selections, value);
+        Object.assign(fields, fragmentResult);
+      } else if (selection.kind === 'InlineFragment') {
+        // InlineFragment: typename 체크 후 처리
+        const typename = data.__typename as string | undefined;
+        if (typename === selection.on) {
+          const inlineResult = normalizeField(parentKey, selection.selections, value);
+          Object.assign(fields, inlineResult);
+        }
       }
     }
 

@@ -203,46 +203,69 @@ impl<'a: 'b, 'b> DocumentNodeGenerator<'a, 'b> {
     }
 
     fn selection_node_to_expression(&self, node: &SelectionNodeData<'b>) -> Expression<'b> {
-        let mut properties = self.ast.vec();
+        match node {
+            SelectionNodeData::Field {
+                name,
+                type_name,
+                array,
+                alias,
+                args,
+                selections,
+            } => {
+                let mut properties = self.ast.vec();
 
-        properties.push(self.create_object_property("name", self.create_string_literal(&node.name)));
+                properties.push(self.create_object_property("kind", self.create_string_literal("Field")));
+                properties.push(self.create_object_property("name", self.create_string_literal(name)));
 
-        if let Some(ref type_name) = node.type_name {
-            properties.push(self.create_object_property("type", self.create_string_literal(type_name)));
-        }
+                if let Some(type_name) = type_name {
+                    properties.push(self.create_object_property("type", self.create_string_literal(type_name)));
+                }
 
-        if let Some(true) = node.array {
-            properties.push(self.create_object_property("array", self.create_boolean_literal(true)));
-        }
+                if let Some(true) = array {
+                    properties.push(self.create_object_property("array", self.create_boolean_literal(true)));
+                }
 
-        if let Some(ref on) = node.on {
-            let mut on_elements = self.ast.vec();
-            for type_cond in on {
-                on_elements.push(ArrayExpressionElement::from(self.create_string_literal(type_cond)));
+                if let Some(alias) = alias {
+                    properties.push(self.create_object_property("alias", self.create_string_literal(alias)));
+                }
+
+                if let Some(args) = args {
+                    let mut args_props = self.ast.vec();
+                    for arg in *args {
+                        let arg_value_expr = self.graphql_value_to_arg_value_expression(&arg.value);
+                        args_props.push(self.create_object_property(arg.name.as_str(), arg_value_expr));
+                    }
+                    let args_expr =
+                        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, args_props)));
+                    properties.push(self.create_object_property("args", args_expr));
+                }
+
+                if let Some(selections) = selections {
+                    properties
+                        .push(self.create_object_property("selections", self.create_selections_array(selections)));
+                }
+
+                Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
-            let on_array = Expression::ArrayExpression(self.ast.alloc(self.ast.array_expression(SPAN, on_elements)));
-            properties.push(self.create_object_property("on", on_array));
-        }
+            SelectionNodeData::FragmentSpread { name, selections } => {
+                let mut properties = self.ast.vec();
 
-        if let Some(ref alias) = node.alias {
-            properties.push(self.create_object_property("alias", self.create_string_literal(alias)));
-        }
+                properties.push(self.create_object_property("kind", self.create_string_literal("FragmentSpread")));
+                properties.push(self.create_object_property("name", self.create_string_literal(name)));
+                properties.push(self.create_object_property("selections", self.create_selections_array(selections)));
 
-        if let Some(args) = node.args {
-            let mut args_props = self.ast.vec();
-            for arg in args {
-                let arg_value_expr = self.graphql_value_to_arg_value_expression(&arg.value);
-                args_props.push(self.create_object_property(arg.name.as_str(), arg_value_expr));
+                Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
-            let args_expr = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, args_props)));
-            properties.push(self.create_object_property("args", args_expr));
-        }
+            SelectionNodeData::InlineFragment { on, selections } => {
+                let mut properties = self.ast.vec();
 
-        if let Some(ref selections) = node.selections {
-            properties.push(self.create_object_property("selections", self.create_selections_array(selections)));
-        }
+                properties.push(self.create_object_property("kind", self.create_string_literal("InlineFragment")));
+                properties.push(self.create_object_property("on", self.create_string_literal(on)));
+                properties.push(self.create_object_property("selections", self.create_selections_array(selections)));
 
-        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
+                Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
+            }
+        }
     }
 
     fn graphql_value_to_arg_value_expression(&self, value: &Value<'b>) -> Expression<'b> {
@@ -304,36 +327,31 @@ impl<'a: 'b, 'b> DocumentNodeGenerator<'a, 'b> {
         &self,
         selection_set: &'b SelectionSet<'b>,
         parent_type: &str,
-        type_conditions: Vec<&str>,
+        _type_conditions: Vec<&str>,
     ) -> Result<Vec<SelectionNodeData<'b>>> {
         let mut result = Vec::new();
 
         for selection in &selection_set.selections {
             match selection {
                 Selection::Field(field) => {
-                    let node = self.process_field(field, parent_type, &type_conditions)?;
+                    let node = self.process_field(field, parent_type)?;
                     result.push(node);
                 }
                 Selection::FragmentSpread(spread) => {
-                    let nodes = self.process_fragment_spread(spread, &type_conditions)?;
-                    result.extend(nodes);
+                    let node = self.process_fragment_spread(spread)?;
+                    result.push(node);
                 }
                 Selection::InlineFragment(inline) => {
-                    let nodes = self.process_inline_fragment(inline, parent_type, &type_conditions)?;
-                    result.extend(nodes);
+                    let node = self.process_inline_fragment(inline, parent_type)?;
+                    result.push(node);
                 }
             }
         }
 
-        Ok(Self::merge_duplicate_fields(result))
+        Ok(result)
     }
 
-    fn process_field(
-        &self,
-        field: &'b Field<'b>,
-        parent_type: &str,
-        type_conditions: &[&str],
-    ) -> Result<SelectionNodeData<'b>> {
+    fn process_field(&self, field: &'b Field<'b>, parent_type: &str) -> Result<SelectionNodeData<'b>> {
         let name = field.name.as_str().to_string();
         let alias = field.alias.map(|a| a.as_str().to_string());
 
@@ -353,28 +371,17 @@ impl<'a: 'b, 'b> DocumentNodeGenerator<'a, 'b> {
             Some(nested)
         };
 
-        let on = if type_conditions.is_empty() {
-            None
-        } else {
-            Some(type_conditions.iter().map(|s| s.to_string()).collect())
-        };
-
-        Ok(SelectionNodeData {
+        Ok(SelectionNodeData::Field {
             name,
             type_name: Some(type_name),
             array: Some(array),
-            on,
             alias,
             args,
             selections,
         })
     }
 
-    fn process_fragment_spread(
-        &self,
-        spread: &'b FragmentSpread<'b>,
-        type_conditions: &[&str],
-    ) -> Result<Vec<SelectionNodeData<'b>>> {
+    fn process_fragment_spread(&self, spread: &'b FragmentSpread<'b>) -> Result<SelectionNodeData<'b>> {
         let fragment = self
             .registry
             .get_fragment(spread.fragment_name.as_str())
@@ -385,30 +392,27 @@ impl<'a: 'b, 'b> DocumentNodeGenerator<'a, 'b> {
                 location: None,
             })?;
 
-        let mut new_conditions = type_conditions.to_vec();
-        new_conditions.push(fragment.type_condition.as_str());
+        let selections = self.flatten_selections(&fragment.selection_set, fragment.type_condition.as_str(), vec![])?;
 
-        self.flatten_selections(
-            &fragment.selection_set,
-            fragment.type_condition.as_str(),
-            new_conditions,
-        )
+        Ok(SelectionNodeData::FragmentSpread {
+            name: spread.fragment_name.as_str().to_string(),
+            selections,
+        })
     }
 
     fn process_inline_fragment(
         &self,
         inline: &'b InlineFragment<'b>,
         parent_type: &str,
-        type_conditions: &[&str],
-    ) -> Result<Vec<SelectionNodeData<'b>>> {
+    ) -> Result<SelectionNodeData<'b>> {
         let type_condition = inline.type_condition.map(|t| t.as_str()).unwrap_or(parent_type);
 
-        let mut new_conditions = type_conditions.to_vec();
-        if inline.type_condition.is_some() {
-            new_conditions.push(type_condition);
-        }
+        let selections = self.flatten_selections(&inline.selection_set, type_condition, vec![])?;
 
-        self.flatten_selections(&inline.selection_set, type_condition, new_conditions)
+        Ok(SelectionNodeData::InlineFragment {
+            on: type_condition.to_string(),
+            selections,
+        })
     }
 
     fn get_field_type_info(&self, parent_type: &str, field_name: &str) -> Result<(String, bool)> {
@@ -603,38 +607,25 @@ impl<'a: 'b, 'b> DocumentNodeGenerator<'a, 'b> {
             Ok(format!("{}\n\n{}", fragment_source, other_fragments_source))
         }
     }
-
-    fn merge_duplicate_fields(nodes: Vec<SelectionNodeData<'b>>) -> Vec<SelectionNodeData<'b>> {
-        let mut merged: std::collections::HashMap<String, SelectionNodeData<'b>> = std::collections::HashMap::new();
-
-        for node in nodes {
-            let key = node.alias.clone().unwrap_or_else(|| node.name.clone());
-
-            if let Some(existing) = merged.get_mut(&key) {
-                if let (Some(existing_on), Some(node_on)) = (&mut existing.on, node.on) {
-                    for condition in node_on {
-                        if !existing_on.contains(&condition) {
-                            existing_on.push(condition);
-                        }
-                    }
-                }
-            } else {
-                merged.insert(key, node);
-            }
-        }
-
-        merged.into_values().collect()
-    }
 }
 
-struct SelectionNodeData<'b> {
-    name: String,
-    type_name: Option<String>,
-    array: Option<bool>,
-    on: Option<Vec<String>>,
-    alias: Option<String>,
-    args: Option<&'b [graphql_ast::Argument<'b>]>,
-    selections: Option<Vec<SelectionNodeData<'b>>>,
+enum SelectionNodeData<'b> {
+    Field {
+        name: String,
+        type_name: Option<String>,
+        array: Option<bool>,
+        alias: Option<String>,
+        args: Option<&'b [graphql_ast::Argument<'b>]>,
+        selections: Option<Vec<SelectionNodeData<'b>>>,
+    },
+    FragmentSpread {
+        name: String,
+        selections: Vec<SelectionNodeData<'b>>,
+    },
+    InlineFragment {
+        on: String,
+        selections: Vec<SelectionNodeData<'b>>,
+    },
 }
 
 #[cfg(test)]
@@ -836,10 +827,11 @@ mod tests {
 
         assert_contains!(code, "export const GetNode");
         assert_contains!(code, "name: \"id\"");
+        assert_contains!(code, "kind: \"InlineFragment\"");
+        assert_contains!(code, "on: \"User\"");
         assert_contains!(code, "name: \"name\"");
-        assert_contains!(code, "on: [\"User\"]");
         assert_contains!(code, "name: \"title\"");
-        assert_contains!(code, "on: [\"Post\"]");
+        assert_contains!(code, "on: \"Post\"");
     }
 
     #[test]

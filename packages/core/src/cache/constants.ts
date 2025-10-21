@@ -11,3 +11,10 @@ export const EntityLinkKey = '__ref' as const;
  * @internal
  */
 export const RootFieldKey = '__root' as const;
+
+/**
+ * Special key used to mark fragment references in entities.
+ * Used for cache-agnostic fragment system.
+ * @internal
+ */
+export const FragmentRefKey = '__fragmentRef' as const;

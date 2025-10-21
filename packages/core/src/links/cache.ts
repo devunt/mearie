@@ -1,20 +1,27 @@
 import type { Link, LinkContext, NextFn, LinkResult } from '../link.ts';
-import type { Cache } from '../cache/cache.ts';
+import { Cache } from '../cache/cache.ts';
+import type { SchemaMeta } from '../types.ts';
 
 export type CacheOptions = {
-  cache: Cache;
+  schemaMeta?: SchemaMeta;
   fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
 };
+
+export interface CacheLink extends Link {
+  cache: Cache;
+}
 
 /**
  * @param options - The cache options.
  * @returns The cache link.
  */
-const createCacheLink = (options: CacheOptions): Link => {
-  const { cache, fetchPolicy = 'cache-first' } = options;
+const createCacheLink = (options: CacheOptions = {}): CacheLink => {
+  const { schemaMeta = { entities: {} }, fetchPolicy = 'cache-first' } = options;
+  const cache = new Cache(schemaMeta);
 
   return {
     name: 'cache',
+    cache,
 
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
       const { artifact, variables, kind } = ctx.operation;

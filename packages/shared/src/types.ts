@@ -23,14 +23,28 @@ export type Artifact<
   readonly ' $variables'?: Variables;
 };
 
-export type Selection = {
+export type Selection = FieldSelection | FragmentSpreadSelection | InlineFragmentSelection;
+
+export type FieldSelection = {
+  kind: 'Field';
   name: string;
   type?: string;
   array?: boolean;
-  on?: string[];
   alias?: string;
   args?: Record<string, Argument>;
   selections?: Selection[];
+};
+
+export type FragmentSpreadSelection = {
+  kind: 'FragmentSpread';
+  name: string;
+  selections: Selection[];
+};
+
+export type InlineFragmentSelection = {
+  kind: 'InlineFragment';
+  on: string;
+  selections: Selection[];
 };
 
 export type Argument = { kind: 'literal'; value: unknown } | { kind: 'variable'; name: string };

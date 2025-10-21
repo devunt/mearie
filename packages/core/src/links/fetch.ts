@@ -2,8 +2,9 @@ import type { Link, LinkContext, LinkResult } from '../link.ts';
 
 export type HttpOptions = {
   url: string;
+  headers?: HeadersInit;
+  mode?: RequestMode;
   credentials?: RequestCredentials;
-  headers?: Record<string, string>;
 };
 
 /**
@@ -11,34 +12,34 @@ export type HttpOptions = {
  * @returns The HTTP link.
  */
 const createHttpLink = (options: HttpOptions): Link => {
-  const { url, credentials = 'same-origin', headers = {} } = options;
+  const { url, headers, mode, credentials } = options;
 
   return {
     name: 'http',
 
     async execute(ctx: LinkContext): Promise<LinkResult> {
-      const { artifact, variables, headers: operationHeaders } = ctx.operation;
+      const { artifact, variables, signal } = ctx.operation;
 
       const response = await fetch(url, {
         method: 'POST',
+        mode,
         credentials,
         headers: {
           'Content-Type': 'application/json',
           ...headers,
-          ...operationHeaders,
         },
         body: JSON.stringify({
           query: artifact.source,
           variables,
         }),
-        signal: ctx.signal,
+        signal,
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return response.json() as Promise<LinkResult>;
+      return (await response.json()) as LinkResult;
     },
   };
 };

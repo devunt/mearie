@@ -1,6 +1,6 @@
 import type { Link, LinkContext, NextFn, LinkResult } from '../link.ts';
 import { Cache } from '../cache/cache.ts';
-import type { SchemaMeta } from '../types.ts';
+import type { SchemaMeta, Artifact } from '@mearie/shared';
 
 export type CacheOptions = {
   schemaMeta?: SchemaMeta;
@@ -19,52 +19,45 @@ const createCacheLink = (options: CacheOptions = {}): CacheLink => {
   const { schemaMeta = { entities: {} }, fetchPolicy = 'cache-first' } = options;
   const cache = new Cache(schemaMeta);
 
+  const fetchAndCache = async (
+    artifact: Artifact,
+    variables: Record<string, unknown>,
+    next: NextFn,
+  ): Promise<LinkResult> => {
+    const result = await next();
+    if (result.data) {
+      cache.writeQuery(artifact, variables, result.data);
+    }
+    return result;
+  };
+
   return {
     name: 'cache',
     cache,
 
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
-      const { artifact, variables, kind } = ctx.operation;
+      const { artifact, variables } = ctx.operation;
 
-      if (kind === 'mutation' || kind === 'subscription') {
-        const result = await next();
-
-        if (kind === 'mutation' && result.data) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-          cache.writeQuery(artifact, variables ?? ({} as any), result.data);
-        }
-
-        return result;
+      if (artifact.kind !== 'query' || fetchPolicy === 'network-only') {
+        return await fetchAndCache(artifact, variables, next);
       }
 
-      if (fetchPolicy === 'network-only') {
-        const result = await next();
-        if (result.data) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-          cache.writeQuery(artifact, variables ?? ({} as any), result.data);
-        }
-        return result;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-      const cached = cache.readQuery(artifact, variables ?? ({} as any));
+      const cached = cache.readQuery(artifact as Artifact<'query'>, variables);
 
       if (fetchPolicy === 'cache-only') {
         return { data: cached ?? undefined };
       }
 
-      if (fetchPolicy === 'cache-first' && cached) {
+      if (fetchPolicy === 'cache-first') {
+        return cached ? { data: cached } : await fetchAndCache(artifact, variables, next);
+      }
+
+      if (cached) {
+        void fetchAndCache(artifact, variables, next);
         return { data: cached };
       }
 
-      const result = await next();
-
-      if (result.data) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-        cache.writeQuery(artifact, variables ?? ({} as any), result.data);
-      }
-
-      return result;
+      return await fetchAndCache(artifact, variables, next);
     },
   };
 };

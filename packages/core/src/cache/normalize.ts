@@ -1,5 +1,4 @@
-import type { Selection } from '@mearie/shared';
-import type { SchemaMeta } from '../types.ts';
+import type { Selection, SchemaMeta } from '@mearie/shared';
 import { makeEntityKey, makeFieldKey, isEntityLink } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';

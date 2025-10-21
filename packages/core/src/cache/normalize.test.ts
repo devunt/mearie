@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { normalize } from './normalize.ts';
 import { RootFieldKey, EntityLinkKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
-import type { SchemaMeta } from '../types.ts';
-import type { Selection } from '@mearie/shared';
+import type { SchemaMeta, Selection } from '@mearie/shared';
 
 const schema: SchemaMeta = {
   entities: {
@@ -136,9 +135,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
     it('deeply nested objects', () => {
@@ -175,9 +172,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'level1@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'level1@{}']]);
     });
 
     it('nested null object', () => {
@@ -243,9 +238,7 @@ describe('normalize', () => {
           ],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'items@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'items@{}']]);
     });
 
     it('array with null elements', () => {
@@ -266,9 +259,7 @@ describe('normalize', () => {
           'items@{}': [{ 'name@{}': 'Item 1' }, null, { 'name@{}': 'Item 3' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'items@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'items@{}']]);
     });
 
     it('empty array', () => {
@@ -343,9 +334,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'data@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'data@{}']]);
     });
 
     it('entity array with non-entity array fields', () => {
@@ -902,9 +891,7 @@ describe('normalize', () => {
           'posts@{"limit":10,"offset":0}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{"limit":10,"offset":0}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{"limit":10,"offset":0}']]);
     });
 
     it('field with variable arguments', () => {
@@ -930,9 +917,7 @@ describe('normalize', () => {
           'posts@{"limit":10,"offset":0}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{"limit":10,"offset":0}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{"limit":10,"offset":0}']]);
     });
 
     it('field with different argument values', () => {
@@ -1119,9 +1104,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'post@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'post@{}']]);
     });
   });
 
@@ -1243,9 +1226,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
     it('multiple fragment spreads', () => {
@@ -2204,9 +2185,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
   });
 
@@ -2476,9 +2455,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'metadata@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'metadata@{}']]);
     });
 
     it('entity object at root should be normalized separately', () => {
@@ -2665,9 +2642,7 @@ describe('normalize', () => {
           'posts@{}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{}']]);
     });
 
     it('should handle null variable value', () => {
@@ -2692,9 +2667,7 @@ describe('normalize', () => {
           'posts@{"limit":null}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{"limit":null}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{"limit":null}']]);
     });
 
     it('should handle missing variable', () => {
@@ -2719,9 +2692,7 @@ describe('normalize', () => {
           'posts@{}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{}']]);
     });
 
     it('should handle complex object variable', () => {
@@ -2783,9 +2754,7 @@ describe('normalize', () => {
           'posts@{"ids":["1","2","3"]}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{"ids":["1","2","3"]}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{"ids":["1","2","3"]}']]);
     });
 
     it('should handle multiple variables with mixed types', () => {
@@ -2853,9 +2822,7 @@ describe('normalize', () => {
           'posts@{"active":false,"limit":0,"search":""}': [{ 'title@{}': 'Post 1' }],
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'posts@{"active":false,"limit":0,"search":""}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'posts@{"active":false,"limit":0,"search":""}']]);
     });
   });
 
@@ -3810,9 +3777,7 @@ describe('normalize', () => {
           },
         },
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
     it('should handle duplicate fields with different arguments', () => {

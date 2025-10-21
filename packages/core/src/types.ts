@@ -1,17 +1,7 @@
-import type { Artifact } from '@mearie/shared';
-
-export type SchemaMeta = {
-  entities: Record<string, EntityMeta>;
-};
-
-export type EntityMeta = {
-  keyFields: string[];
-};
+import type { Artifact, VariablesOf } from '@mearie/shared';
 
 export type Operation<T extends Artifact<'query' | 'mutation' | 'subscription'>> = {
-  kind: T['kind'];
   artifact: T;
-  variables?: T[' $variables'];
+  variables: VariablesOf<T>;
   signal?: AbortSignal;
-  headers?: Record<string, string>;
 };

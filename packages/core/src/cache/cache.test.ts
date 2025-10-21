@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Cache } from './cache.ts';
-import type { Artifact, FragmentRefs } from '@mearie/shared';
-import type { SchemaMeta } from '../types.ts';
+import type { Artifact, FragmentRefs, SchemaMeta } from '@mearie/shared';
 import { FragmentRefKey } from './constants.ts';
 
 const schema: SchemaMeta = {

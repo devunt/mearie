@@ -13,8 +13,7 @@ const createDedupLink = (): Link => {
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
       const { artifact, variables } = ctx.operation;
 
-      const vars = stringify(variables);
-      const key = `${artifact.source}@${vars}`;
+      const key = `${artifact.source}@${stringify(variables)}`;
 
       const existing = pending.get(key);
       if (existing) {

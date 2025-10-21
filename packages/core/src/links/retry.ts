@@ -1,4 +1,4 @@
-import type { Link, LinkContext, NextFn, LinkResult } from '../link.ts';
+import type { Link } from '../link.ts';
 
 export type RetryOptions = {
   maxAttempts?: number;
@@ -20,7 +20,7 @@ const createRetryLink = (options: RetryOptions = {}): Link => {
   return {
     name: 'retry',
 
-    async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
+    async execute(_, next) {
       let lastError: unknown;
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {

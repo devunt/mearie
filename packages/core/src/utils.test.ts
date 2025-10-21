@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { stringify } from './utils.ts';
 
-describe('stableStringify', () => {
+describe('stringify', () => {
   it('should stringify primitives', () => {
     expect(stringify(null)).toBe('null');
     expect(stringify(void 0)).toBe('undefined');

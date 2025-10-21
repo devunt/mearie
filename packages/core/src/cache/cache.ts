@@ -1,5 +1,4 @@
-import type { Artifact, DataOf, FragmentRefs, VariablesOf } from '@mearie/shared';
-import type { SchemaMeta } from '../types.ts';
+import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@mearie/shared';
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
 import { makeDependencyKey } from './utils.ts';

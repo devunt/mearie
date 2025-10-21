@@ -6,11 +6,13 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc"
   },
   "devDependencies": {
     "@mearie/react": "workspace:*",
     "mearie": "workspace:*",
+    "typescript": "catalog:",
     "vite": "^7.1.10"
   }
 }

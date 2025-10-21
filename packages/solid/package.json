@@ -12,14 +12,16 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown"
+    "build": "tsdown",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/core": "workspace:*"
   },
   "devDependencies": {
     "solid-js": "^1.9.9",
-    "tsdown": "catalog:"
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "solid-js": "^1.8.0"

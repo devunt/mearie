@@ -12,13 +12,15 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown"
+    "build": "tsdown",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/core": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",
+    "typescript": "catalog:",
     "vue": "^3.5.22"
   },
   "peerDependencies": {

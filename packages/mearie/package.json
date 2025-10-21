@@ -15,17 +15,16 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/config": "workspace:*",
-    "@mearie/core": "workspace:*",
+    "@mearie/shared": "workspace:*",
     "@mearie/vite": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",
@@ -34,6 +33,11 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
+      },
+      "./types": {
+        "types": "./dist/types.d.ts",
+        "import": "./dist/types.js",
+        "require": "./dist/types.cjs"
       },
       "./vite": {
         "types": "./dist/vite.d.ts",

@@ -13,15 +13,14 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/shared": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",

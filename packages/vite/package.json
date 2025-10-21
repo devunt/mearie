@@ -13,10 +13,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:all": "pnpm test && pnpm test:examples",
-    "test:examples": "tsx scripts/test-examples.ts",
-    "test:watch": "vitest"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/codegen": "workspace:*",
@@ -25,8 +22,8 @@
   "devDependencies": {
     "tsdown": "catalog:",
     "tsx": "^4.20.6",
-    "vite": "^7.1.10",
-    "vitest": "catalog:"
+    "typescript": "catalog:",
+    "vite": "^7.1.10"
   },
   "publishConfig": {
     "access": "public",

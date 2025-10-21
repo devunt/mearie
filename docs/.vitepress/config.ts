@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress';
 import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons';
 import { transformerTwoslash } from '@shikijs/vitepress-twoslash';
 import { createFileSystemTypesCache } from '@shikijs/vitepress-twoslash/cache-fs';
-import { mearie } from '@mearie/vite';
+import mearie from 'mearie/vite';
 import { ModuleResolutionKind } from 'typescript';
 
 export default defineConfig({

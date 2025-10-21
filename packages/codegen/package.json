@@ -13,8 +13,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@logtape/logtape": "^1.1.1",
@@ -31,8 +30,7 @@
     "@vue/compiler-sfc": "^3.5.22",
     "svelte": "^5.41.0",
     "tsdown": "catalog:",
-    "typescript": "^5.9.3",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",

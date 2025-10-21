@@ -29,9 +29,9 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
     ? [undefined?, CreateSubscriptionOptions<T>?]
     : [() => VariablesOf<T>, CreateSubscriptionOptions<T>?]
 ): Subscription<T> => {
-  let data = $state<DataOf<T> | undefined>(undefined);
-  let loading = $state(true);
-  let error = $state<Error | undefined>(undefined);
+  const data = $state<DataOf<T> | undefined>();
+  const loading = $state(true);
+  const error = $state<Error | undefined>();
 
   return {
     get data() {

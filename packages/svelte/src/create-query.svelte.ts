@@ -30,9 +30,9 @@ export const createQuery = <T extends Artifact<'query'>>(
     ? [undefined?, CreateQueryOptions?]
     : [() => VariablesOf<T>, CreateQueryOptions?]
 ): Query<T> => {
-  let data = $state<DataOf<T> | undefined>(undefined);
-  let loading = $state(true);
-  let error = $state<Error | undefined>(undefined);
+  const data = $state<DataOf<T> | undefined>();
+  const loading = $state(true);
+  const error = $state<Error | undefined>();
 
   return {
     get data() {
@@ -45,5 +45,5 @@ export const createQuery = <T extends Artifact<'query'>>(
       return error;
     },
     refetch: () => {},
-  };
+  } as Query<T>;
 };

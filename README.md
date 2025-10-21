@@ -9,6 +9,7 @@ library provides normalized caching, fragment colocation, and composable
 middleware.
 
 Mearie consists of two parts:
+
 - `mearie` - Build-time codegen and tooling (dev dependency)
 - `@mearie/{framework}` - Framework-specific runtime with client and bindings (React, Vue, Svelte, Solid)
 

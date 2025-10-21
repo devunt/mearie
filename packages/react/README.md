@@ -28,11 +28,7 @@ const client = createClient({
 });
 
 function App() {
-  return (
-    <ClientProvider client={client}>
-      {/* Your app components */}
-    </ClientProvider>
-  );
+  return <ClientProvider client={client}>{/* Your app components */}</ClientProvider>;
 }
 ```
 

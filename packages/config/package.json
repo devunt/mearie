@@ -13,8 +13,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "c12": "^3.3.1",
@@ -22,7 +21,7 @@
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",

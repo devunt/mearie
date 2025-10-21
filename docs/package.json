@@ -5,15 +5,16 @@
   "type": "module",
   "scripts": {
     "build": "vitepress build",
-    "dev": "vitepress dev"
+    "dev": "vitepress dev",
+    "typecheck": "tsc"
   },
   "devDependencies": {
     "@mearie/react": "workspace:*",
-    "@mearie/vite": "workspace:*",
     "@shikijs/vitepress-twoslash": "^3.13.0",
     "@types/react": "^19.2.2",
     "mearie": "workspace:*",
     "react": "^19.2.0",
+    "typescript": "catalog:",
     "vitepress": "2.0.0-alpha.12",
     "vitepress-plugin-group-icons": "^1.6.4"
   }

@@ -12,14 +12,16 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown"
+    "build": "tsdown",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/core": "workspace:*"
   },
   "devDependencies": {
     "svelte": "^5.41.0",
-    "tsdown": "catalog:"
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"

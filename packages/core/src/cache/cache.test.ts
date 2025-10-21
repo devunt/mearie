@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Cache } from './cache.ts';
-import type { DocumentNode, SchemaMetadata } from '../types.ts';
+import type { SchemaMeta } from '../types.ts';
+import type { Artifact } from '@mearie/shared';
 
 type UserQueryResult = {
   user: {
@@ -37,7 +38,7 @@ type PostsQueryResult = {
   }[];
 };
 
-const createTestSchema = (): SchemaMetadata => ({
+const createTestSchema = (): SchemaMeta => ({
   entities: {
     User: {
       keyFields: ['id'],
@@ -51,10 +52,10 @@ const createTestSchema = (): SchemaMetadata => ({
   },
 });
 
-const createUserQuery = (): DocumentNode<UserQueryResult, { id: string }> => ({
-  body: 'query GetUser($id: ID!) { user(id: $id) { __typename id name email } }',
+const createUserQuery = (): Artifact<'query', 'GetUser', UserQueryResult, { id: string }> => ({
   kind: 'query' as const,
-  hash: 0x12_34_56_78,
+  name: 'GetUser',
+  source: 'query GetUser($id: ID!) { user(id: $id) { __typename id name email } }',
   selections: [
     {
       name: 'user',
@@ -68,10 +69,15 @@ const createUserQuery = (): DocumentNode<UserQueryResult, { id: string }> => ({
   ],
 });
 
-const createUserWithPostsQuery = (): DocumentNode<UserWithPostsQueryResult, { id: string }> => ({
-  body: 'query GetUserWithPosts($id: ID!) { user(id: $id) { __typename id name posts { __typename id title } } }',
+const createUserWithPostsQuery = (): Artifact<
+  'query',
+  'GetUserWithPosts',
+  UserWithPostsQueryResult,
+  { id: string }
+> => ({
   kind: 'query' as const,
-  hash: 0x87_65_43_21,
+  name: 'GetUserWithPosts',
+  source: 'query GetUserWithPosts($id: ID!) { user(id: $id) { __typename id name posts { __typename id title } } }',
   selections: [
     {
       name: 'user',
@@ -95,10 +101,10 @@ const createUserWithPostsQuery = (): DocumentNode<UserWithPostsQueryResult, { id
   ],
 });
 
-const createPostsQuery = (): DocumentNode<PostsQueryResult, Record<string, never>> => ({
-  body: 'query GetPosts { posts { __typename id title author { __typename id name } } }',
+const createPostsQuery = (): Artifact<'query', 'GetPosts', PostsQueryResult, Record<string, never>> => ({
   kind: 'query' as const,
-  hash: 0xab_cd_ef_12,
+  name: 'GetPosts',
+  source: 'query GetPosts { posts { __typename id title author { __typename id name } } }',
   selections: [
     {
       name: 'posts',
@@ -120,7 +126,7 @@ const createPostsQuery = (): DocumentNode<PostsQueryResult, Record<string, never
 
 describe('NormalizedCache', () => {
   let cache: Cache;
-  let schema: SchemaMetadata;
+  let schema: SchemaMeta;
 
   beforeEach(() => {
     schema = createTestSchema();
@@ -133,7 +139,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -158,7 +164,7 @@ describe('NormalizedCache', () => {
       const document = createUserQuery();
       const result1 = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -166,7 +172,7 @@ describe('NormalizedCache', () => {
       };
       const result2 = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '2',
           name: 'Bob',
           email: 'bob@example.com',
@@ -185,7 +191,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -205,17 +211,17 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           posts: [
             {
-              __typename: 'Post',
+              __typename: 'Post' as const,
               id: '1',
               title: 'First Post',
             },
             {
-              __typename: 'Post',
+              __typename: 'Post' as const,
               id: '2',
               title: 'Second Post',
             },
@@ -235,21 +241,21 @@ describe('NormalizedCache', () => {
       const result = {
         posts: [
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '1',
             title: 'Post 1',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
           },
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '2',
             title: 'Post 2',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '2',
               name: 'Bob',
             },
@@ -270,7 +276,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -284,7 +290,7 @@ describe('NormalizedCache', () => {
 
       const updatedResult = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice Updated',
           email: 'alice@example.com',
@@ -301,7 +307,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -317,7 +323,7 @@ describe('NormalizedCache', () => {
 
       const updatedResult = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice Updated',
           email: 'alice@example.com',
@@ -334,7 +340,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -351,7 +357,7 @@ describe('NormalizedCache', () => {
 
       const updatedResult = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice Updated',
           email: 'alice@example.com',
@@ -371,7 +377,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -390,7 +396,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -418,7 +424,7 @@ describe('NormalizedCache', () => {
         { id: '1' },
         {
           user: {
-            __typename: 'User',
+            __typename: 'User' as const,
             id: '1',
             name: 'Alice',
             email: 'alice@example.com',
@@ -432,11 +438,11 @@ describe('NormalizedCache', () => {
         {
           posts: [
             {
-              __typename: 'Post',
+              __typename: 'Post' as const,
               id: '1',
               title: 'Post 1',
               author: {
-                __typename: 'User',
+                __typename: 'User' as const,
                 id: '1',
                 name: 'Alice',
               },
@@ -459,7 +465,7 @@ describe('NormalizedCache', () => {
 
       const userResult = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -469,11 +475,11 @@ describe('NormalizedCache', () => {
       const postsResult = {
         posts: [
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '1',
             title: 'Post 1',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
@@ -486,7 +492,7 @@ describe('NormalizedCache', () => {
 
       const updatedUserResult = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice Updated',
           email: 'alice@example.com',
@@ -508,21 +514,21 @@ describe('NormalizedCache', () => {
       const result = {
         posts: [
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '1',
             title: 'Post 1',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
           },
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '2',
             title: 'Post 2',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
@@ -535,21 +541,21 @@ describe('NormalizedCache', () => {
       const updatedResult = {
         posts: [
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '1',
             title: 'Updated Post 1',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
           },
           {
-            __typename: 'Post',
+            __typename: 'Post' as const,
             id: '2',
             title: 'Post 2',
             author: {
-              __typename: 'User',
+              __typename: 'User' as const,
               id: '1',
               name: 'Alice',
             },
@@ -571,7 +577,7 @@ describe('NormalizedCache', () => {
       const variables = { id: '1' };
       const result1 = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice',
           email: 'alice@example.com',
@@ -585,7 +591,7 @@ describe('NormalizedCache', () => {
 
       const result2 = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'Alice Updated',
           email: 'alice.updated@example.com',
@@ -598,7 +604,7 @@ describe('NormalizedCache', () => {
 
       const result3 = {
         user: {
-          __typename: 'User',
+          __typename: 'User' as const,
           id: '1',
           name: 'New Name',
           email: 'alice.updated@example.com',

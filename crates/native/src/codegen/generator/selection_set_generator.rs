@@ -92,7 +92,6 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
         Ok((field_name, field_type, is_optional))
     }
 
-
     fn generate_inline_fragment(
         &self,
         inline_fragment: &InlineFragment<'b>,
@@ -127,20 +126,20 @@ impl<'a, 'b> SelectionSetGenerator<'a, 'b> {
 
                 match type_name {
                     "Nullable" => {
-                        if let Some(ref params) = type_ref.type_arguments {
-                            if let Some(inner) = params.params.first() {
-                                let replaced_inner = self.replace_innermost_type(inner, replacement);
-                                return type_builder::wrap_nullable(&self.ast, replaced_inner);
-                            }
+                        if let Some(ref params) = type_ref.type_arguments
+                            && let Some(inner) = params.params.first()
+                        {
+                            let replaced_inner = self.replace_innermost_type(inner, replacement);
+                            return type_builder::wrap_nullable(&self.ast, replaced_inner);
                         }
                         type_builder::wrap_nullable(&self.ast, replacement)
                     }
                     "List" => {
-                        if let Some(ref params) = type_ref.type_arguments {
-                            if let Some(inner) = params.params.first() {
-                                let replaced_inner = self.replace_innermost_type(inner, replacement);
-                                return type_builder::wrap_list(&self.ast, replaced_inner);
-                            }
+                        if let Some(ref params) = type_ref.type_arguments
+                            && let Some(inner) = params.params.first()
+                        {
+                            let replaced_inner = self.replace_innermost_type(inner, replacement);
+                            return type_builder::wrap_list(&self.ast, replaced_inner);
                         }
                         type_builder::wrap_list(&self.ast, replacement)
                     }

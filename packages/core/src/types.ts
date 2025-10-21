@@ -13,4 +13,5 @@ export type Operation<T extends Artifact<'query' | 'mutation' | 'subscription'>>
   artifact: T;
   variables?: T[' $variables'];
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 };

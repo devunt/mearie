@@ -56,10 +56,7 @@ export const makeFieldKey = (selection: Selection, variables: Record<string, unk
  * @param schemaMetadata - The schema metadata containing entity configurations.
  * @returns Entity metadata if found, undefined otherwise.
  */
-export const getEntityMetadata = (
-  typename: string | undefined,
-  schemaMetadata: SchemaMeta,
-): EntityMeta | undefined => {
+export const getEntityMetadata = (typename: string | undefined, schemaMetadata: SchemaMeta): EntityMeta | undefined => {
   return typename ? schemaMetadata.entities[typename] : undefined;
 };
 

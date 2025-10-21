@@ -17,13 +17,14 @@ const createCacheLink = (options: CacheOptions): Link => {
     name: 'cache',
 
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
-      const { document, variables, kind } = ctx.operation;
+      const { artifact, variables, kind } = ctx.operation;
 
       if (kind === 'mutation' || kind === 'subscription') {
         const result = await next();
 
         if (kind === 'mutation' && result.data) {
-          cache.writeQuery(document, variables, result.data);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+          cache.writeQuery(artifact, variables ?? ({} as any), result.data);
         }
 
         return result;
@@ -32,12 +33,14 @@ const createCacheLink = (options: CacheOptions): Link => {
       if (fetchPolicy === 'network-only') {
         const result = await next();
         if (result.data) {
-          cache.writeQuery(document, variables, result.data);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+          cache.writeQuery(artifact, variables ?? ({} as any), result.data);
         }
         return result;
       }
 
-      const cached = cache.readQuery(document, variables);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+      const cached = cache.readQuery(artifact, variables ?? ({} as any));
 
       if (fetchPolicy === 'cache-only') {
         return { data: cached ?? undefined };
@@ -50,7 +53,8 @@ const createCacheLink = (options: CacheOptions): Link => {
       const result = await next();
 
       if (result.data) {
-        cache.writeQuery(document, variables, result.data);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        cache.writeQuery(artifact, variables ?? ({} as any), result.data);
       }
 
       return result;

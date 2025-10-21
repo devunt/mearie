@@ -1,4 +1,4 @@
-import type { Artifact } from '@mearie/shared';
+import type { Artifact, DataOf, VariablesOf } from '@mearie/shared';
 import type { SchemaMeta } from '../types.ts';
 import { hashString } from '../utils.ts';
 import { normalize } from './normalize.ts';
@@ -29,11 +29,7 @@ export class Cache {
    * @param variables - Query variables.
    * @param result - Query result data.
    */
-  writeQuery<TResult, TVariables>(
-    document: Artifact,
-    variables: TVariables,
-    result: TResult,
-  ): void {
+  writeQuery<T extends Artifact>(document: T, variables: VariablesOf<T>, result: DataOf<T>): void {
     const queryKey = makeQueryKey(hashString(document.source), variables);
 
     normalize(
@@ -56,8 +52,8 @@ export class Cache {
    * @param variables - Query variables.
    * @returns Denormalized query result or null if not found.
    */
-  readQuery<TResult, TVariables>(document: Artifact, variables: TVariables): TResult | null {
-    return denormalize(document.selections, this.#storage, variables as Record<string, unknown>) as TResult | null;
+  readQuery<T extends Artifact>(document: T, variables: VariablesOf<T>): DataOf<T> | null {
+    return denormalize(document.selections, this.#storage, variables as Record<string, unknown>) as DataOf<T> | null;
   }
 
   /**
@@ -67,11 +63,7 @@ export class Cache {
    * @param callback - Callback function to invoke on cache invalidation.
    * @returns Unsubscribe function.
    */
-  subscribe<TVariables>(
-    document: Artifact,
-    variables: TVariables,
-    callback: CacheListener,
-  ): () => void {
+  subscribe<T extends Artifact>(document: T, variables: VariablesOf<T>, callback: CacheListener): () => void {
     const queryKey = makeQueryKey(hashString(document.source), variables);
 
     let listeners = this.#listeners.get(queryKey);
@@ -95,7 +87,7 @@ export class Cache {
    * @param document - GraphQL document artifact.
    * @param variables - Query variables.
    */
-  evictQuery<TVariables>(document: Artifact, variables: TVariables): void {
+  evictQuery<T extends Artifact>(document: T, variables: VariablesOf<T>): void {
     const queryKey = makeQueryKey(hashString(document.source), variables);
     const queryRoot = this.#storage.get(RootFieldKey);
 

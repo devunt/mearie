@@ -1,39 +1,49 @@
 # mearie
 
-Core GraphQL client package for Mearie.
+Build-time codegen and tooling package for Mearie.
 
-This package provides the GraphQL client runtime with support for queries,
-mutations, subscriptions, normalized caching, and composable middleware links.
+This package provides build plugins (Vite, Next.js) and code generation tools
+that extract GraphQL queries from your source code and generate TypeScript types
+at build time.
 
 ## Installation
 
+Install as a dev dependency:
+
 ```bash
-npm install mearie
+npm install -D mearie
 ```
+
+For runtime functionality, install a framework-specific package like
+[@mearie/react](https://www.npmjs.com/package/@mearie/react),
+[@mearie/vue](https://www.npmjs.com/package/@mearie/vue),
+[@mearie/svelte](https://www.npmjs.com/package/@mearie/svelte), or
+[@mearie/solid](https://www.npmjs.com/package/@mearie/solid).
 
 ## Usage
 
+Add the Vite plugin to your `vite.config.ts`:
+
 ```typescript
-import { createClient, httpLink, cacheLink, graphql } from 'mearie';
+import { defineConfig } from 'vite';
+import mearie from 'mearie/vite';
 
-const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+export default defineConfig({
+  plugins: [mearie()],
 });
-
-const result = await client.query(
-  graphql(`
-    query GetUser($id: ID!) {
-      user(id: $id) {
-        id
-        name
-      }
-    }
-  `),
-  { id: '1' },
-);
 ```
 
-For framework-specific usage, see [@mearie/react](https://www.npmjs.com/package/@mearie/react),
+Or for Next.js, add to your `next.config.js`:
+
+```javascript
+import withMearie from 'mearie/next';
+
+export default withMearie({
+  // Your Next.js config
+});
+```
+
+For framework-specific runtime usage, see [@mearie/react](https://www.npmjs.com/package/@mearie/react),
 [@mearie/vue](https://www.npmjs.com/package/@mearie/vue),
 [@mearie/svelte](https://www.npmjs.com/package/@mearie/svelte), or
 [@mearie/solid](https://www.npmjs.com/package/@mearie/solid).

@@ -2,20 +2,44 @@
 
 Vue bindings for Mearie GraphQL client.
 
-This package provides Vue composables and plugins for using Mearie in Vue
-applications.
+This package provides Vue composables, plugins, and the GraphQL client runtime
+for using Mearie in Vue applications.
 
 ## Installation
 
 ```bash
-npm install mearie @mearie/vue
+npm install -D mearie
+npm install @mearie/vue
 ```
+
+The `mearie` package provides build-time code generation, while `@mearie/vue`
+includes the runtime client and Vue-specific composables.
 
 ## Usage
 
+First, create a client and set up the plugin in your app:
+
+```typescript
+// src/main.ts
+import { createApp } from 'vue';
+import { createClient, httpLink, cacheLink, ClientPlugin } from '@mearie/vue';
+import App from './App.vue';
+
+const client = createClient({
+  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+});
+
+const app = createApp(App);
+app.use(ClientPlugin, { client });
+app.mount('#app');
+```
+
+Then use it in your components:
+
 ```vue
+<!-- src/components/UserProfile.vue -->
 <script setup lang="ts">
-import { createClient, httpLink, cacheLink, graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();

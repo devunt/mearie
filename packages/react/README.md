@@ -2,20 +2,26 @@
 
 React bindings for Mearie GraphQL client.
 
-This package provides React hooks and components for using Mearie in React
-applications.
+This package provides React hooks, components, and the GraphQL client runtime
+for using Mearie in React applications.
 
 ## Installation
 
 ```bash
-npm install mearie @mearie/react
+npm install -D mearie
+npm install @mearie/react
 ```
+
+The `mearie` package provides build-time code generation, while `@mearie/react`
+includes the runtime client and React-specific hooks.
 
 ## Usage
 
+First, create a client and wrap your app with the provider:
+
 ```tsx
-import { createClient, httpLink, cacheLink, graphql } from 'mearie';
-import { ClientProvider, useQuery } from '@mearie/react';
+// src/App.tsx
+import { createClient, httpLink, cacheLink, ClientProvider } from '@mearie/react';
 
 const client = createClient({
   links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
@@ -24,12 +30,24 @@ const client = createClient({
 function App() {
   return (
     <ClientProvider client={client}>
-      <UserProfile userId="1" />
+      {/* Your app components */}
     </ClientProvider>
   );
 }
+```
 
-function UserProfile({ userId }: { userId: string }) {
+Then use it in your components:
+
+```tsx
+// src/components/UserProfile.tsx
+import { graphql } from '~graphql';
+import { useQuery } from '@mearie/react';
+
+interface UserProfileProps {
+  userId: string;
+}
+
+function UserProfile({ userId }: UserProfileProps) {
   const { data, loading } = useQuery(
     graphql(`
       query GetUser($id: ID!) {

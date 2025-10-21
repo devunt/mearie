@@ -22,7 +22,7 @@ Working with custom scalars requires two configurations:
 Configure type mappings in `mearie.config.ts`:
 
 ```typescript
-import { defineConfig } from 'mearie/config';
+import { defineConfig } from 'mearie';
 
 export default defineConfig({
   // ...
@@ -39,7 +39,7 @@ export default defineConfig({
 Configure runtime transformations when creating your client:
 
 ```typescript
-import { createClient, httpLink, cacheLink } from 'mearie';
+import { createClient, httpLink, cacheLink } from '@mearie/react';
 
 export const client = createClient({
   scalars: {

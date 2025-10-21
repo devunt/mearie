@@ -20,7 +20,7 @@ Mearie (메아리, meaning "echo" in Korean) is a zero-config GraphQL client for
 ::: code-group
 
 ```tsx [React]
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 
 export const UserProfile = ({ userId }: { userId: string }) => {
@@ -44,7 +44,7 @@ export const UserProfile = ({ userId }: { userId: string }) => {
 
 ```vue [Vue]
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -71,7 +71,7 @@ const { data, loading } = useQuery(
 
 ```svelte [Svelte]
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/svelte';
 
 interface Props {
@@ -103,7 +103,7 @@ const query = createQuery(
 
 ```tsx [Solid]
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {

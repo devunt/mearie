@@ -73,7 +73,8 @@ impl<'a, 'b> Builder<'a, 'b> {
         let public_statements = self.generate_public_types_statements(&ast);
 
         let augmentation_generator = ModuleAugmentationGenerator::new(self.ctx, self.registry);
-        let module_augmentation = augmentation_generator.generate_with_additional(enum_statements, public_statements)?;
+        let module_augmentation =
+            augmentation_generator.generate_with_additional(enum_statements, public_statements)?;
 
         let document_node_generator = DocumentNodeGenerator::new(self.ctx, self.registry);
         let documents_statements = document_node_generator.generate()?;
@@ -124,7 +125,10 @@ impl<'a, 'b> Builder<'a, 'b> {
         self.print_program(&program)
     }
 
-    fn generate_public_types_statements<'c>(&self, ast: &oxc_ast::AstBuilder<'c>) -> oxc_allocator::Vec<'c, Statement<'c>> {
+    fn generate_public_types_statements<'c>(
+        &self,
+        ast: &oxc_ast::AstBuilder<'c>,
+    ) -> oxc_allocator::Vec<'c, Statement<'c>> {
         use oxc_allocator::Box as OxcBox;
         use oxc_ast::ast::{Declaration, ImportOrExportKind, TSTypeParameterDeclaration, WithClause};
         use oxc_span::SPAN;
@@ -165,7 +169,7 @@ impl<'a, 'b> Builder<'a, 'b> {
 
     fn create_import_type_for_key<'c>(&self, ast: &oxc_ast::AstBuilder<'c>, type_name: &str) -> TSType<'c> {
         use oxc_allocator::Box as OxcBox;
-        use oxc_ast::ast::{ObjectExpression, TSType, TSTypeParameterInstantiation};
+        use oxc_ast::ast::{ObjectExpression, TSTypeParameterInstantiation};
         use oxc_span::Atom;
 
         let type_name_str = ast.allocator.alloc_str(type_name);
@@ -173,10 +177,7 @@ impl<'a, 'b> Builder<'a, 'b> {
 
         ast.ts_type_import_type(
             SPAN,
-            ast.ts_type_literal_type(
-                SPAN,
-                ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>),
-            ),
+            ast.ts_type_literal_type(SPAN, ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>)),
             None::<OxcBox<ObjectExpression>>,
             Some(qualifier),
             None::<OxcBox<TSTypeParameterInstantiation>>,
@@ -219,7 +220,7 @@ impl<'a, 'b> Builder<'a, 'b> {
             span: SPAN,
             directives: ast.vec(),
             statements: ast.vec_from_iter(vec![StmtInner::ExpressionStatement(
-                ast.alloc(ast.expression_statement(SPAN, expression_body))
+                ast.alloc(ast.expression_statement(SPAN, expression_body)),
             )]),
         };
 
@@ -227,8 +228,8 @@ impl<'a, 'b> Builder<'a, 'b> {
         use oxc_ast::ast::TSTypeParameterDeclaration;
         let arrow_function = ast.arrow_function_expression(
             SPAN,
-            true, // expression
-            false, // async
+            true,                                       // expression
+            false,                                      // async
             None::<OxcBox<TSTypeParameterDeclaration>>, // type_parameters
             ast.alloc(formal_params),
             None::<OxcBox<TSTypeAnnotation>>, // return_type

@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Mearie is a type-safe GraphQL client library with zero runtime overhead. The project uses:
+
 - Monorepo structure managed by pnpm workspaces and Turborepo
 - TypeScript for all JavaScript/TypeScript packages
 - Rust for native performance-critical operations (GraphQL parsing and code generation)
@@ -18,17 +19,20 @@ Mearie is a type-safe GraphQL client library with zero runtime overhead. The pro
 ## Common Development Commands
 
 ### Building
+
 - `pnpm build` - Build all packages except docs and examples
 - `pnpm build:docs` - Build documentation only
 - `pnpm dev` - Run development mode with watch
 
 ### Testing
+
 - `pnpm test` - Run all tests
 - `pnpm test:watch` - Run tests in watch mode
 - For specific package: `cd packages/<name> && pnpm test`
 - For native Rust code: `cd crates/native && cargo test`
 
 ### Code Quality
+
 - `pnpm lint` - Run ESLint
 - `pnpm lint:fix` - Fix ESLint issues
 - `pnpm format` - Check code formatting with Prettier
@@ -36,6 +40,7 @@ Mearie is a type-safe GraphQL client library with zero runtime overhead. The pro
 - `pnpm typecheck` - Run TypeScript type checking
 
 ### Release Management
+
 - `pnpm changeset` - Create a changeset for version bumping
 - `pnpm changeset:version` - Update package versions based on changesets
 - `pnpm changeset:publish` - Publish packages to npm

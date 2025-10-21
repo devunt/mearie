@@ -11,9 +11,9 @@ const createDedupLink = (): Link => {
     name: 'dedup',
 
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
-      const { document, variables } = ctx.operation;
+      const { artifact, variables } = ctx.operation;
 
-      const queryHash = document.hash;
+      const queryHash = hashString(artifact.source);
       const varsHash = variables ? hashString(stableStringify(variables)) : 0;
       const key = combineHashes(queryHash, varsHash);
 

@@ -28,10 +28,10 @@ describe('executeLinks', () => {
     const ctx: LinkContext = {
       operation: {
         kind: 'query',
-        document: {
-          body: 'test',
+        artifact: {
           kind: 'query',
-          hash: 0,
+          name: 'TestQuery',
+          source: 'query TestQuery { test }',
           selections: [],
         },
       },
@@ -58,10 +58,10 @@ describe('executeLinks', () => {
     const ctx: LinkContext = {
       operation: {
         kind: 'query',
-        document: {
-          body: 'test',
+        artifact: {
           kind: 'query',
-          hash: 0,
+          name: 'TestQuery',
+          source: 'query TestQuery { test }',
           selections: [],
         },
       },

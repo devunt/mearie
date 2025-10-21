@@ -17,7 +17,7 @@ const createHttpLink = (options: HttpOptions): Link => {
     name: 'http',
 
     async execute(ctx: LinkContext): Promise<LinkResult> {
-      const { document, variables, headers: operationHeaders } = ctx.operation;
+      const { artifact, variables, headers: operationHeaders } = ctx.operation;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -28,7 +28,7 @@ const createHttpLink = (options: HttpOptions): Link => {
           ...operationHeaders,
         },
         body: JSON.stringify({
-          query: document.body,
+          query: artifact.source,
           variables,
         }),
         signal: ctx.signal,

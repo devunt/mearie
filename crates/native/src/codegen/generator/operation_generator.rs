@@ -113,12 +113,10 @@ impl<'a, 'b> OperationGenerator<'a, 'b> {
 
         self.ast.ts_type_type_reference(
             oxc_span::SPAN,
-            self.ast
-                .ts_type_name_identifier_reference(oxc_span::SPAN, "Artifact"),
+            self.ast.ts_type_name_identifier_reference(oxc_span::SPAN, "Artifact"),
             Some(self.ast.ts_type_parameter_instantiation(oxc_span::SPAN, type_params)),
         )
     }
-
 }
 
 #[cfg(test)]
@@ -482,7 +480,10 @@ mod tests {
             assert_contains!(code, "export type CreateUser$data");
             assert_contains!(code, "createUser: {");
             assert_contains!(code, "export type CreateUser");
-            assert_contains!(code, "Artifact<\"mutation\", \"CreateUser\", CreateUser$data, CreateUser$vars>");
+            assert_contains!(
+                code,
+                "Artifact<\"mutation\", \"CreateUser\", CreateUser$data, CreateUser$vars>"
+            );
         } else {
             panic!("Expected operation definition");
         }

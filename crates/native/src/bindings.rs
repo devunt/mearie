@@ -70,7 +70,7 @@ pub fn napi_generate_code(schemas: Vec<SourceOwned>, documents: Vec<SourceOwned>
     }
 
     for document in parsed_documents.iter() {
-        if let Err(validation_errors) = registry.validate_and_load_document(*document) {
+        if let Err(validation_errors) = registry.validate_and_load_document(document) {
             errors.extend(validation_errors);
         }
     }

@@ -1,4 +1,4 @@
-import type { MaybePromise } from '@mearie/shared';
+import type { Artifact, MaybePromise } from '@mearie/shared';
 import type { Operation } from './types.ts';
 
 export type GraphQLError = {
@@ -9,7 +9,7 @@ export type GraphQLError = {
 };
 
 export type LinkContext = {
-  operation: Operation;
+  operation: Operation<Artifact<'query' | 'mutation' | 'subscription'>>;
   signal?: AbortSignal;
   metadata: Map<string, unknown>;
 };

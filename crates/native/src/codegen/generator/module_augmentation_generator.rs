@@ -74,7 +74,7 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
 
         let module_name = self
             .ast
-            .ts_module_declaration_name_string_literal(SPAN, "$graphql", None::<Atom>);
+            .ts_module_declaration_name_string_literal(SPAN, "~graphql", None::<Atom>);
 
         let module_decl = self.ast.ts_module_declaration(
             SPAN,
@@ -424,7 +424,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"$graphql\"");
+        assert_contains!(code, "declare module \"~graphql\"");
         assert_contains!(code, "export function graphql");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");
@@ -476,7 +476,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"$graphql\"");
+        assert_contains!(code, "declare module \"~graphql\"");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "type GetAllUsers");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");
@@ -527,7 +527,7 @@ mod tests {
         assert_ok!(&result);
         let code = result.unwrap();
 
-        assert_contains!(code, "declare module \"$graphql\"");
+        assert_contains!(code, "declare module \"~graphql\"");
         assert_contains!(code, "type GetUser");
         assert_contains!(code, "type UserFields");
         assert_contains!(code, "import(\"./types.d.ts\").GetUser");

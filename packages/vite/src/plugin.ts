@@ -5,7 +5,7 @@ import { loadConfig, mergeConfig, type ResolvedMearieConfig } from '@mearie/conf
 import { CodegenContext, createMatcher, findFiles, logger, report } from '@mearie/codegen';
 import type { MearieOptions } from './types.ts';
 
-const VIRTUAL_MODULE_ID = '$graphql';
+const VIRTUAL_MODULE_ID = '~graphql';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
 /**

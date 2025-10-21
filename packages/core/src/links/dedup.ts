@@ -1,11 +1,11 @@
 import type { Link, LinkContext, NextFn, LinkResult } from '../link.ts';
-import { stableStringify, hashString, combineHashes } from '../utils.ts';
+import { stringify } from '../utils.ts';
 
 /**
  * @returns The deduplication link.
  */
 const createDedupLink = (): Link => {
-  const pending = new Map<number, Promise<LinkResult>>();
+  const pending = new Map<string, Promise<LinkResult>>();
 
   return {
     name: 'dedup',
@@ -13,9 +13,8 @@ const createDedupLink = (): Link => {
     async execute(ctx: LinkContext, next: NextFn): Promise<LinkResult> {
       const { artifact, variables } = ctx.operation;
 
-      const queryHash = hashString(artifact.source);
-      const varsHash = variables ? hashString(stableStringify(variables)) : 0;
-      const key = combineHashes(queryHash, varsHash);
+      const vars = stringify(variables);
+      const key = `${artifact.source}@${vars}`;
 
       const existing = pending.get(key);
       if (existing) {

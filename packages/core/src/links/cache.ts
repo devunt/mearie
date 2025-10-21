@@ -7,9 +7,9 @@ export type CacheOptions = {
   fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
 };
 
-export interface CacheLink extends Link {
+export type CacheLink = {
   cache: Cache;
-}
+} & Link;
 
 /**
  * @param options - The cache options.

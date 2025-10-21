@@ -1,6 +1,5 @@
-import type { Selection, FieldSelection, Argument } from '@mearie/shared';
-import type { SchemaMeta, EntityMeta } from '../types.ts';
-import { stableStringify, hashString, combineHashes } from '../utils.ts';
+import type { FieldSelection, Argument } from '@mearie/shared';
+import { stringify } from '../utils.ts';
 import { EntityLinkKey } from './constants.ts';
 import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
 
@@ -26,67 +25,33 @@ export const resolveArguments = (
   args: Record<string, Argument>,
   variables: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const resolved: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(args)) {
-    resolved[key] = value.kind === 'literal' ? value.value : variables[value.name];
-  }
-
-  return resolved;
-};
-
-/**
- * Generates a cache key for a GraphQL field selection.
- * Always uses the actual field name (not alias) with a hash of the arguments.
- * @internal
- * @param selection - The field selection node containing field information.
- * @param variables - Variable values for resolving argument references.
- * @returns Field cache key string in "fieldName@argsHash" format.
- */
-export const makeFieldKey = (selection: FieldSelection, variables: Record<string, unknown>): FieldKey => {
-  const resolvedArgs = selection.args ? resolveArguments(selection.args, variables) : {};
-  const argsHash = hashString(stableStringify(resolvedArgs));
-  return `${selection.name}@${argsHash}`;
-};
-
-/**
- * Retrieves entity metadata from the schema for a given typename.
- * @internal
- * @param typename - The GraphQL typename to look up.
- * @param schemaMetadata - The schema metadata containing entity configurations.
- * @returns Entity metadata if found, undefined otherwise.
- */
-export const getEntityMetadata = (typename: string | undefined, schemaMetadata: SchemaMeta): EntityMeta | undefined => {
-  return typename ? schemaMetadata.entities[typename] : undefined;
-};
-
-/**
- * Determines whether a selection represents a GraphQL entity based on the schema metadata.
- * @internal
- * @param selection - The field selection node to check.
- * @param schemaMetadata - The schema metadata containing entity configurations.
- * @returns True if the selection's type is defined as an entity in the schema.
- */
-export const isEntity = (selection: Selection, schemaMetadata: SchemaMeta): boolean => {
-  return (
-    selection.kind === 'Field' && selection.type !== undefined && schemaMetadata.entities[selection.type] !== undefined
+  return Object.fromEntries(
+    Object.entries(args).map(([key, value]) => [key, value.kind === 'literal' ? value.value : variables[value.name]]),
   );
 };
 
 /**
- * Creates a unique query key combining document hash and variables.
+ * Generates a cache key for a GraphQL field selection.
+ * Always uses the actual field name (not alias) with a stringified representation of the arguments.
  * @internal
- * @param hash - Document hash.
- * @param variables - Query variables.
+ * @param selection - The field selection node containing field information.
+ * @param variables - Variable values for resolving argument references.
+ * @returns Field cache key string in "fieldName@argsString" format.
+ */
+export const makeFieldKey = (selection: FieldSelection, variables: Record<string, unknown>): FieldKey => {
+  const args = selection.args ? stringify(resolveArguments(selection.args, variables)) : '{}';
+  return `${selection.name}@${args}`;
+};
+
+/**
+ * Creates a unique query key combining operation name and variables.
+ * @internal
+ * @param operationName - Operation name.
+ * @param variables - Variables.
  * @returns Unique query key.
  */
-export const makeQueryKey = (hash: number, variables: unknown): QueryKey => {
-  if (!variables || (typeof variables === 'object' && Object.keys(variables).length === 0)) {
-    return hash;
-  }
-
-  const varsHash = hashString(stableStringify(variables));
-  return combineHashes(hash, varsHash);
+export const makeQueryKey = (operationName: string, variables: Record<string, unknown>): QueryKey => {
+  return `${operationName}@${stringify(variables)}`;
 };
 
 /**
@@ -108,39 +73,4 @@ export const makeDependencyKey = (storageKey: StorageKey, fieldKey: FieldKey): D
  */
 export const isEntityLink = (value: unknown): value is EntityLink => {
   return typeof value === 'object' && value !== null && EntityLinkKey in value;
-};
-
-/**
- * Extracts all field paths that a fragment reads.
- * Static analysis - done once per subscription.
- * @internal
- * @param selections - Fragment selections.
- * @param entityKey - Entity key to prepend to field paths.
- * @param variables - Query variables for resolving arguments.
- * @returns Array of field paths in the format "entityKey.fieldKey".
- */
-export const extractFieldPaths = (
-  selections: readonly Selection[],
-  entityKey: StorageKey,
-  variables: Record<string, unknown>,
-): DependencyKey[] => {
-  const paths: DependencyKey[] = [];
-
-  const traverse = (sels: readonly Selection[], currentEntityKey: StorageKey): void => {
-    for (const sel of sels) {
-      if (sel.kind === 'Field') {
-        const fieldKey = makeFieldKey(sel, variables);
-        paths.push(makeDependencyKey(currentEntityKey, fieldKey));
-
-        if (sel.selections) {
-          traverse(sel.selections, currentEntityKey);
-        }
-      } else if (sel.kind === 'InlineFragment') {
-        traverse(sel.selections, currentEntityKey);
-      }
-    }
-  };
-
-  traverse(selections, entityKey);
-  return paths;
 };

@@ -15,7 +15,7 @@ export type MutationOptions<TVariables> = {
   signal?: AbortSignal;
 };
 
-export type ClientConfig = {
+export type ClientOptions = {
   links: (Link | (() => Link))[];
 };
 
@@ -34,7 +34,7 @@ export class Client {
   /**
    * @param config - The client configuration.
    */
-  constructor(config: ClientConfig) {
+  constructor(config: ClientOptions) {
     this.links = config.links.map((link) => (typeof link === 'function' ? link() : link));
   }
 
@@ -103,20 +103,6 @@ export class Client {
   }
 
   /**
-   * @param document - The mutation document artifact.
-   * @param variables - The mutation variables.
-   * @param options - Mutation options.
-   * @returns The mutation result.
-   */
-  async mutation<TResult, TVariables = Record<string, never>>(
-    document: Artifact,
-    variables?: TVariables,
-    options?: MutationOptions<TVariables>,
-  ): Promise<{ data: TResult; errors?: import('./link.ts').GraphQLError[] }> {
-    return this.mutate<TResult, TVariables>(document, variables, options);
-  }
-
-  /**
    * @param document - The subscription document artifact.
    * @param variables - The subscription variables.
    * @returns An observable of subscription results.
@@ -145,6 +131,6 @@ export class Client {
  * @param config - The client configuration.
  * @returns A new client instance.
  */
-export const createClient = (config: ClientConfig): Client => {
+export const createClient = (config: ClientOptions): Client => {
   return new Client(config);
 };

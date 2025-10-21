@@ -2,20 +2,42 @@
 
 Svelte bindings for Mearie GraphQL client.
 
-This package provides Svelte stores and utilities for using Mearie in Svelte
-applications.
+This package provides Svelte stores, utilities, and the GraphQL client runtime
+for using Mearie in Svelte applications.
 
 ## Installation
 
 ```bash
-npm install mearie @mearie/svelte
+npm install -D mearie
+npm install @mearie/svelte
 ```
+
+The `mearie` package provides build-time code generation, while `@mearie/svelte`
+includes the runtime client and Svelte-specific stores.
 
 ## Usage
 
+First, create a client and set it up in your app:
+
 ```svelte
+<!-- src/App.svelte -->
 <script lang="ts">
-import { createClient, httpLink, cacheLink, graphql } from 'mearie';
+import { createClient, httpLink, cacheLink, setClient } from '@mearie/svelte';
+
+const client = createClient({
+  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+});
+
+setClient(client);
+</script>
+```
+
+Then use it in your components:
+
+```svelte
+<!-- src/components/UserProfile.svelte -->
+<script lang="ts">
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/svelte';
 
 interface Props {

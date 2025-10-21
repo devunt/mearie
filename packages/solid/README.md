@@ -2,21 +2,27 @@
 
 Solid bindings for Mearie GraphQL client.
 
-This package provides Solid primitives and components for using Mearie in Solid
-applications.
+This package provides Solid primitives, components, and the GraphQL client
+runtime for using Mearie in Solid applications.
 
 ## Installation
 
 ```bash
-npm install mearie @mearie/solid
+npm install -D mearie
+npm install @mearie/solid
 ```
+
+The `mearie` package provides build-time code generation, while `@mearie/solid`
+includes the runtime client and Solid-specific primitives.
 
 ## Usage
 
+First, create a client and wrap your app with the provider:
+
 ```tsx
+// src/App.tsx
 import { type Component } from 'solid-js';
-import { createClient, httpLink, cacheLink, graphql } from 'mearie';
-import { ClientProvider, createQuery } from '@mearie/solid';
+import { createClient, httpLink, cacheLink, ClientProvider } from '@mearie/solid';
 
 const client = createClient({
   links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
@@ -25,10 +31,19 @@ const client = createClient({
 const App: Component = () => {
   return (
     <ClientProvider client={client}>
-      <UserProfile userId="1" />
+      {/* Your app components */}
     </ClientProvider>
   );
 };
+```
+
+Then use it in your components:
+
+```tsx
+// src/components/UserProfile.tsx
+import { type Component } from 'solid-js';
+import { graphql } from '~graphql';
+import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {
   userId: string;

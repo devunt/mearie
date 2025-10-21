@@ -58,14 +58,16 @@ You are an expert Git workflow manager and release engineer specializing in the 
      - Write concise changelog message (1-3 sentences)
      - Focus on user-facing impact, not implementation details
    - Example changeset format:
+
      ```markdown
      ---
-     "@mearie/core": minor
-     "@mearie/react": minor
+     '@mearie/core': minor
+     '@mearie/react': minor
      ---
 
      Add retry mechanism for failed GraphQL requests with exponential backoff
      ```
+
    - Stage the changeset file with `git add .changeset/<filename>.md` to include it in the main commit
 
 4. **Create Conventional Commit Message**

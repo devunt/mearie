@@ -42,7 +42,12 @@ impl<'a, 'b> FragmentGenerator<'a, 'b> {
         Ok(vec![data_stmt, key_stmt, artifact_stmt])
     }
 
-    fn create_document_node_type(&self, kind: &'b str, name: &'b str, data_type: oxc_ast::ast::TSType<'b>) -> oxc_ast::ast::TSType<'b> {
+    fn create_document_node_type(
+        &self,
+        kind: &'b str,
+        name: &'b str,
+        data_type: oxc_ast::ast::TSType<'b>,
+    ) -> oxc_ast::ast::TSType<'b> {
         use oxc_span::Atom;
 
         let mut type_params = self.ast.vec();
@@ -66,12 +71,10 @@ impl<'a, 'b> FragmentGenerator<'a, 'b> {
 
         self.ast.ts_type_type_reference(
             oxc_span::SPAN,
-            self.ast
-                .ts_type_name_identifier_reference(oxc_span::SPAN, "Artifact"),
+            self.ast.ts_type_name_identifier_reference(oxc_span::SPAN, "Artifact"),
             Some(self.ast.ts_type_parameter_instantiation(oxc_span::SPAN, type_params)),
         )
     }
-
 }
 
 #[cfg(test)]

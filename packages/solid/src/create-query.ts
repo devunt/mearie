@@ -46,5 +46,5 @@ export const createQuery = <T extends Artifact<'query'>>(
       return error();
     },
     refetch: () => {},
-  };
+  } as Query<T>;
 };

@@ -20,5 +20,6 @@
 
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
-  }
+  },
+  "exclude": ["**/dist", "**/node_modules", "packages/react", "packages/solid"]
 }

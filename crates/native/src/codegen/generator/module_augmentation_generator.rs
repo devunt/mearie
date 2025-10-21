@@ -125,7 +125,9 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
             false,
         );
 
-        Some(Statement::from(Declaration::TSTypeAliasDeclaration(self.ast.alloc(ts_type_alias))))
+        Some(Statement::from(Declaration::TSTypeAliasDeclaration(
+            self.ast.alloc(ts_type_alias),
+        )))
     }
 
     fn create_type_alias_for_fragment(&self, fragment: &FragmentDefinition<'b>) -> Option<Statement<'b>> {
@@ -147,7 +149,9 @@ impl<'a, 'b> ModuleAugmentationGenerator<'a, 'b> {
             false,
         );
 
-        Some(Statement::from(Declaration::TSTypeAliasDeclaration(self.ast.alloc(ts_type_alias))))
+        Some(Statement::from(Declaration::TSTypeAliasDeclaration(
+            self.ast.alloc(ts_type_alias),
+        )))
     }
 
     fn create_function_overload(&self, operation: &OperationDefinition<'b>) -> Option<Statement<'b>> {

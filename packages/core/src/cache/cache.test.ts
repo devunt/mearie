@@ -58,13 +58,19 @@ const createUserQuery = (): Artifact<'query', 'GetUser', UserQueryResult, { id: 
   source: 'query GetUser($id: ID!) { user(id: $id) { __typename id name email } }',
   selections: [
     {
+      kind: 'Field' as const,
       name: 'user',
       type: 'User',
       array: false,
       args: {
         id: { kind: 'variable', name: 'id' },
       },
-      selections: [{ name: '__typename' }, { name: 'id' }, { name: 'name' }, { name: 'email' }],
+      selections: [
+        { kind: 'Field' as const, name: '__typename' },
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: 'email' },
+      ],
     },
   ],
 });
@@ -80,6 +86,7 @@ const createUserWithPostsQuery = (): Artifact<
   source: 'query GetUserWithPosts($id: ID!) { user(id: $id) { __typename id name posts { __typename id title } } }',
   selections: [
     {
+      kind: 'Field' as const,
       name: 'user',
       type: 'User',
       array: false,
@@ -87,14 +94,19 @@ const createUserWithPostsQuery = (): Artifact<
         id: { kind: 'variable', name: 'id' },
       },
       selections: [
-        { name: '__typename' },
-        { name: 'id' },
-        { name: 'name' },
+        { kind: 'Field' as const, name: '__typename' },
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
         {
+          kind: 'Field' as const,
           name: 'posts',
           type: 'Post',
           array: true,
-          selections: [{ name: '__typename' }, { name: 'id' }, { name: 'title' }],
+          selections: [
+            { kind: 'Field' as const, name: '__typename' },
+            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: 'title' },
+          ],
         },
       ],
     },
@@ -107,17 +119,23 @@ const createPostsQuery = (): Artifact<'query', 'GetPosts', PostsQueryResult, Rec
   source: 'query GetPosts { posts { __typename id title author { __typename id name } } }',
   selections: [
     {
+      kind: 'Field' as const,
       name: 'posts',
       type: 'Post',
       array: true,
       selections: [
-        { name: '__typename' },
-        { name: 'id' },
-        { name: 'title' },
+        { kind: 'Field' as const, name: '__typename' },
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'title' },
         {
+          kind: 'Field' as const,
           name: 'author',
           type: 'User',
-          selections: [{ name: '__typename' }, { name: 'id' }, { name: 'name' }],
+          selections: [
+            { kind: 'Field' as const, name: '__typename' },
+            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: 'name' },
+          ],
         },
       ],
     },

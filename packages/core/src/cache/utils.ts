@@ -1,4 +1,4 @@
-import type { Selection, Argument } from '@mearie/shared';
+import type { Selection, FieldSelection, Argument } from '@mearie/shared';
 import type { SchemaMeta, EntityMeta } from '../types.ts';
 import { stableStringify, hashString, combineHashes } from '../utils.ts';
 import { EntityLinkKey } from './constants.ts';
@@ -39,11 +39,11 @@ export const resolveArguments = (
  * Generates a cache key for a GraphQL field selection.
  * Always uses the actual field name (not alias) with a hash of the arguments.
  * @internal
- * @param selection - The selection node containing field information.
+ * @param selection - The field selection node containing field information.
  * @param variables - Variable values for resolving argument references.
  * @returns Field cache key string in "fieldName@argsHash" format.
  */
-export const makeFieldKey = (selection: Selection, variables: Record<string, unknown>): FieldKey => {
+export const makeFieldKey = (selection: FieldSelection, variables: Record<string, unknown>): FieldKey => {
   const resolvedArgs = selection.args ? resolveArguments(selection.args, variables) : {};
   const argsHash = hashString(stableStringify(resolvedArgs));
   return `${selection.name}@${argsHash}`;
@@ -63,12 +63,14 @@ export const getEntityMetadata = (typename: string | undefined, schemaMetadata: 
 /**
  * Determines whether a selection represents a GraphQL entity based on the schema metadata.
  * @internal
- * @param selection - The selection node to check.
+ * @param selection - The field selection node to check.
  * @param schemaMetadata - The schema metadata containing entity configurations.
  * @returns True if the selection's type is defined as an entity in the schema.
  */
 export const isEntity = (selection: Selection, schemaMetadata: SchemaMeta): boolean => {
-  return selection.type !== undefined && schemaMetadata.entities[selection.type] !== undefined;
+  return (
+    selection.kind === 'Field' && selection.type !== undefined && schemaMetadata.entities[selection.type] !== undefined
+  );
 };
 
 /**
@@ -106,4 +108,39 @@ export const makeDependencyKey = (storageKey: StorageKey, fieldKey: FieldKey): D
  */
 export const isEntityLink = (value: unknown): value is EntityLink => {
   return typeof value === 'object' && value !== null && EntityLinkKey in value;
+};
+
+/**
+ * Extracts all field paths that a fragment reads.
+ * Static analysis - done once per subscription.
+ * @internal
+ * @param selections - Fragment selections.
+ * @param entityKey - Entity key to prepend to field paths.
+ * @param variables - Query variables for resolving arguments.
+ * @returns Array of field paths in the format "entityKey.fieldKey".
+ */
+export const extractFieldPaths = (
+  selections: readonly Selection[],
+  entityKey: StorageKey,
+  variables: Record<string, unknown>,
+): DependencyKey[] => {
+  const paths: DependencyKey[] = [];
+
+  const traverse = (sels: readonly Selection[], currentEntityKey: StorageKey): void => {
+    for (const sel of sels) {
+      if (sel.kind === 'Field') {
+        const fieldKey = makeFieldKey(sel, variables);
+        paths.push(makeDependencyKey(currentEntityKey, fieldKey));
+
+        if (sel.selections) {
+          traverse(sel.selections, currentEntityKey);
+        }
+      } else if (sel.kind === 'InlineFragment') {
+        traverse(sel.selections, currentEntityKey);
+      }
+    }
+  };
+
+  traverse(selections, entityKey);
+  return paths;
 };

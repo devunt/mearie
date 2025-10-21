@@ -9,7 +9,7 @@ Automatically retry failed requests with exponential backoff.
 ## Basic Usage
 
 ```typescript
-import { createClient, retryLink, httpLink } from 'mearie';
+import { createClient, retryLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [retryLink(), httpLink({ url: 'https://api.example.com/graphql' })],

@@ -9,7 +9,7 @@ Send GraphQL operations to a server over HTTP.
 ## Basic Usage
 
 ```typescript
-import { createClient, httpLink } from 'mearie';
+import { createClient, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [httpLink({ url: 'https://api.example.com/graphql' })],

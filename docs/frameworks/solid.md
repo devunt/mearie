@@ -13,23 +13,28 @@ Install the core package and the Solid integration:
 ::: code-group
 
 ```sh [npm]
-npm install mearie @mearie/solid
+npm install -D mearie
+npm install @mearie/solid
 ```
 
 ```sh [yarn]
-yarn add mearie @mearie/solid
+yarn add -D mearie
+yarn add @mearie/solid
 ```
 
 ```sh [pnpm]
-pnpm add mearie @mearie/solid
+pnpm add -D mearie
+pnpm add @mearie/solid
 ```
 
 ```sh [bun]
-bun add mearie @mearie/solid
+bun add -D mearie
+bun add @mearie/solid
 ```
 
 ```sh [deno]
-deno add npm:mearie npm:@mearie/solid
+deno add --dev npm:mearie
+deno add npm:@mearie/solid
 ```
 
 :::
@@ -57,11 +62,11 @@ By default, Mearie looks for `./schema.graphql` relative to your `vite.config.ts
 
 ### 2. Create Client
 
-Create a GraphQL client with your API endpoint. Links are middleware-style handlers that process requests and responses. At least one terminating link is required (in this case, `httpLink`). See [Links](/guides/links) for more details.
+Create a GraphQL client with your API endpoint. Import `createClient` and links from `@mearie/solid`:
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from 'mearie';
+import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/solid';
 
 export const client = createClient({
   links: [
@@ -73,6 +78,8 @@ export const client = createClient({
   ],
 });
 ```
+
+See [Links](/guides/links) for more details on available links and middleware.
 
 ### 3. Set Up Provider
 
@@ -96,7 +103,7 @@ Fetch data with fine-grained reactivity:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {
@@ -144,7 +151,7 @@ Modify data with automatic cache updates:
 
 ```tsx
 import { type Component, createSignal } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createMutation } from '@mearie/solid';
 
 interface EditUserFormProps {
@@ -186,9 +193,9 @@ Co-locate data requirements with components:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createFragment } from '@mearie/solid';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 interface UserCardProps {
   user: UserCard_user$key;
@@ -223,7 +230,7 @@ Real-time updates via subscriptions:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createSubscription } from '@mearie/solid';
 
 interface ChatMessagesProps {
@@ -266,7 +273,7 @@ Solid's fine-grained reactivity works seamlessly with Mearie:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {

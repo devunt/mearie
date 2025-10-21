@@ -9,7 +9,7 @@ Normalized caching with automatic dependency tracking and fine-grained updates.
 ## Basic Usage
 
 ```typescript
-import { createClient, cacheLink, httpLink } from 'mearie';
+import { createClient, cacheLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],

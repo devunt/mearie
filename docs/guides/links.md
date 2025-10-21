@@ -13,7 +13,7 @@ Links are composable middleware that process your GraphQL operations. Each link 
 ## Basic Usage
 
 ```typescript
-import { createClient, httpLink, cacheLink } from 'mearie';
+import { createClient, httpLink, cacheLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],

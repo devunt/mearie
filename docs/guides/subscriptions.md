@@ -13,7 +13,7 @@ Subscriptions enable real-time communication between client and server for chat 
 Define a subscription like queries and mutations:
 
 ```typescript
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useSubscription } from '@mearie/react';
 
 const ChatMessages = ({ chatId }: { chatId: string }) => {
@@ -57,7 +57,7 @@ Configure your client to support subscriptions.
 Simple HTTP-based protocol. Recommended for most use cases.
 
 ```typescript
-import { createClient, httpLink, sseLink } from 'mearie';
+import { createClient, httpLink, sseLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [
@@ -72,7 +72,7 @@ export const client = createClient({
 Alternative protocol with lower latency.
 
 ```typescript
-import { createClient, httpLink, wsLink } from 'mearie';
+import { createClient, httpLink, wsLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [httpLink({ url: 'https://api.example.com/graphql' }), wsLink({ url: 'wss://api.example.com/graphql' })],

@@ -9,7 +9,7 @@ Use WebSocket connections for real-time GraphQL subscriptions.
 ## Basic Usage
 
 ```typescript
-import { createClient, wsLink } from 'mearie';
+import { createClient, wsLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [wsLink({ url: 'wss://api.example.com/graphql' })],

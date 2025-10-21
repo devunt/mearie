@@ -9,7 +9,7 @@ Learn how to fetch data with queries.
 ## Basic Query
 
 ```tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 
 export const UserProfile = ({ userId }: { userId: string }) => {
@@ -109,7 +109,7 @@ await refetch();
 Execute queries imperatively:
 
 ```typescript
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { client } from './lib/graphql-client';
 
 const searchUsers = async (term: string) => {

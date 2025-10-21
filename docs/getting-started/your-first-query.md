@@ -19,7 +19,7 @@ The `graphql` function requires template literals (backticks) for build-time typ
 <!-- prettier-ignore-start -->
 ```tsx twoslash mearie [React]
 // src/components/UserProfile.tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 
 interface UserProfileProps {
@@ -68,7 +68,7 @@ export const UserProfile = ({ userId }: UserProfileProps) => {
 ```vue [Vue]
 <!-- src/components/UserProfile.vue -->
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -106,7 +106,7 @@ const { data, loading, error } = useQuery(
 ```svelte [Svelte]
 <!-- src/components/UserProfile.svelte -->
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/svelte';
 
 interface Props {
@@ -152,7 +152,7 @@ const query = createQuery(
 ```tsx [Solid]
 // src/components/UserProfile.tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {
@@ -203,7 +203,7 @@ Write a mutation directly in your component:
 
 ```tsx twoslash mearie [React]
 import { useState } from 'react';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useMutation } from '@mearie/react';
 
 interface EditUserFormProps {
@@ -242,7 +242,7 @@ export const EditUserForm = ({ userId }: EditUserFormProps) => {
 ```vue [Vue]
 <script setup lang="ts">
 import { ref } from 'vue';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useMutation } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -274,7 +274,7 @@ const handleSubmit = async () => {
 
 ```svelte [Svelte]
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createMutation } from '@mearie/svelte';
 
 interface Props {
@@ -311,7 +311,7 @@ const handleSubmit = async (e: SubmitEvent) => {
 
 ```tsx [Solid]
 import { type Component, createSignal } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createMutation } from '@mearie/solid';
 
 interface EditUserFormProps {

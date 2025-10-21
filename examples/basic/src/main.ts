@@ -1,5 +1,5 @@
-import { graphql } from '$graphql';
-import type { UserProfile$key } from '$graphql';
+import { graphql } from '~graphql';
+import type { UserProfile$key } from '~graphql';
 import { useFragment, useMutation, useQuery } from '@mearie/react';
 
 const getUserQuery = useQuery(

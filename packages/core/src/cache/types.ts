@@ -16,7 +16,7 @@ export type StorageKey = EntityKey | typeof RootFieldKey;
  * Field key used to identify fields in the cache.
  * @internal
  */
-export type FieldKey = `${string}@${number}`;
+export type FieldKey = `${string}@${string}`;
 
 /**
  * Scalar values that can be stored in the cache.
@@ -25,10 +25,10 @@ export type FieldKey = `${string}@${number}`;
 export type Scalar = string | number | boolean | null;
 
 /**
- * Unique identifier for a query based on document hash and variables.
+ * Unique identifier for an query based on operation name and variables.
  * @internal
  */
-export type QueryKey = number;
+export type QueryKey = `${string}@${string}`;
 
 /**
  * Dependency key in the format "storageKey.field" used to track field dependencies.
@@ -46,7 +46,7 @@ export type EntityLink = { [EntityLinkKey]: EntityKey };
  * Field value that can be stored in the cache.
  * @internal
  */
-export type FieldValue = Scalar | Scalar[] | EntityLink | EntityLink[] | { [key: string]: FieldValue };
+export type FieldValue = Scalar | EntityLink | { [key: string]: FieldValue } | FieldValue[] | undefined;
 
 /**
  * Fields record containing field keys and their values.
@@ -58,7 +58,7 @@ export type Fields = Record<FieldKey, FieldValue>;
  * Storage map containing normalized entities and root query fields.
  * @internal
  */
-export type Storage = Map<StorageKey, Fields>;
+export type Storage = Record<StorageKey, Fields>;
 
 /**
  * GraphQL response data type.
@@ -67,3 +67,11 @@ export type Storage = Map<StorageKey, Fields>;
 export type Data = {
   [key: string]: Scalar | Scalar[] | Data | Data[];
 };
+
+/**
+ * Listener function.
+ * @internal
+ */
+export type Listener = () => void;
+
+export type Subscription = { listener: Listener };

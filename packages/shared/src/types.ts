@@ -6,7 +6,16 @@ export type List<T> = readonly T[];
 
 export type Opaque<T> = T & { readonly ' $opaque'?: unique symbol };
 
+export type SchemaMeta = {
+  entities: Record<string, EntityMeta>;
+};
+
+export type EntityMeta = {
+  keyFields: string[];
+};
+
 export type ArtifactKind = 'query' | 'mutation' | 'subscription' | 'fragment';
+export type OperationKind = Extract<ArtifactKind, 'query' | 'mutation' | 'subscription'>;
 
 export type Artifact<
   Kind extends ArtifactKind = ArtifactKind,

@@ -71,6 +71,7 @@ export default defineConfig(
       ],
       'jsdoc/sort-tags': 'error',
       'unicorn/no-null': 'off',
+      'unicorn/prefer-switch': 'off',
       'unicorn/prevent-abbreviations': 'off',
     },
   },

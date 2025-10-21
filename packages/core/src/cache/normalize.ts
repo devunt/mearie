@@ -1,37 +1,34 @@
-import type { Selection } from '@mearie/shared';
-import type { SchemaMeta } from '../types.ts';
-import { makeEntityKey, makeFieldKey, getEntityMetadata } from './utils.ts';
+import type { Selection, SchemaMeta } from '@mearie/shared';
+import { makeEntityKey, makeFieldKey, isEntityLink } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
-import type { StorageKey, FieldKey, Storage, Fields } from './types.ts';
+import type { StorageKey, FieldKey, Storage } from './types.ts';
 
-type Accessor = (storageKey: StorageKey, fieldKey: FieldKey) => void;
-
-/**
- * @param data - The data to normalize.
- * @param selections - The selection nodes.
- * @param schemaMetadata - The schema metadata.
- * @param storage - The normalized storage map.
- * @param variables - The variable values.
- * @param accessor - Callback invoked when a field dependency is encountered.
- */
 export const normalize = (
-  data: unknown,
+  schemaMeta: SchemaMeta,
   selections: readonly Selection[],
-  schemaMetadata: SchemaMeta,
   storage: Storage,
+  data: unknown,
   variables: Record<string, unknown>,
-  accessor: Accessor,
+  accessor?: (storageKey: StorageKey, fieldKey: FieldKey) => void,
 ): void => {
-  const normalizeField = (parentKey: StorageKey, selections: readonly Selection[], value: unknown): unknown => {
+  const normalizeField = (storageKey: StorageKey | null, selections: readonly Selection[], value: unknown): unknown => {
     if (value === null || value === undefined) {
       return value;
     }
 
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return value;
+    if (Array.isArray(value)) {
+      return value.map((item: unknown) => normalizeField(storageKey, selections, item));
     }
 
     const data = value as Record<string, unknown>;
+
+    const typename = data.__typename as string;
+    const entityMeta = schemaMeta.entities[typename];
+    if (entityMeta) {
+      const keys = entityMeta.keyFields.map((field) => data[field]);
+      storageKey = makeEntityKey(typename, keys);
+    }
+
     const fields: Record<string, unknown> = {};
 
     for (const selection of selections) {
@@ -39,66 +36,30 @@ export const normalize = (
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[selection.alias ?? selection.name];
 
-        accessor(parentKey, fieldKey);
-
-        if (fieldValue === undefined) {
-          continue;
+        if (storageKey !== null) {
+          accessor?.(storageKey, fieldKey);
         }
 
-        if (Array.isArray(fieldValue)) {
-          fields[fieldKey] = fieldValue.map((item: unknown) =>
-            selection.selections ? normalizeField(parentKey, selection.selections, item) : item,
-          );
-        } else if (selection.selections) {
-          fields[fieldKey] = normalizeField(parentKey, selection.selections, fieldValue);
-        } else {
-          fields[fieldKey] = fieldValue;
-        }
-      } else if (selection.kind === 'FragmentSpread') {
-        // FragmentSpread: selections를 재귀 처리하여 캐시에 저장
-        const fragmentResult = normalizeField(parentKey, selection.selections, value);
-        Object.assign(fields, fragmentResult);
-      } else if (selection.kind === 'InlineFragment') {
-        // InlineFragment: typename 체크 후 처리
-        const typename = data.__typename as string | undefined;
-        if (typename === selection.on) {
-          const inlineResult = normalizeField(parentKey, selection.selections, value);
-          Object.assign(fields, inlineResult);
+        fields[fieldKey] = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;
+      } else if (
+        selection.kind === 'FragmentSpread' ||
+        (selection.kind === 'InlineFragment' && selection.on === typename)
+      ) {
+        const inner = normalizeField(storageKey, selection.selections, value);
+        if (!isEntityLink(inner)) {
+          Object.assign(fields, inner);
         }
       }
     }
 
-    const typename = data.__typename as string | undefined;
-    const entityMetadata = typename ? getEntityMetadata(typename, schemaMetadata) : undefined;
-
-    if (entityMetadata) {
-      const keyValues: unknown[] = [];
-
-      for (const field of entityMetadata.keyFields) {
-        const fieldValue = data[field];
-        if (fieldValue == null) {
-          return fields;
-        }
-        keyValues.push(fieldValue);
-      }
-
-      const entityKey = makeEntityKey(typename!, keyValues);
-      const existingEntity = storage.get(entityKey) ?? {};
-      const normalized = { ...existingEntity, ...fields };
-
-      storage.set(entityKey, normalized as Fields);
-
-      return { [EntityLinkKey]: entityKey };
+    if (entityMeta && storageKey !== null) {
+      storage[storageKey] = { ...storage[storageKey], ...fields };
+      return { [EntityLinkKey]: storageKey };
     }
 
     return fields;
   };
 
-  if (data === null || typeof data !== 'object') {
-    return;
-  }
-
-  const existingRoot = storage.get(RootFieldKey) ?? {};
-  const result = normalizeField(RootFieldKey, selections, data);
-  storage.set(RootFieldKey, { ...existingRoot, ...(result as object) } as Fields);
+  const fields = normalizeField(RootFieldKey, selections, data) as Record<string, unknown>;
+  storage[RootFieldKey] = { ...storage[RootFieldKey], ...fields };
 };

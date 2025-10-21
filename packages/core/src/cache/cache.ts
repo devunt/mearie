@@ -13,7 +13,6 @@ import type { DependencyKey, Storage, Listener, EntityKey, Subscription } from '
 export class Cache {
   #schemaMeta: SchemaMeta;
   #storage = { [RootFieldKey]: {} } as Storage;
-
   #subscriptions = new Map<DependencyKey, Set<Subscription>>();
 
   constructor(schemaMetadata: SchemaMeta) {
@@ -27,7 +26,33 @@ export class Cache {
    * @param data - Query result data.
    */
   writeQuery<T extends Artifact>(artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
-    normalize(this.#schemaMeta, artifact.selections, this.#storage, data, variables as Record<string, unknown>);
+    const dependencies = new Set<DependencyKey>();
+    const subscriptions = new Set<Subscription>();
+
+    normalize(
+      this.#schemaMeta,
+      artifact.selections,
+      this.#storage,
+      data,
+      variables as Record<string, unknown>,
+      (storageKey, fieldKey) => {
+        const dependencyKey = makeDependencyKey(storageKey, fieldKey);
+        dependencies.add(dependencyKey);
+      },
+    );
+
+    for (const dependency of dependencies) {
+      const ss = this.#subscriptions.get(dependency);
+      if (ss) {
+        for (const s of ss) {
+          subscriptions.add(s);
+        }
+      }
+    }
+
+    for (const subscription of subscriptions) {
+      subscription.listener();
+    }
   }
 
   /**
@@ -43,6 +68,7 @@ export class Cache {
       this.#storage[RootFieldKey],
       variables as Record<string, unknown>,
     );
+
     return partial ? null : (data as DataOf<T>);
   }
 
@@ -55,7 +81,6 @@ export class Cache {
    */
   subscribeQuery<T extends Artifact<'query'>>(artifact: T, variables: VariablesOf<T>, listener: Listener): () => void {
     const dependencies = new Set<DependencyKey>();
-    const subscription = { listener };
 
     denormalize(
       artifact.selections,
@@ -68,21 +93,7 @@ export class Cache {
       },
     );
 
-    for (const dependency of dependencies) {
-      const subscriptions = this.#subscriptions.get(dependency) ?? new Set();
-      subscriptions.add(subscription);
-      this.#subscriptions.set(dependency, subscriptions);
-    }
-
-    return () => {
-      for (const dependency of dependencies) {
-        const subscriptions = this.#subscriptions.get(dependency);
-        subscriptions?.delete(subscription);
-        if (subscriptions?.size === 0) {
-          this.#subscriptions.delete(dependency);
-        }
-      }
-    };
+    return this.#subscribe(dependencies, listener);
   }
 
   /**
@@ -112,14 +123,18 @@ export class Cache {
     listener: Listener,
   ): () => void {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
-
     const dependencies = new Set<DependencyKey>();
-    const subscription = { listener };
 
     denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
       const dependencyKey = makeDependencyKey(storageKey, fieldKey);
       dependencies.add(dependencyKey);
     });
+
+    return this.#subscribe(dependencies, listener);
+  }
+
+  #subscribe(dependencies: Set<DependencyKey>, listener: Listener): () => void {
+    const subscription = { listener };
 
     for (const dependency of dependencies) {
       const subscriptions = this.#subscriptions.get(dependency) ?? new Set();

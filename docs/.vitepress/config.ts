@@ -37,6 +37,7 @@ export default defineConfig({
             jsx: 5,
             jsxImportSource: 'react',
             moduleResolution: ModuleResolutionKind.Bundler,
+            types: ['../.mearie/graphql.d.ts'],
           },
         },
       }),

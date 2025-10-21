@@ -10,81 +10,101 @@ Install Mearie and your framework integration.
 
 Mearie consists of two packages:
 
-- `mearie` - The core GraphQL client
-- `@mearie/{framework}` - Framework-specific bindings
+- `mearie` - Build tools and codegen (dev dependency)
+- `@mearie/{framework}` - Framework-specific bindings (includes client and runtime)
 
-Install the core package and your framework integration:
+Install the build tools as dev dependency and your framework integration:
 
 ::: code-group
 
 ```sh [npm]
 # React
-npm install mearie @mearie/react
+npm install -D mearie
+npm install @mearie/react
 
 # Vue
-npm install mearie @mearie/vue
+npm install -D mearie
+npm install @mearie/vue
 
 # Svelte
-npm install mearie @mearie/svelte
+npm install -D mearie
+npm install @mearie/svelte
 
 # Solid
-npm install mearie @mearie/solid
+npm install -D mearie
+npm install @mearie/solid
 ```
 
 ```sh [yarn]
 # React
-yarn add mearie @mearie/react
+yarn add -D mearie
+yarn add @mearie/react
 
 # Vue
-yarn add mearie @mearie/vue
+yarn add -D mearie
+yarn add @mearie/vue
 
 # Svelte
-yarn add mearie @mearie/svelte
+yarn add -D mearie
+yarn add @mearie/svelte
 
 # Solid
-yarn add mearie @mearie/solid
+yarn add -D mearie
+yarn add @mearie/solid
 ```
 
 ```sh [pnpm]
 # React
-pnpm add mearie @mearie/react
+pnpm add -D mearie
+pnpm add @mearie/react
 
 # Vue
-pnpm add mearie @mearie/vue
+pnpm add -D mearie
+pnpm add @mearie/vue
 
 # Svelte
-pnpm add mearie @mearie/svelte
+pnpm add -D mearie
+pnpm add @mearie/svelte
 
 # Solid
-pnpm add mearie @mearie/solid
+pnpm add -D mearie
+pnpm add @mearie/solid
 ```
 
 ```sh [bun]
 # React
-bun add mearie @mearie/react
+bun add -D mearie
+bun add @mearie/react
 
 # Vue
-bun add mearie @mearie/vue
+bun add -D mearie
+bun add @mearie/vue
 
 # Svelte
-bun add mearie @mearie/svelte
+bun add -D mearie
+bun add @mearie/svelte
 
 # Solid
-bun add mearie @mearie/solid
+bun add -D mearie
+bun add @mearie/solid
 ```
 
 ```sh [deno]
 # React
-deno add npm:mearie npm:@mearie/react
+deno add --dev npm:mearie
+deno add npm:@mearie/react
 
 # Vue
-deno add npm:mearie npm:@mearie/vue
+deno add --dev npm:mearie
+deno add npm:@mearie/vue
 
 # Svelte
-deno add npm:mearie npm:@mearie/svelte
+deno add --dev npm:mearie
+deno add npm:@mearie/svelte
 
 # Solid
-deno add npm:mearie npm:@mearie/solid
+deno add --dev npm:mearie
+deno add npm:@mearie/solid
 ```
 
 :::

@@ -13,23 +13,28 @@ Install the core package and the Vue integration:
 ::: code-group
 
 ```sh [npm]
-npm install mearie @mearie/vue
+npm install -D mearie
+npm install @mearie/vue
 ```
 
 ```sh [yarn]
-yarn add mearie @mearie/vue
+yarn add -D mearie
+yarn add @mearie/vue
 ```
 
 ```sh [pnpm]
-pnpm add mearie @mearie/vue
+pnpm add -D mearie
+pnpm add @mearie/vue
 ```
 
 ```sh [bun]
-bun add mearie @mearie/vue
+bun add -D mearie
+bun add @mearie/vue
 ```
 
 ```sh [deno]
-deno add npm:mearie npm:@mearie/vue
+deno add --dev npm:mearie
+deno add npm:@mearie/vue
 ```
 
 :::
@@ -57,11 +62,11 @@ By default, Mearie looks for `./schema.graphql` relative to your `vite.config.ts
 
 ### 2. Create Client
 
-Create a GraphQL client with your API endpoint. Links are middleware-style handlers that process requests and responses. At least one terminating link is required (in this case, `httpLink`). See [Links](/guides/links) for more details.
+Create a GraphQL client with your API endpoint. Import `createClient` and links from `@mearie/vue`:
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from 'mearie';
+import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/vue';
 
 export const client = createClient({
   links: [
@@ -73,6 +78,8 @@ export const client = createClient({
   ],
 });
 ```
+
+See [Links](/guides/links) for more details on available links and middleware.
 
 ### 3. Set Up Provider
 
@@ -94,7 +101,7 @@ Fetch data with automatic caching:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -137,7 +144,7 @@ Modify data with automatic cache updates:
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useMutation } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -173,9 +180,9 @@ Co-locate data requirements with components:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useFragment } from '@mearie/vue';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 const props = defineProps<{ user: UserCard_user$key }>();
 
@@ -207,7 +214,7 @@ Real-time updates via subscriptions:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useSubscription } from '@mearie/vue';
 
 const props = defineProps<{ chatId: string }>();
@@ -246,7 +253,7 @@ Variables automatically track Vue reactivity:
 ```vue
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 
 const userId = ref('123');

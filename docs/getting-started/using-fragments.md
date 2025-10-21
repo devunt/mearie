@@ -30,9 +30,9 @@ Define a fragment with your component:
 
 ```tsx [React]
 // src/components/UserCard.tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useFragment } from '@mearie/react';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
   const data = useFragment(
@@ -60,9 +60,9 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 ```vue [Vue]
 <!-- src/components/UserCard.vue -->
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useFragment } from '@mearie/vue';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 const props = defineProps<{ user: UserCard_user$key }>();
 
@@ -91,9 +91,9 @@ const data = useFragment(
 ```svelte [Svelte]
 <!-- src/components/UserCard.svelte -->
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createFragment } from '@mearie/svelte';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 interface Props {
   user: UserCard_user$key;
@@ -124,9 +124,9 @@ const data = createFragment(
 ```tsx [Solid]
 // src/components/UserCard.tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createFragment } from '@mearie/solid';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 interface UserCardProps {
   user: UserCard_user$key;
@@ -167,7 +167,7 @@ Use the fragment in your query:
 
 ```tsx [React]
 // src/pages/UserProfile.tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 import { UserCard } from '../components/UserCard';
 
@@ -190,7 +190,7 @@ export const UserProfile = ({ userId }: { userId: string }) => {
 ```vue [Vue]
 <!-- src/pages/UserProfile.vue -->
 <script setup lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/vue';
 import UserCard from '../components/UserCard.vue';
 
@@ -216,7 +216,7 @@ const { data } = useQuery(
 ```svelte [Svelte]
 <!-- src/pages/UserProfile.svelte -->
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/svelte';
 import UserCard from '../components/UserCard.svelte';
 
@@ -244,7 +244,7 @@ const query = createQuery(
 ```tsx [Solid]
 // src/pages/UserProfile.tsx
 import { type Component } from 'solid-js';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/solid';
 import { UserCard } from '../components/UserCard';
 

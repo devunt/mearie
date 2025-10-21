@@ -9,7 +9,7 @@ Use Server-Sent Events for real-time GraphQL subscriptions.
 ## Basic Usage
 
 ```typescript
-import { createClient, sseLink } from 'mearie';
+import { createClient, sseLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [sseLink({ url: 'https://api.example.com/graphql' })],

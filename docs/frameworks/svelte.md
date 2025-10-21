@@ -13,23 +13,28 @@ Install the core package and the Svelte integration:
 ::: code-group
 
 ```sh [npm]
-npm install mearie @mearie/svelte
+npm install -D mearie
+npm install @mearie/svelte
 ```
 
 ```sh [yarn]
-yarn add mearie @mearie/svelte
+yarn add -D mearie
+yarn add @mearie/svelte
 ```
 
 ```sh [pnpm]
-pnpm add mearie @mearie/svelte
+pnpm add -D mearie
+pnpm add @mearie/svelte
 ```
 
 ```sh [bun]
-bun add mearie @mearie/svelte
+bun add -D mearie
+bun add @mearie/svelte
 ```
 
 ```sh [deno]
-deno add npm:mearie npm:@mearie/svelte
+deno add --dev npm:mearie
+deno add npm:@mearie/svelte
 ```
 
 :::
@@ -57,11 +62,11 @@ By default, Mearie looks for `./schema.graphql` relative to your `vite.config.ts
 
 ### 2. Create Client
 
-Create a GraphQL client with your API endpoint. Links are middleware-style handlers that process requests and responses. At least one terminating link is required (in this case, `httpLink`). See [Links](/guides/links) for more details.
+Create a GraphQL client with your API endpoint. Import `createClient` and links from `@mearie/svelte`:
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from 'mearie';
+import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/svelte';
 
 export const client = createClient({
   links: [
@@ -73,6 +78,8 @@ export const client = createClient({
   ],
 });
 ```
+
+See [Links](/guides/links) for more details on available links and middleware.
 
 ### 3. Set Up Provider
 
@@ -96,7 +103,7 @@ Fetch data with automatic caching:
 
 ```svelte
 <script lang="ts">
-import { graphql } from 'mearie'
+import { graphql } from '~graphql'
 import { createQuery } from '@mearie/svelte'
 
 interface Props {
@@ -146,7 +153,7 @@ Modify data with automatic cache updates:
 
 ```svelte
 <script lang="ts">
-import { graphql } from 'mearie'
+import { graphql } from '~graphql'
 import { createMutation } from '@mearie/svelte'
 
 interface Props {
@@ -187,9 +194,9 @@ Co-locate data requirements with components:
 
 ```svelte
 <script lang="ts">
-import { graphql } from 'mearie'
+import { graphql } from '~graphql'
 import { createFragment } from '@mearie/svelte'
-import type { UserCard_user$key } from 'mearie/types'
+import type { UserCard_user$key } from '~graphql'
 
 interface Props {
   user: UserCard_user$key;
@@ -223,7 +230,7 @@ Real-time updates via subscriptions:
 
 ```svelte
 <script lang="ts">
-import { graphql } from 'mearie'
+import { graphql } from '~graphql'
 import { createSubscription } from '@mearie/svelte'
 
 interface Props {
@@ -265,7 +272,7 @@ Svelte's fine-grained reactivity with runes works seamlessly with Mearie:
 
 ```svelte
 <script lang="ts">
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { createQuery } from '@mearie/svelte';
 
 let userId = $state('123');

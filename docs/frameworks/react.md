@@ -13,23 +13,28 @@ Install the core package and the React integration:
 ::: code-group
 
 ```sh [npm]
-npm install mearie @mearie/react
+npm install -D mearie
+npm install @mearie/react
 ```
 
 ```sh [yarn]
-yarn add mearie @mearie/react
+yarn add -D mearie
+yarn add @mearie/react
 ```
 
 ```sh [pnpm]
-pnpm add mearie @mearie/react
+pnpm add -D mearie
+pnpm add @mearie/react
 ```
 
 ```sh [bun]
-bun add mearie @mearie/react
+bun add -D mearie
+bun add @mearie/react
 ```
 
 ```sh [deno]
-deno add npm:mearie npm:@mearie/react
+deno add --dev npm:mearie
+deno add npm:@mearie/react
 ```
 
 :::
@@ -70,11 +75,11 @@ By default, Mearie looks for `./schema.graphql` relative to your `vite.config.ts
 
 ### 2. Create Client
 
-Create a GraphQL client with your API endpoint. Links are middleware-style handlers that process requests and responses. At least one terminating link is required (in this case, `httpLink`). See [Links](/guides/links) for more details.
+Create a GraphQL client with your API endpoint. Import `createClient` and links from `@mearie/react`:
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from 'mearie';
+import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/react';
 
 export const client = createClient({
   links: [
@@ -86,6 +91,8 @@ export const client = createClient({
   ],
 });
 ```
+
+See [Links](/guides/links) for more details on available links and middleware.
 
 ### 3. Set Up Provider
 
@@ -108,7 +115,7 @@ import { client } from './lib/graphql-client';
 Fetch data with automatic caching and updates:
 
 ```tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 
 export const UserProfile = ({ userId }: { userId: string }) => {
@@ -152,7 +159,7 @@ Modify data with automatic cache updates:
 
 ```tsx
 import { useState } from 'react';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useMutation } from '@mearie/react';
 
 export const EditUserForm = ({ userId }: { userId: string }) => {
@@ -189,9 +196,9 @@ export const EditUserForm = ({ userId }: { userId: string }) => {
 Co-locate data requirements with components:
 
 ```tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useFragment } from '@mearie/react';
-import type { UserCard_user$key } from 'mearie/types';
+import type { UserCard_user$key } from '~graphql';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
   const data = useFragment(
@@ -221,7 +228,7 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 Real-time updates via subscriptions:
 
 ```tsx
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useSubscription } from '@mearie/react';
 
 interface ChatMessagesProps {
@@ -266,7 +273,7 @@ Use with React Suspense for simpler loading states:
 
 ```tsx
 import { Suspense } from 'react';
-import { graphql } from 'mearie';
+import { graphql } from '~graphql';
 import { useQuery } from '@mearie/react';
 
 const UserProfile = ({ userId }: { userId: string }) => {

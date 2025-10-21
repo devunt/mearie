@@ -9,7 +9,7 @@ Prevent duplicate concurrent requests, reducing unnecessary network traffic.
 ## Basic Usage
 
 ```typescript
-import { createClient, dedupLink, httpLink } from 'mearie';
+import { createClient, dedupLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [dedupLink(), httpLink({ url: 'https://api.example.com/graphql' })],

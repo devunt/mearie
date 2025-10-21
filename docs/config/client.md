@@ -12,7 +12,7 @@ Create a client with at least one terminating link (like `httpLink`):
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink } from 'mearie';
+import { createClient, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [
@@ -28,7 +28,7 @@ export const client = createClient({
 Add caching and deduplication for production use:
 
 ```typescript
-import { createClient, httpLink, cacheLink, dedupLink } from 'mearie';
+import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 
 export const client = createClient({
   links: [

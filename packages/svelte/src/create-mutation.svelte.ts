@@ -37,9 +37,9 @@ export type Mutation<T extends Artifact<'mutation'>> =
     };
 
 export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
-  let data = $state<DataOf<T> | undefined>(undefined);
-  let loading = $state(false);
-  let error = $state<Error | undefined>(undefined);
+  const data = $state<DataOf<T> | undefined>();
+  const loading = $state(false);
+  const error = $state<Error | undefined>();
 
   return {
     get data() {

@@ -29,11 +29,7 @@ const client = createClient({
 });
 
 const App: Component = () => {
-  return (
-    <ClientProvider client={client}>
-      {/* Your app components */}
-    </ClientProvider>
-  );
+  return <ClientProvider client={client}>{/* Your app components */}</ClientProvider>;
 };
 ```
 

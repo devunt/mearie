@@ -5,7 +5,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./config": "./src/config.ts",
     "./types": "./src/types.ts",
     "./vite": "./src/vite.ts"
   },
@@ -35,11 +34,6 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
-      },
-      "./config": {
-        "types": "./dist/config.d.ts",
-        "import": "./dist/config.js",
-        "require": "./dist/config.cjs"
       },
       "./vite": {
         "types": "./dist/vite.d.ts",

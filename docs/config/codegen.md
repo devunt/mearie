@@ -26,7 +26,7 @@ Create `mearie.config.ts` for custom schema locations or advanced options:
 
 ```typescript
 // mearie.config.ts
-import { defineConfig } from 'mearie/config';
+import { defineConfig } from 'mearie';
 
 export default defineConfig({
   schema: 'https://api.example.com/graphql',

@@ -1,11 +1,13 @@
 import type { Operator } from '../types.ts';
 
 /**
- * Filters values from the source based on a predicate function.
+ *
  * @param predicate - The predicate function.
  * @returns An operator that filters values.
  */
-export const filter = <T>(predicate: (value: T) => boolean): Operator<T> => {
+export function filter<T, S extends T>(predicate: (value: T) => value is S): Operator<T, S>;
+export function filter<T>(predicate: (value: T) => boolean): Operator<T>;
+export function filter<T>(predicate: (value: T) => boolean): Operator<T> {
   return (source) => {
     return (sink) => {
       source({
@@ -23,4 +25,4 @@ export const filter = <T>(predicate: (value: T) => boolean): Operator<T> => {
       });
     };
   };
-};
+}

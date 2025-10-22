@@ -21,6 +21,7 @@ export { httpExchange, type HttpOptions } from './exchanges/http.ts';
 export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheExchange, type CacheOptions } from './exchanges/cache.ts';
 export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
+export { fragmentExchange } from './exchanges/fragment.ts';
 
 export {
   Client,
@@ -29,6 +30,7 @@ export {
   type QueryOptions,
   type MutationOptions,
   type SubscriptionOptions,
+  type FragmentOptions,
 } from './client.ts';
 
 export { Cache } from './cache/cache.ts';

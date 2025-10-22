@@ -14,8 +14,7 @@ export const terminalExchange = (): Exchange => {
             operation: op,
             errors: [
               new ExchangeError(
-                'No terminal exchange found in exchange chain. ' +
-                  'Did you forget to add httpExchange to your exchanges array?',
+                'No terminal exchange found in exchange chain. Did you forget to add httpExchange to your exchanges array?',
                 {
                   exchangeName: 'terminal',
                 },

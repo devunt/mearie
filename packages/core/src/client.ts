@@ -1,6 +1,7 @@
-import type { Artifact, OperationKind, VariablesOf } from '@mearie/shared';
+import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs } from '@mearie/shared';
 import type { Exchange, Operation, OperationResult } from './exchange.ts';
 import { composeExchange } from './exchanges/compose.ts';
+import { fragmentExchange } from './exchanges/fragment.ts';
 import { terminalExchange } from './exchanges/terminal.ts';
 import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
 import type { Source } from './stream/types.ts';
@@ -12,6 +13,7 @@ import { publish } from './stream/index.ts';
 export type QueryOptions = {};
 export type MutationOptions = {};
 export type SubscriptionOptions = {};
+export type FragmentOptions = {};
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
 export type ClientOptions = {
@@ -27,7 +29,7 @@ export class Client {
 
   constructor(config: ClientOptions) {
     const exchange = composeExchange({
-      exchanges: [...config.exchanges, terminalExchange()],
+      exchanges: [...config.exchanges, fragmentExchange(), terminalExchange()],
     });
 
     this.operations$ = makeSubject<Operation>();
@@ -92,6 +94,27 @@ export class Client {
       : [VariablesOf<T>, SubscriptionOptions?]
   ): Source<OperationResult> {
     const operation = this.createOperation(artifact, variables);
+    return this.executeOperation(operation);
+  }
+
+  executeFragment<T extends Artifact<'fragment'>>(
+    artifact: T,
+    fragmentRef: FragmentRefs<T['name']>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    options?: FragmentOptions,
+  ): Source<OperationResult> {
+    const key = this.createOperationKey(artifact, fragmentRef);
+
+    const operation: Operation = {
+      variant: 'request',
+      key,
+      metadata: {
+        fragmentRef,
+      },
+      artifact: artifact as Artifact<ArtifactKind>,
+      variables: {},
+    };
+
     return this.executeOperation(operation);
   }
 

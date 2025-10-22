@@ -1,7 +1,9 @@
-import type { Exchange, OperationResult } from '../exchange.ts';
+import type { Exchange, OperationResult, RequestOperation } from '../exchange.ts';
 import { GraphQLError, ExchangeError } from '../errors.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
+import { filter } from '../stream/operators/filter.ts';
+import { fromPromise } from '../stream/sources/from-promise.ts';
 
 declare module '../errors.ts' {
   interface ExchangeErrorExtensionsMap {
@@ -23,16 +25,10 @@ export const httpExchange = (options: HttpOptions): Exchange => {
 
   return () => {
     return (ops$) => {
-      return pipe(
+      const httpOps$ = pipe(
         ops$,
+        filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind !== 'fragment'),
         mergeMap((op) => {
-          if (op.variant === 'teardown') {
-            return (sink) => {
-              sink.start({ pull: () => {}, cancel: () => {} });
-              sink.complete();
-            };
-          }
-
           const { artifact, variables } = op;
 
           const resultPromise = fetch(url, {
@@ -110,25 +106,11 @@ export const httpExchange = (options: HttpOptions): Exchange => {
               };
             });
 
-          return (sink) => {
-            let cancelled = false;
-
-            sink.start({
-              pull: () => {},
-              cancel: () => {
-                cancelled = true;
-              },
-            });
-
-            void resultPromise.then((result) => {
-              if (!cancelled) {
-                sink.next(result);
-                sink.complete();
-              }
-            });
-          };
+          return fromPromise(resultPromise);
         }),
       );
+
+      return httpOps$;
     };
   };
 };

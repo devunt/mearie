@@ -1,5 +1,5 @@
 import { useCallback, useReducer, useRef } from 'react';
-import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -21,7 +21,7 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       error: AggregatedError;
     };
 
-export type UseMutationOptions = {
+export type UseMutationOptions = MutationOptions & {
   skip?: boolean;
 };
 

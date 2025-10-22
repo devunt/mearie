@@ -1,23 +1,26 @@
-import type { Artifact, OperationKind } from '@mearie/shared';
+import type { Artifact, ArtifactKind, VariablesOf } from '@mearie/shared';
 import type { Source } from './stream/index.ts';
 import type { OperationError } from './errors.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface OperationMetadataMap {}
 
-export type Operation<T extends Artifact<OperationKind> = Artifact<OperationKind>> = {
+export type BaseOperation = {
   key: string;
   metadata: OperationMetadataMap & Record<string, unknown>;
-} & (
-  | {
-      variant: 'request';
-      artifact: T;
-      variables: unknown;
-    }
-  | {
-      variant: 'teardown';
-    }
-);
+};
+
+export type RequestOperation<K extends ArtifactKind = ArtifactKind> = BaseOperation & {
+  variant: 'request';
+  artifact: Artifact<K>;
+  variables: VariablesOf<Artifact<K>>;
+};
+
+export type TeardownOperation = BaseOperation & {
+  variant: 'teardown';
+};
+
+export type Operation<K extends ArtifactKind = ArtifactKind> = RequestOperation<K> | TeardownOperation;
 
 export type OperationResult = {
   operation: Operation;

@@ -20,6 +20,7 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
         if (sourceTalkback) {
           sourceTalkback.cancel();
         }
+
         if (notifierTalkback) {
           notifierTalkback.cancel();
         }
@@ -35,9 +36,7 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
         next() {
           complete();
         },
-        complete() {
-          // do nothing
-        },
+        complete() {},
       });
 
       source({

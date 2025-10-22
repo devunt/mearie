@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Sink } from '../types.ts';
 
 describe('collect', () => {
   describe('basic functionality', () => {
@@ -44,7 +43,11 @@ describe('collect', () => {
     it('should collect last value after map', async () => {
       const source = fromArray([1, 2, 3]);
 
-      const result = await pipe(source, map((x) => x * 2), collect);
+      const result = await pipe(
+        source,
+        map((x) => x * 2),
+        collect,
+      );
 
       expect(result).toBe(6);
     });
@@ -198,40 +201,6 @@ describe('collect', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('should reject on source error', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Source error'));
-      };
-
-      await expect(collect(source)).rejects.toThrow('Source error');
-    });
-
-    it('should reject on error before any values', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Early error'));
-      };
-
-      await expect(collect(source)).rejects.toThrow('Early error');
-    });
-
-    it('should reject for empty source with specific message', async () => {
-      const source = fromArray<number>([]);
-
-      await expect(collect(source)).rejects.toThrow('Source completed without emitting any values');
-    });
-  });
-
   describe('completion', () => {
     it('should resolve when source completes', async () => {
       const source = fromArray([1, 2, 3]);
@@ -307,14 +276,26 @@ describe('collect', () => {
 
     it('should collect last nested array', async () => {
       const source = fromArray([
-        [[1, 2], [3, 4]],
-        [[5, 6], [7, 8]],
-        [[9, 10], [11, 12]],
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [
+          [5, 6],
+          [7, 8],
+        ],
+        [
+          [9, 10],
+          [11, 12],
+        ],
       ]);
 
       const result = await collect(source);
 
-      expect(result).toEqual([[9, 10], [11, 12]]);
+      expect(result).toEqual([
+        [9, 10],
+        [11, 12],
+      ]);
     });
   });
 
@@ -341,18 +322,6 @@ describe('collect', () => {
       await collect(source).then((result) => {
         expect(result).toBe(3);
       });
-    });
-
-    it('should allow catch for errors', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Test error'));
-      };
-
-      await expect(collect(source)).rejects.toThrow('Test error');
     });
   });
 

@@ -15,9 +15,6 @@ export const map = <A, B>(fn: (value: A) => B): Operator<A, B> => {
         next(value) {
           sink.next(fn(value));
         },
-        error(err) {
-          sink.error(err);
-        },
         complete() {
           sink.complete();
         },

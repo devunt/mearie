@@ -3,7 +3,7 @@ import type { Source } from '../types.ts';
 /**
  * Collects the last value emitted by a source.
  * This is a terminal operator that returns the last emitted value.
- * Rejects if the source emits an error or completes without emitting any values.
+ * Rejects if the source completes without emitting any values.
  * @param source - The source to collect from.
  * @returns A promise that resolves with the last emitted value.
  */
@@ -19,10 +19,6 @@ export const collect = <T>(source: Source<T>): Promise<T> => {
       next(value) {
         lastValue = value;
         hasValue = true;
-      },
-      error(err) {
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        reject(err);
       },
       complete() {
         if (hasValue) {

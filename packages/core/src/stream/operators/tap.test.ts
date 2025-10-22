@@ -6,7 +6,6 @@ import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
 import { filter } from './filter.ts';
-import type { Sink } from '../types.ts';
 
 describe('tap', () => {
   describe('basic behavior', () => {
@@ -330,59 +329,6 @@ describe('tap', () => {
       );
 
       expect(tapped).toEqual(['a', '', 'c']);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate errors from source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      const tapped: number[] = [];
-
-      await expect(
-        pipe(
-          source,
-          tap((x) => {
-            tapped.push(x);
-          }),
-          collectAll,
-        ),
-      ).rejects.toThrow('Source error');
-
-      expect(tapped).toEqual([1]);
-    });
-
-    it('should propagate errors after executing side effects', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Error after values'));
-      };
-
-      const tapped: number[] = [];
-
-      await expect(
-        pipe(
-          source,
-          tap((x) => {
-            tapped.push(x);
-          }),
-          collectAll,
-        ),
-      ).rejects.toThrow('Error after values');
-
-      expect(tapped).toEqual([1, 2]);
     });
   });
 

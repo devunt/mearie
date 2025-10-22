@@ -16,12 +16,6 @@ export type Subject<T> = {
   next: (value: T) => void;
 
   /**
-   * Push an error to all subscribers and complete.
-   * @param error - The error to push.
-   */
-  error: (error: unknown) => void;
-
-  /**
    * Complete all subscribers.
    */
   complete: () => void;
@@ -54,13 +48,6 @@ export const makeSubject = <T>(): Subject<T> => {
     }
   };
 
-  const error = (err: unknown) => {
-    for (const sink of sinks) {
-      sink.error(err);
-    }
-    sinks.length = 0;
-  };
-
   const complete = () => {
     for (const sink of sinks) {
       sink.complete();
@@ -71,7 +58,6 @@ export const makeSubject = <T>(): Subject<T> => {
   return {
     source,
     next,
-    error,
     complete,
   };
 };

@@ -23,7 +23,6 @@ describe('fromValue', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -178,7 +177,6 @@ describe('fromValue', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -198,7 +196,6 @@ describe('fromValue', () => {
         next: (value) => {
           events.push(`next:${value}`);
         },
-        error: () => {},
         complete: () => {
           events.push('complete');
         },
@@ -220,7 +217,6 @@ describe('fromValue', () => {
         next: (value) => {
           emitted.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -236,7 +232,6 @@ describe('fromValue', () => {
           tb.cancel();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -256,7 +251,6 @@ describe('fromValue', () => {
           receivedTalkback = tb;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -273,7 +267,6 @@ describe('fromValue', () => {
           expect(() => tb.pull()).not.toThrow();
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
     });
@@ -327,7 +320,6 @@ describe('fromValue', () => {
         next: (value) => {
           emitted.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -341,7 +333,6 @@ describe('fromValue', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },

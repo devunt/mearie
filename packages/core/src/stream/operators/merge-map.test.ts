@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Sink } from '../types.ts';
 
 describe('mergeMap', () => {
   describe('basic functionality', () => {
@@ -203,7 +202,6 @@ describe('mergeMap', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -237,94 +235,12 @@ describe('mergeMap', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
       });
 
       expect(completed).toBe(true);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate errors from outer source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Outer error'));
-      };
-
-      await expect(
-        pipe(
-          source,
-          mergeMap((x) => fromValue(x)),
-          collectAll,
-        ),
-      ).rejects.toThrow('Outer error');
-    });
-
-    it('should propagate errors from inner sources', async () => {
-      const source = fromArray([1, 2, 3]);
-
-      await expect(
-        pipe(
-          source,
-          mergeMap((x) => {
-            if (x === 2) {
-              return (sink: Sink<number>) => {
-                sink.start({
-                  pull: () => {},
-                  cancel: () => {},
-                });
-                sink.error(new Error('Inner error'));
-              };
-            }
-            return fromValue(x);
-          }),
-          collectAll,
-        ),
-      ).rejects.toThrow('Inner error');
-    });
-
-    it('should stop processing after error', () => {
-      const emitted: number[] = [];
-
-      const source = fromArray([1, 2, 3]);
-
-      try {
-        pipe(
-          source,
-          mergeMap((x) => {
-            if (x === 2) {
-              return (sink: Sink<number>) => {
-                sink.start({
-                  pull: () => {},
-                  cancel: () => {},
-                });
-                sink.error(new Error('Stop'));
-              };
-            }
-            return fromValue(x);
-          }),
-        )({
-          start: (tb) => {
-            tb.pull();
-          },
-          next: (value) => {
-            emitted.push(value);
-          },
-          error: () => {},
-          complete: () => {},
-        });
-      } catch {
-        // Ignore error
-      }
-
-      expect(emitted.filter((x) => x === 3)).toHaveLength(0);
     });
   });
 

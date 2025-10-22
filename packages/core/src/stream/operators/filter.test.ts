@@ -5,7 +5,7 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Sink, Talkback } from '../types.ts';
+import type { Talkback } from '../types.ts';
 
 describe('filter', () => {
   describe('basic filtering', () => {
@@ -329,47 +329,6 @@ describe('filter', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('should propagate errors from source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      await expect(
-        pipe(
-          source,
-          filter((x) => x > 0),
-          collectAll,
-        ),
-      ).rejects.toThrow('Source error');
-    });
-
-    it('should propagate errors after filtering some values', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Error after values'));
-      };
-
-      await expect(
-        pipe(
-          source,
-          filter((x) => x % 2 === 0),
-          collectAll,
-        ),
-      ).rejects.toThrow('Error after values');
-    });
-  });
-
   describe('completion', () => {
     it('should complete when source completes', async () => {
       const source = fromArray([1, 2, 3, 4, 5]);
@@ -421,7 +380,6 @@ describe('filter', () => {
           receivedTalkback = tb;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -448,7 +406,6 @@ describe('filter', () => {
             talkback.cancel();
           }
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -505,12 +462,7 @@ describe('filter', () => {
     });
 
     it('should filter arrays by length', async () => {
-      const source = fromArray([
-        [1, 2],
-        [1, 2, 3],
-        [1],
-        [1, 2, 3, 4],
-      ]);
+      const source = fromArray([[1, 2], [1, 2, 3], [1], [1, 2, 3, 4]]);
 
       const result = await pipe(
         source,

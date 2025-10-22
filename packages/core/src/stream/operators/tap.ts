@@ -17,9 +17,6 @@ export const tap = <T>(fn: (value: T) => void): Operator<T> => {
           fn(value);
           sink.next(value);
         },
-        error(err) {
-          sink.error(err);
-        },
         complete() {
           sink.complete();
         },

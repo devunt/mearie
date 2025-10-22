@@ -33,7 +33,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -41,7 +40,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -63,7 +61,6 @@ describe('share', () => {
             sink.start(tb);
           },
           next: (value) => sink.next(value),
-          error: (error) => sink.error(error),
           complete: () => sink.complete(),
         });
       };
@@ -75,7 +72,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -83,7 +79,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -91,7 +86,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -119,7 +113,6 @@ describe('share', () => {
       shared({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -144,7 +137,6 @@ describe('share', () => {
         shared({
           start: () => {},
           next: () => {},
-          error: () => {},
           complete: () => resolve(),
         });
       });
@@ -169,7 +161,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -177,7 +168,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -185,7 +175,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values3.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -208,7 +197,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -216,7 +204,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -241,7 +228,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => {
               completed1 = true;
               resolve();
@@ -252,7 +238,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => {
               completed2 = true;
               resolve();
@@ -263,7 +248,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => {
               completed3 = true;
               resolve();
@@ -285,75 +269,7 @@ describe('share', () => {
         shared({
           start: () => {},
           next: () => {},
-          error: () => {},
           complete: () => resolve(),
-        });
-      });
-    });
-  });
-
-  describe('error handling', () => {
-    it('should notify all subscribers of errors', async () => {
-      const source: Source<number> = (sink) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Test error'));
-      };
-
-      const shared = pipe(source, share());
-
-      const errors: Error[] = [];
-
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: () => {},
-            error: (err) => {
-              errors.push(err as Error);
-              resolve();
-            },
-            complete: () => {},
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: () => {},
-            error: (err) => {
-              errors.push(err as Error);
-              resolve();
-            },
-            complete: () => {},
-          });
-        }),
-      ]);
-
-      expect(errors.length).toBe(2);
-      expect(errors[0]!.message).toBe('Test error');
-      expect(errors[1]!.message).toBe('Test error');
-    });
-
-    it('should clear subscribers after error', async () => {
-      const source: Source<number> = (sink) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Test error'));
-      };
-
-      const shared = pipe(source, share());
-
-      await new Promise<void>((resolve) => {
-        shared({
-          start: () => {},
-          next: () => {},
-          error: () => resolve(),
-          complete: () => {},
         });
       });
     });
@@ -376,7 +292,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -384,7 +299,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -410,7 +324,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -418,7 +331,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -444,7 +356,6 @@ describe('share', () => {
               talkback1Received = !!tb;
             },
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -454,7 +365,6 @@ describe('share', () => {
               talkback2Received = !!tb;
             },
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -486,7 +396,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -494,7 +403,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -502,7 +410,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -525,7 +432,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -533,7 +439,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -558,7 +463,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values1.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -566,7 +470,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => values2.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -606,7 +509,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -614,7 +516,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -622,7 +523,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: () => {},
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -654,7 +554,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => results.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),
@@ -662,7 +561,6 @@ describe('share', () => {
           shared({
             start: () => {},
             next: (v) => results.push(v),
-            error: () => {},
             complete: () => resolve(),
           });
         }),

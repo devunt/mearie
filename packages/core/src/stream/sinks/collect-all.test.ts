@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Sink } from '../types.ts';
 
 describe('collectAll', () => {
   describe('basic functionality', () => {
@@ -46,7 +45,11 @@ describe('collectAll', () => {
     it('should collect after map', async () => {
       const source = fromArray([1, 2, 3]);
 
-      const result = await pipe(source, map((x) => x * 2), collectAll);
+      const result = await pipe(
+        source,
+        map((x) => x * 2),
+        collectAll,
+      );
 
       expect(result).toEqual([2, 4, 6]);
     });
@@ -159,51 +162,6 @@ describe('collectAll', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('should reject on source error', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Source error'));
-      };
-
-      await expect(collectAll(source)).rejects.toThrow('Source error');
-    });
-
-    it('should not include values after error', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Error'));
-      };
-
-      try {
-        await collectAll(source);
-      } catch {
-        // Expected to throw
-      }
-    });
-
-    it('should reject immediately on early error', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Early error'));
-      };
-
-      await expect(collectAll(source)).rejects.toThrow('Early error');
-    });
-  });
-
   describe('completion', () => {
     it('should resolve when source completes', async () => {
       const source = fromArray([1, 2, 3]);
@@ -247,30 +205,36 @@ describe('collectAll', () => {
 
   describe('complex values', () => {
     it('should collect nested objects', async () => {
-      const source = fromArray([
-        { user: { id: 1, name: 'Alice' } },
-        { user: { id: 2, name: 'Bob' } },
-      ]);
+      const source = fromArray([{ user: { id: 1, name: 'Alice' } }, { user: { id: 2, name: 'Bob' } }]);
 
       const result = await collectAll(source);
 
-      expect(result).toEqual([
-        { user: { id: 1, name: 'Alice' } },
-        { user: { id: 2, name: 'Bob' } },
-      ]);
+      expect(result).toEqual([{ user: { id: 1, name: 'Alice' } }, { user: { id: 2, name: 'Bob' } }]);
     });
 
     it('should collect nested arrays', async () => {
       const source = fromArray([
-        [[1, 2], [3, 4]],
-        [[5, 6], [7, 8]],
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [
+          [5, 6],
+          [7, 8],
+        ],
       ]);
 
       const result = await collectAll(source);
 
       expect(result).toEqual([
-        [[1, 2], [3, 4]],
-        [[5, 6], [7, 8]],
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [
+          [5, 6],
+          [7, 8],
+        ],
       ]);
     });
 
@@ -319,18 +283,6 @@ describe('collectAll', () => {
       await collectAll(source).then((result) => {
         expect(result).toEqual([1, 2, 3]);
       });
-    });
-
-    it('should allow catch for errors', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Test error'));
-      };
-
-      await expect(collectAll(source)).rejects.toThrow('Test error');
     });
   });
 });

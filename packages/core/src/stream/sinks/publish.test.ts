@@ -55,7 +55,11 @@ describe('publish', () => {
     it('should consume after map', () => {
       const source = fromArray([1, 2, 3]);
 
-      const result = pipe(source, map((x) => x * 2), publish);
+      const result = pipe(
+        source,
+        map((x) => x * 2),
+        publish,
+      );
 
       expect(result).toBeUndefined();
     });
@@ -113,35 +117,6 @@ describe('publish', () => {
       publish(source);
 
       expect(emittedValues).toEqual([1, 2, 3, 4, 5]);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should not throw on source error', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Source error'));
-      };
-
-      expect(() => publish(source)).not.toThrow();
-    });
-
-    it('should silently consume errors', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Should be ignored'));
-      };
-
-      const result = publish(source);
-
-      expect(result).toBeUndefined();
     });
   });
 

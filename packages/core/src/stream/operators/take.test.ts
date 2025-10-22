@@ -121,7 +121,6 @@ describe('take', () => {
             });
           },
           next: (value) => sink.next(value),
-          error: (error) => sink.error(error),
           complete: () => sink.complete(),
         });
       };
@@ -206,7 +205,6 @@ describe('take', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -227,7 +225,6 @@ describe('take', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -249,7 +246,6 @@ describe('take', () => {
           startCalled = true;
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -257,37 +253,6 @@ describe('take', () => {
 
       expect(startCalled).toBe(true);
       expect(completed).toBe(true);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate errors from source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      await expect(pipe(source, take(5), collectAll)).rejects.toThrow('Source error');
-    });
-
-    it('should not propagate errors after taking all values', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Should not propagate'));
-      };
-
-      const result = await pipe(source, take(2), collectAll);
-
-      expect(result).toEqual([1, 2]);
     });
   });
 
@@ -304,7 +269,6 @@ describe('take', () => {
           receivedTalkback = tb;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -420,7 +384,6 @@ describe('take', () => {
         next: (value) => {
           nextCalls.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 

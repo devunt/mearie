@@ -31,11 +31,13 @@ export type Observer<T> = {
 export const subscribe = <T>(observer: Observer<T>) => {
   return (source: Source<T>): (() => void) => {
     let closed = false;
+    let talkback: { pull: () => void; cancel: () => void } | null = null;
 
     source({
-      start(talkback) {
+      start(tb) {
+        talkback = tb;
         if (!closed) {
-          talkback.pull();
+          tb.pull();
         }
       },
       next(value) {
@@ -63,6 +65,9 @@ export const subscribe = <T>(observer: Observer<T>) => {
 
     return () => {
       closed = true;
+      if (talkback) {
+        talkback.cancel();
+      }
     };
   };
 };

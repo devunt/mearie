@@ -56,6 +56,7 @@ export default defineConfig(
     rules: {
       'func-style': ['error', 'expression'],
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/no-empty-function': 'off',
       'import/newline-after-import': ['error', { considerComments: true }],
       'jsdoc/check-indentation': 'error',
       'jsdoc/convert-to-jsdoc-comments': 'error',
@@ -70,16 +71,10 @@ export default defineConfig(
         },
       ],
       'jsdoc/sort-tags': 'error',
+      'unicorn/consistent-function-scoping': 'off',
       'unicorn/no-null': 'off',
       'unicorn/prefer-switch': 'off',
       'unicorn/prevent-abbreviations': 'off',
-    },
-  },
-
-  {
-    files: ['**/*.test.ts'],
-    rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
     },
   },
 

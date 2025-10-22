@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./stream": "./src/stream/index.ts"
   },
   "files": [
     "dist",
@@ -29,6 +30,11 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
+      },
+      "./stream": {
+        "types": "./dist/stream/index.d.ts",
+        "import": "./dist/stream/index.js",
+        "require": "./dist/stream/index.cjs"
       },
       "./package.json": "./package.json"
     },

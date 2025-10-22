@@ -22,6 +22,15 @@ export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheExchange, type CacheOptions } from './exchanges/cache.ts';
 export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
 
-export { Client, createClient, type ClientOptions, type Observable } from './client.ts';
+export {
+  Client,
+  createClient,
+  type ClientOptions,
+  type QueryOptions,
+  type MutationOptions,
+  type SubscriptionOptions,
+} from './client.ts';
 
 export { Cache } from './cache/cache.ts';
+
+export { stringify } from './utils.ts';

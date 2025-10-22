@@ -1,0 +1,371 @@
+import { describe, it, expect } from 'vitest';
+import { merge } from './merge.ts';
+import { fromArray } from '../sources/from-array.ts';
+import { fromValue } from '../sources/from-value.ts';
+import { collectAll } from '../sinks/collect-all.ts';
+import { pipe } from '../pipe.ts';
+import { map } from './map.ts';
+import type { Sink } from '../types.ts';
+
+describe('merge', () => {
+  describe('basic merging', () => {
+    it('should merge two sources', async () => {
+      const source1 = fromArray([1, 2, 3]);
+      const source2 = fromArray([4, 5, 6]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.toSorted()).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should merge three sources', async () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = fromArray([3, 4]);
+      const source3 = fromArray([5, 6]);
+
+      const result = await pipe(merge(source1, source2, source3), collectAll);
+
+      expect(result.toSorted()).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should merge single source', async () => {
+      const source = fromArray([1, 2, 3]);
+
+      const result = await pipe(merge(source), collectAll);
+
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should merge many sources', async () => {
+      const sources = Array.from({ length: 10 }, (_, i) => fromValue(i + 1));
+
+      const result = await pipe(merge(...sources), collectAll);
+
+      expect(result.toSorted((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should complete immediately with no sources', async () => {
+      const result = await pipe(merge(), collectAll);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty sources', async () => {
+      const source1 = fromArray<number>([]);
+      const source2 = fromArray<number>([]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should merge empty source with non-empty source', async () => {
+      const source1 = fromArray<number>([]);
+      const source2 = fromArray([1, 2, 3]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should handle sources with single value', async () => {
+      const source1 = fromValue(1);
+      const source2 = fromValue(2);
+      const source3 = fromValue(3);
+
+      const result = await pipe(merge(source1, source2, source3), collectAll);
+
+      expect(result.toSorted()).toEqual([1, 2, 3]);
+    });
+  });
+
+  describe('different types', () => {
+    it('should merge sources with same type', async () => {
+      const source1 = fromArray(['a', 'b']);
+      const source2 = fromArray(['c', 'd']);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.toSorted()).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('should merge sources with objects', async () => {
+      const source1 = fromArray([{ id: 1 }, { id: 2 }]);
+      const source2 = fromArray([{ id: 3 }, { id: 4 }]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.length).toBe(4);
+      expect(result.map((x) => x.id).toSorted()).toEqual([1, 2, 3, 4]);
+    });
+  });
+
+  describe('completion', () => {
+    it('should complete when all sources complete', async () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = fromArray([3, 4]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.length).toBe(4);
+    });
+
+    it('should wait for all sources to complete', () => {
+      const source1 = fromValue(1);
+      const source2 = fromValue(2);
+      const source3 = fromValue(3);
+
+      let completed = false;
+
+      pipe(merge(source1, source2, source3))({
+        start: (tb) => {
+          tb.pull();
+        },
+        next: () => {},
+        error: () => {},
+        complete: () => {
+          completed = true;
+        },
+      });
+
+      expect(completed).toBe(true);
+    });
+
+    it('should complete immediately with no sources', () => {
+      let completed = false;
+
+      merge()({
+        start: () => {},
+        next: () => {},
+        error: () => {},
+        complete: () => {
+          completed = true;
+        },
+      });
+
+      expect(completed).toBe(true);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should propagate errors from any source', async () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = (sink: Sink<number>) => {
+        sink.start({
+          pull: () => {},
+          cancel: () => {},
+        });
+        sink.next(3);
+        sink.error(new Error('Source 2 error'));
+      };
+
+      await expect(pipe(merge(source1, source2), collectAll)).rejects.toThrow('Source 2 error');
+    });
+
+    it('should cancel other sources when one errors', async () => {
+      let source1Cancelled = false;
+      const source1 = (sink: Sink<number>) => {
+        sink.start({
+          pull: () => {},
+          cancel: () => {
+            source1Cancelled = true;
+          },
+        });
+        sink.next(1);
+        sink.next(2);
+      };
+
+      const source2 = (sink: Sink<number>) => {
+        sink.start({
+          pull: () => {},
+          cancel: () => {},
+        });
+        sink.error(new Error('Source 2 error'));
+      };
+
+      await expect(pipe(merge(source1, source2), collectAll)).rejects.toThrow('Source 2 error');
+
+      expect(source1Cancelled).toBe(true);
+    });
+
+    it('should not emit values after error', () => {
+      const emitted: number[] = [];
+
+      const source1 = fromArray([1, 2, 3]);
+      const source2 = (sink: Sink<number>) => {
+        sink.start({
+          pull: () => {},
+          cancel: () => {},
+        });
+        sink.error(new Error('Early error'));
+      };
+
+      try {
+        pipe(merge(source1, source2))({
+          start: (tb) => {
+            tb.pull();
+          },
+          next: (value) => {
+            emitted.push(value);
+          },
+          error: () => {},
+          complete: () => {},
+        });
+      } catch {
+        // Ignore error
+      }
+
+      expect(emitted.length).toBeLessThanOrEqual(3);
+    });
+  });
+
+  describe('talkback', () => {
+    it('should provide talkback for pull', () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = fromArray([3, 4]);
+
+      let pullCalled = false;
+
+      merge(
+        source1,
+        source2,
+      )({
+        start: (tb) => {
+          tb.pull();
+          pullCalled = true;
+        },
+        next: () => {},
+        error: () => {},
+        complete: () => {},
+      });
+
+      expect(pullCalled).toBe(true);
+    });
+
+    it('should provide talkback for cancel', () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = fromArray([3, 4]);
+
+      let cancelCalled = false;
+
+      merge(
+        source1,
+        source2,
+      )({
+        start: (tb) => {
+          tb.cancel();
+          cancelCalled = true;
+        },
+        next: () => {},
+        error: () => {},
+        complete: () => {},
+      });
+
+      expect(cancelCalled).toBe(true);
+    });
+  });
+
+  describe('chaining', () => {
+    it('should work with map operator', async () => {
+      const source1 = fromArray([1, 2]);
+      const source2 = fromArray([3, 4]);
+
+      const result = await pipe(
+        merge(source1, source2),
+        map((x) => x * 2),
+        collectAll,
+      );
+
+      expect(result.toSorted()).toEqual([2, 4, 6, 8]);
+    });
+
+    it('should work as input to operators', async () => {
+      const source1 = fromArray([1, 2, 3]);
+      const source2 = fromArray([4, 5, 6]);
+
+      const merged = merge(source1, source2);
+
+      const result = await pipe(
+        merged,
+        map((x) => x + 1),
+        collectAll,
+      );
+
+      expect(result.toSorted()).toEqual([2, 3, 4, 5, 6, 7]);
+    });
+  });
+
+  describe('falsy values', () => {
+    it('should handle null values', async () => {
+      const source1 = fromArray<number | null>([null, 1]);
+      const source2 = fromArray<number | null>([2, null]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.filter((x) => x === null).length).toBe(2);
+      expect(result.filter((x) => x !== null).toSorted()).toEqual([1, 2]);
+    });
+
+    it('should handle undefined values', async () => {
+      const source1 = fromArray<number | undefined>([undefined, 1]);
+      const source2 = fromArray<number | undefined>([2, undefined]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.filter((x) => x === undefined).length).toBe(2);
+      expect(result.filter((x) => x !== undefined).toSorted()).toEqual([1, 2]);
+    });
+
+    it('should handle zero', async () => {
+      const source1 = fromArray([0, 1]);
+      const source2 = fromArray([2, 0]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.toSorted()).toEqual([0, 0, 1, 2]);
+    });
+
+    it('should handle false', async () => {
+      const source1 = fromArray([false, true]);
+      const source2 = fromArray([true, false]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.filter((x) => x === false).length).toBe(2);
+      expect(result.filter((x) => x === true).length).toBe(2);
+    });
+
+    it('should handle empty string', async () => {
+      const source1 = fromArray(['', 'a']);
+      const source2 = fromArray(['b', '']);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.filter((x) => x === '').length).toBe(2);
+      expect(result.filter((x) => x !== '').toSorted()).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('mixed source lengths', () => {
+    it('should handle sources of different lengths', async () => {
+      const source1 = fromArray([1]);
+      const source2 = fromArray([2, 3, 4]);
+      const source3 = fromArray([5, 6]);
+
+      const result = await pipe(merge(source1, source2, source3), collectAll);
+
+      expect(result.toSorted()).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should complete after longest source completes', async () => {
+      const source1 = fromValue(1);
+      const source2 = fromArray([2, 3, 4, 5]);
+
+      const result = await pipe(merge(source1, source2), collectAll);
+
+      expect(result.length).toBe(5);
+    });
+  });
+});

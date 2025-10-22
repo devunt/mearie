@@ -76,6 +76,9 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
           }
 
           const operation = makeOperation(result.operation, {
+            dedup: {
+              skip: true,
+            },
             retry: {
               attempt: attempt + 1,
               delay: backoff(attempt),

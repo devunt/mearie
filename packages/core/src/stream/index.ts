@@ -20,3 +20,5 @@ export { fromValue } from './sources/from-value.ts';
 export { fromArray } from './sources/from-array.ts';
 export { makeSubject } from './sources/make-subject.ts';
 export type { Subject } from './sources/make-subject.ts';
+export { fromSubscription } from './sources/from-subscription.ts';
+export { fromPromise } from './sources/from-promise.ts';

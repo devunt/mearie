@@ -1,5 +1,7 @@
-import { useCallback, useReducer } from 'react';
-import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
+import { useCallback, useReducer, useRef } from 'react';
+import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
 export type MutationResult<T extends Artifact<'mutation'>> =
@@ -16,10 +18,10 @@ export type MutationResult<T extends Artifact<'mutation'>> =
   | {
       data: DataOf<T> | undefined;
       loading: false;
-      error: Error;
+      error: AggregatedError;
     };
 
-export type UseMutationOptions = {
+export type UseMutationOptions = MutationOptions & {
   skip?: boolean;
 };
 
@@ -35,21 +37,20 @@ export type Mutation<T extends Artifact<'mutation'>> = [
 type MutationState<T> = {
   data: T | undefined;
   loading: boolean;
-  error: Error | undefined;
+  error: AggregatedError | undefined;
 };
 
-type MutationAction<T> = { type: 'loading' } | { type: 'success'; data: T } | { type: 'error'; error: Error };
+type MutationAction<T> = { type: 'loading' } | { type: 'success'; data: T } | { type: 'error'; error: AggregatedError };
 
 const mutationReducer = <T>(state: MutationState<T>, action: MutationAction<T>): MutationState<T> => {
-  switch (action.type) {
-    case 'loading':
-      return { ...state, loading: true, error: undefined };
-    case 'success':
-      return { data: action.data, loading: false, error: undefined };
-    case 'error':
-      return { ...state, loading: false, error: action.error };
-    default:
-      return state;
+  if (action.type === 'loading') {
+    return { ...state, loading: true, error: undefined };
+  } else if (action.type === 'success') {
+    return { data: action.data, loading: false, error: undefined };
+  } else if (action.type === 'error') {
+    return { ...state, loading: false, error: action.error };
+  } else {
+    return state;
   }
 };
 
@@ -61,38 +62,53 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
     error: undefined,
   });
 
+  const subscriptionRef = useRef<(() => void) | null>(null);
+
+  const executeMutation = useCallback(
+    (variables?: VariablesOf<T>, skip?: boolean): Promise<DataOf<T>> => {
+      if (skip) {
+        throw new AggregatedError([], 'Mutation is skipped');
+      }
+
+      subscriptionRef.current?.();
+
+      dispatch({ type: 'loading' });
+
+      return new Promise((resolve, reject) => {
+        const unsubscribe = pipe(
+          // @ts-expect-error - conditional signature makes this hard to type correctly
+          client.executeMutation(mutation, variables),
+          subscribe({
+            next: (result) => {
+              if (result.errors && result.errors.length > 0) {
+                const error = new AggregatedError(result.errors);
+                dispatch({ type: 'error', error });
+                reject(error);
+              } else {
+                dispatch({ type: 'success', data: result.data as DataOf<T> });
+                resolve(result.data as DataOf<T>);
+              }
+              subscriptionRef.current = null;
+            },
+          }),
+        );
+
+        subscriptionRef.current = unsubscribe;
+      });
+    },
+    [client, mutation],
+  );
+
   const mutate = useCallback(
-    async (
+    (
       ...[variables, options]: VariablesOf<T> extends undefined
         ? [undefined?, UseMutationOptions?]
         : [VariablesOf<T>, UseMutationOptions?]
     ): Promise<DataOf<T>> => {
       const { skip = false } = options ?? {};
-
-      if (skip) {
-        throw new Error('Mutation is skipped');
-      }
-
-      dispatch({ type: 'loading' });
-
-      try {
-        const result = await client.mutate<DataOf<T>, VariablesOf<T>>(mutation, variables);
-
-        if (result.errors && result.errors.length > 0) {
-          const error = new Error(result.errors[0]?.message ?? 'GraphQL error');
-          dispatch({ type: 'error', error });
-          throw error;
-        }
-
-        dispatch({ type: 'success', data: result.data });
-        return result.data;
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        dispatch({ type: 'error', error: err });
-        throw err;
-      }
+      return executeMutation(variables, skip);
     },
-    [client, mutation],
+    [executeMutation],
   );
 
   return [
@@ -102,7 +118,7 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
         : [VariablesOf<T>, UseMutationOptions?]
     ) => Promise<DataOf<T>>,
     {
-      data: state.data as DataOf<T> | undefined,
+      data: state.data,
       loading: state.loading,
       error: state.error,
     } as MutationResult<T>,

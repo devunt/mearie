@@ -1,136 +1,130 @@
-import type { Artifact } from '@mearie/shared';
-import type { Operation } from './types.ts';
-import type { Link, LinkContext } from './link.ts';
-import { executeLinks } from './link.ts';
+import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs } from '@mearie/shared';
+import type { Exchange, Operation, OperationResult } from './exchange.ts';
+import { composeExchange } from './exchanges/compose.ts';
+import { fragmentExchange } from './exchanges/fragment.ts';
+import { terminalExchange } from './exchanges/terminal.ts';
+import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
+import type { Source } from './stream/types.ts';
+import { pipe } from './stream/pipe.ts';
+import { filter } from './stream/operators/filter.ts';
+import { subscribe } from './stream/index.ts';
 
-export type QueryOptions<TVariables> = {
-  variables?: TVariables;
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
-};
-
-export type MutationOptions<TVariables> = {
-  variables?: TVariables;
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
-};
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+export type QueryOptions = {};
+export type MutationOptions = {};
+export type SubscriptionOptions = {};
+export type FragmentOptions = {};
+/* eslint-enable @typescript-eslint/no-empty-object-type */
 
 export type ClientOptions = {
-  links: (Link | (() => Link))[];
-};
-
-export type Observable<T> = {
-  subscribe(observer: { next?: (value: T) => void; error?: (error: Error) => void; complete?: () => void }): {
-    unsubscribe?: () => void;
-  };
+  exchanges: Exchange[];
 };
 
 /**
- * GraphQL client for executing queries and mutations.
+ *
  */
 export class Client {
-  private links: Link[];
+  private unsubscribe: () => void;
+  private operations$: Subject<Operation>;
+  private results$: Source<OperationResult>;
 
-  /**
-   * @param config - The client configuration.
-   */
   constructor(config: ClientOptions) {
-    this.links = config.links.map((link) => (typeof link === 'function' ? link() : link));
-  }
-
-  /**
-   * @param document - The query document artifact.
-   * @param variables - The query variables.
-   * @param options - Query options.
-   * @returns The query result.
-   */
-  async query<TResult, TVariables = Record<string, never>>(
-    document: Artifact,
-    variables?: TVariables,
-    options?: QueryOptions<TVariables>,
-  ): Promise<{ data: TResult; errors?: import('./link.ts').GraphQLError[] }> {
-    const operation: Operation<Artifact<'query'>> = {
-      kind: 'query',
-      artifact: document as Artifact<'query'>,
-      variables,
-      signal: options?.signal,
-      headers: options?.headers,
-    };
-
-    const ctx: LinkContext = {
-      operation,
-      signal: options?.signal,
-      metadata: new Map(),
-    };
-
-    const result = await executeLinks(this.links, ctx, () => {
-      throw new Error('No terminating link found in the chain');
+    const exchange = composeExchange({
+      exchanges: [...config.exchanges, fragmentExchange(), terminalExchange()],
     });
 
-    return { data: result.data as TResult, errors: result.errors };
+    this.operations$ = makeSubject<Operation>();
+    this.results$ = exchange((ops$) => ops$ as unknown as Source<OperationResult>)(this.operations$.source);
+
+    this.unsubscribe = pipe(this.results$, subscribe({}));
   }
 
-  /**
-   * @param document - The mutation document artifact.
-   * @param variables - The mutation variables.
-   * @param options - Mutation options.
-   * @returns The mutation result.
-   */
-  async mutate<TResult, TVariables = Record<string, never>>(
-    document: Artifact,
-    variables?: TVariables,
-    options?: MutationOptions<TVariables>,
-  ): Promise<{ data: TResult; errors?: import('./link.ts').GraphQLError[] }> {
-    const operation: Operation<Artifact<'mutation'>> = {
-      kind: 'mutation',
-      artifact: document as Artifact<'mutation'>,
-      variables,
-      signal: options?.signal,
-      headers: options?.headers,
-    };
-
-    const ctx: LinkContext = {
-      operation,
-      signal: options?.signal,
-      metadata: new Map(),
-    };
-
-    const result = await executeLinks(this.links, ctx, () => {
-      throw new Error('No terminating link found in the chain');
-    });
-
-    return { data: result.data as TResult, errors: result.errors };
+  private createOperationKey(artifact: Artifact, variables: unknown): string {
+    const variablesKey = JSON.stringify(variables ?? {});
+    return `${artifact.name}:${variablesKey}`;
   }
 
-  /**
-   * @param document - The subscription document artifact.
-   * @param variables - The subscription variables.
-   * @returns An observable of subscription results.
-   */
-  subscription<TResult, TVariables = Record<string, never>>(
-    document: Artifact,
-    variables?: TVariables,
-  ): Observable<{ data: TResult }> {
+  createOperation(artifact: Artifact, variables?: unknown): Operation {
+    const key = this.createOperationKey(artifact, variables ?? {});
+
     return {
-      subscribe: () => ({
-        unsubscribe: () => {},
-      }),
+      variant: 'request',
+      key,
+      metadata: {},
+      artifact: artifact as Artifact<OperationKind>,
+      variables: variables ?? {},
     };
   }
 
-  /**
-   * @param name - The name of the link to find.
-   * @returns The link instance if found.
-   */
-  getLink<T extends Link>(name: string): T | undefined {
-    return this.links.find((link) => link.name === name) as T | undefined;
+  executeOperation(operation: Operation): Source<OperationResult> {
+    this.operations$.next(operation);
+
+    return pipe(
+      this.results$,
+      filter((result) => result.operation.key === operation.key),
+    );
+  }
+
+  executeQuery<T extends Artifact<'query'>>(
+    artifact: T,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, QueryOptions?]
+      : [VariablesOf<T>, QueryOptions?]
+  ): Source<OperationResult> {
+    const operation = this.createOperation(artifact, variables);
+    return this.executeOperation(operation);
+  }
+
+  executeMutation<T extends Artifact<'mutation'>>(
+    artifact: T,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, MutationOptions?]
+      : [VariablesOf<T>, MutationOptions?]
+  ): Source<OperationResult> {
+    const operation = this.createOperation(artifact, variables);
+    return this.executeOperation(operation);
+  }
+
+  executeSubscription<T extends Artifact<'subscription'>>(
+    artifact: T,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, SubscriptionOptions?]
+      : [VariablesOf<T>, SubscriptionOptions?]
+  ): Source<OperationResult> {
+    const operation = this.createOperation(artifact, variables);
+    return this.executeOperation(operation);
+  }
+
+  executeFragment<T extends Artifact<'fragment'>>(
+    artifact: T,
+    fragmentRef: FragmentRefs<T['name']>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    options?: FragmentOptions,
+  ): Source<OperationResult> {
+    const key = this.createOperationKey(artifact, fragmentRef);
+
+    const operation: Operation = {
+      variant: 'request',
+      key,
+      metadata: {
+        fragmentRef,
+      },
+      artifact: artifact as Artifact<ArtifactKind>,
+      variables: {},
+    };
+
+    return this.executeOperation(operation);
+  }
+
+  dispose(): void {
+    this.operations$.complete();
+    this.unsubscribe();
   }
 }
 
-/**
- * @param config - The client configuration.
- * @returns A new client instance.
- */
 export const createClient = (config: ClientOptions): Client => {
   return new Client(config);
 };

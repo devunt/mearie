@@ -1,0 +1,99 @@
+import type { Exchange, RequestOperation } from '../exchange.ts';
+import { pipe } from '../stream/pipe.ts';
+import { filter } from '../stream/operators/filter.ts';
+import { merge } from '../stream/operators/merge.ts';
+import { mergeMap } from '../stream/operators/merge-map.ts';
+import { fromArray } from '../stream/sources/from-array.ts';
+import { stringify } from '../utils.ts';
+import { fromValue } from '../stream/index.ts';
+
+const makeDedupKey = (op: RequestOperation): string => {
+  return `${op.artifact.name}:${stringify(op.variables)}`;
+};
+
+declare module '../exchange.ts' {
+  interface OperationMetadataMap {
+    dedup?: {
+      skip?: boolean;
+    };
+  }
+}
+
+/**
+ * Prevents duplicate in-flight operations by deduplicating requests with identical artifact names and variables.
+ *
+ * Operations are considered identical if they have the same artifact name and serialized variables.
+ * Mutations are never deduplicated. An operation is "in-flight" from when it's first seen until all subscribers tear down.
+ *
+ * Caveats:
+ *
+ * 1. Upstream metadata is lost when operations are deduplicated. The result will contain the metadata
+ * from the operation that actually went through the pipeline, not from deduplicated operations.
+ * This preserves downstream metadata (retry attempts, cache status) but means custom upstream metadata
+ * from deduplicated operations will not appear in results.
+ * @internal
+ * @returns An exchange that deduplicates in-flight operations.
+ */
+export const dedupExchange = (): Exchange => {
+  return (forward) => {
+    return (ops$) => {
+      const operations = new Map<string, Set<string>>();
+
+      const sideEffect$ = pipe(
+        ops$,
+        filter((op) => op.variant === 'request' && op.artifact.kind === 'mutation'),
+        forward,
+      );
+
+      const idempotent$ = pipe(
+        ops$,
+        filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind !== 'mutation'),
+        filter((op) => {
+          const dedupKey = makeDedupKey(op);
+          const isInflight = operations.has(dedupKey);
+
+          if (isInflight) {
+            operations.get(dedupKey)!.add(op.key);
+          } else {
+            operations.set(dedupKey, new Set([op.key]));
+          }
+
+          return (op.metadata.dedup?.skip ?? false) || !isInflight;
+        }),
+        forward,
+        mergeMap((result) => {
+          if (result.operation.variant !== 'request') {
+            return fromValue(result);
+          }
+
+          const dedupKey = makeDedupKey(result.operation);
+          const subs = operations.get(dedupKey) ?? new Set<string>();
+
+          return fromArray([...subs].map((key) => ({ ...result, operation: { ...result.operation, key } })));
+        }),
+      );
+
+      const teardown$ = pipe(
+        ops$,
+        filter((op) => op.variant === 'teardown'),
+        filter((teardown) => {
+          for (const [dedupKey, subs] of operations.entries()) {
+            if (subs.delete(teardown.key)) {
+              if (subs.size === 0) {
+                operations.delete(dedupKey);
+                return true;
+              }
+
+              return false;
+            }
+          }
+
+          return true;
+        }),
+        forward,
+      );
+
+      return merge(sideEffect$, idempotent$, teardown$);
+    };
+  };
+};

@@ -7,7 +7,9 @@ import type { Source, Talkback } from '../types.ts';
  * @param sources - The sources to merge.
  * @returns A merged source.
  */
-export const merge = <T>(...sources: Source<T>[]): Source<T> => {
+export const merge = <T extends readonly Source<unknown>[]>(
+  ...sources: T
+): Source<T[number] extends Source<infer U> ? U : never> => {
   return (sink) => {
     if (sources.length === 0) {
       sink.start({ pull() {}, cancel() {} });
@@ -47,7 +49,7 @@ export const merge = <T>(...sources: Source<T>[]): Source<T> => {
         },
         next(value) {
           if (!ended) {
-            sink.next(value);
+            sink.next(value as T[number] extends Source<infer U> ? U : never);
           }
         },
         complete() {

@@ -55,7 +55,7 @@ export default defineConfig(
     },
     rules: {
       'func-style': ['error', 'expression'],
-      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/no-empty-function': 'off',
       'import/newline-after-import': ['error', { considerComments: true }],
       'jsdoc/check-indentation': 'error',

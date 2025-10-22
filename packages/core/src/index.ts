@@ -3,9 +3,25 @@
  */
 
 export type { Artifact, ArtifactKind, DataOf, FragmentRefs, VariablesOf } from '@mearie/shared';
-export { type Link, type LinkContext, type LinkResult, type NextFn } from './link.ts';
-export { dedupLink } from './links/dedup.ts';
-export { retryLink, type RetryOptions } from './links/retry.ts';
-export { httpLink, type HttpOptions } from './links/fetch.ts';
-export { cacheLink, type CacheLink, type CacheOptions } from './links/cache.ts';
-export { Client, createClient, type ClientOptions } from './client.ts';
+
+export type { Exchange, ExchangeIO, Operation, OperationResult, OperationMetadataMap } from './exchange.ts';
+export { makeOperation } from './exchange.ts';
+export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';
+export {
+  GraphQLError,
+  ExchangeError,
+  AggregatedError,
+  isGraphQLError,
+  isExchangeError,
+  isAggregatedError,
+} from './errors.ts';
+export { composeExchange, type ComposeExchangeOptions } from './exchanges/compose.ts';
+
+export { httpExchange, type HttpOptions } from './exchanges/http.ts';
+export { dedupExchange } from './exchanges/dedup.ts';
+export { cacheExchange, type CacheExchange, type CacheOptions } from './exchanges/cache.ts';
+export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
+
+export { Client, createClient, type ClientOptions, type Observable } from './client.ts';
+
+export { Cache } from './cache/cache.ts';

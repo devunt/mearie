@@ -1,136 +1,186 @@
-import type { Artifact } from '@mearie/shared';
-import type { Operation } from './types.ts';
-import type { Link, LinkContext } from './link.ts';
-import { executeLinks } from './link.ts';
+import type { Artifact, OperationKind } from '@mearie/shared';
+import type { Exchange, Operation, OperationResult } from './exchange.ts';
+import { composeExchange } from './exchanges/compose.ts';
+import { terminalExchange } from './exchanges/terminal.ts';
+import { makeSubject } from './stream/sources/make-subject.ts';
+import type { Source } from './stream/types.ts';
+import { pipe } from './stream/pipe.ts';
+import { filter } from './stream/operators/filter.ts';
+import { subscribe } from './stream/sinks/subscribe.ts';
 
 export type QueryOptions<TVariables> = {
   variables?: TVariables;
-  headers?: Record<string, string>;
   signal?: AbortSignal;
 };
 
 export type MutationOptions<TVariables> = {
   variables?: TVariables;
-  headers?: Record<string, string>;
+  signal?: AbortSignal;
+};
+
+export type SubscriptionOptions<TVariables> = {
+  variables?: TVariables;
   signal?: AbortSignal;
 };
 
 export type ClientOptions = {
-  links: (Link | (() => Link))[];
+  exchanges: Exchange[];
 };
 
 export type Observable<T> = {
-  subscribe(observer: { next?: (value: T) => void; error?: (error: Error) => void; complete?: () => void }): {
-    unsubscribe?: () => void;
+  subscribe(observer: {
+    next?: (value: T) => void;
+    error?: (error: Error) => void;
+    complete?: () => void;
+  }): {
+    unsubscribe: () => void;
   };
 };
 
-/**
- * GraphQL client for executing queries and mutations.
- */
 export class Client {
-  private links: Link[];
+  private operations$: ReturnType<typeof makeSubject<Operation>>;
+  private results$: Source<OperationResult>;
+  private unsubscribe?: () => void;
 
-  /**
-   * @param config - The client configuration.
-   */
   constructor(config: ClientOptions) {
-    this.links = config.links.map((link) => (typeof link === 'function' ? link() : link));
+    this.operations$ = makeSubject<Operation>();
+
+    const exchange = composeExchange({
+      exchanges: [...config.exchanges, terminalExchange()]
+    });
+    const noop = (ops: Source<Operation>) => ops as unknown as Source<OperationResult>;
+    this.results$ = exchange(noop)(this.operations$.source);
+
+    this.unsubscribe = pipe(
+      this.results$,
+      subscribe({
+        next: () => {},
+      }),
+    );
   }
 
-  /**
-   * @param document - The query document artifact.
-   * @param variables - The query variables.
-   * @param options - Query options.
-   * @returns The query result.
-   */
+  private createOperationKey(artifact: Artifact, variables: unknown): string {
+    const variablesKey = JSON.stringify(variables ?? {});
+    return `${artifact.name}:${variablesKey}`;
+  }
+
+  private executeOperation<T>(
+    kind: OperationKind,
+    artifact: Artifact,
+    variables?: unknown,
+    signal?: AbortSignal,
+  ): Promise<{ data: T; errors?: OperationResult['errors'] }> {
+    return new Promise((resolve, reject) => {
+      const key = this.createOperationKey(artifact, variables ?? {});
+
+      const operation: Operation = {
+        variant: 'request',
+        key,
+        metadata: {},
+        artifact: artifact as Artifact<OperationKind>,
+        variables: variables ?? {},
+      };
+
+      let hasResult = false;
+      const cleanup = pipe(
+        this.results$,
+        filter((result) => result.operation.key === key),
+        subscribe({
+          next: (result: OperationResult) => {
+            hasResult = true;
+            cleanup();
+            resolve({ data: result.data as T, errors: result.errors });
+          },
+        }),
+      );
+
+      signal?.addEventListener('abort', () => {
+        if (!hasResult) {
+          cleanup();
+          this.operations$.next({ variant: 'teardown', key, metadata: {} });
+          reject(new Error('Operation aborted'));
+        }
+      });
+
+      this.operations$.next(operation);
+    });
+  }
+
   async query<TResult, TVariables = Record<string, never>>(
     document: Artifact,
     variables?: TVariables,
     options?: QueryOptions<TVariables>,
-  ): Promise<{ data: TResult; errors?: import('./link.ts').GraphQLError[] }> {
-    const operation: Operation<Artifact<'query'>> = {
-      kind: 'query',
-      artifact: document as Artifact<'query'>,
-      variables,
-      signal: options?.signal,
-      headers: options?.headers,
-    };
-
-    const ctx: LinkContext = {
-      operation,
-      signal: options?.signal,
-      metadata: new Map(),
-    };
-
-    const result = await executeLinks(this.links, ctx, () => {
-      throw new Error('No terminating link found in the chain');
-    });
-
-    return { data: result.data as TResult, errors: result.errors };
+  ): Promise<{ data: TResult; errors?: OperationResult['errors'] }> {
+    return this.executeOperation<TResult>('query', document, variables, options?.signal);
   }
 
-  /**
-   * @param document - The mutation document artifact.
-   * @param variables - The mutation variables.
-   * @param options - Mutation options.
-   * @returns The mutation result.
-   */
   async mutate<TResult, TVariables = Record<string, never>>(
     document: Artifact,
     variables?: TVariables,
     options?: MutationOptions<TVariables>,
-  ): Promise<{ data: TResult; errors?: import('./link.ts').GraphQLError[] }> {
-    const operation: Operation<Artifact<'mutation'>> = {
-      kind: 'mutation',
-      artifact: document as Artifact<'mutation'>,
-      variables,
-      signal: options?.signal,
-      headers: options?.headers,
-    };
-
-    const ctx: LinkContext = {
-      operation,
-      signal: options?.signal,
-      metadata: new Map(),
-    };
-
-    const result = await executeLinks(this.links, ctx, () => {
-      throw new Error('No terminating link found in the chain');
-    });
-
-    return { data: result.data as TResult, errors: result.errors };
+  ): Promise<{ data: TResult; errors?: OperationResult['errors'] }> {
+    return this.executeOperation<TResult>('mutation', document, variables, options?.signal);
   }
 
-  /**
-   * @param document - The subscription document artifact.
-   * @param variables - The subscription variables.
-   * @returns An observable of subscription results.
-   */
   subscription<TResult, TVariables = Record<string, never>>(
     document: Artifact,
     variables?: TVariables,
-  ): Observable<{ data: TResult }> {
+    options?: SubscriptionOptions<TVariables>,
+  ): Observable<{ data: TResult; errors?: OperationResult['errors'] }> {
     return {
-      subscribe: () => ({
-        unsubscribe: () => {},
-      }),
+      subscribe: (observer) => {
+        const key = this.createOperationKey(document, variables ?? {});
+
+        const operation: Operation = {
+          variant: 'request',
+          key,
+          metadata: {},
+          artifact: document as Artifact<'subscription'>,
+          variables: variables ?? {},
+        };
+
+        const cleanup = pipe(
+          this.results$,
+          filter((result) => result.operation.key === key),
+          subscribe({
+            next: (result: OperationResult) => {
+              if (observer.next) {
+                observer.next({ data: result.data as TResult, errors: result.errors });
+              }
+            },
+            complete: () => {
+              if (observer.complete) {
+                observer.complete();
+              }
+            },
+          }),
+        );
+
+        options?.signal?.addEventListener('abort', () => {
+          cleanup();
+          this.operations$.next({ variant: 'teardown', key, metadata: {} });
+        });
+
+        this.operations$.next(operation);
+
+        return {
+          unsubscribe: () => {
+            cleanup();
+            this.operations$.next({ variant: 'teardown', key, metadata: {} });
+          },
+        };
+      },
     };
   }
 
-  /**
-   * @param name - The name of the link to find.
-   * @returns The link instance if found.
-   */
-  getLink<T extends Link>(name: string): T | undefined {
-    return this.links.find((link) => link.name === name) as T | undefined;
+  dispose(): void {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
+    this.operations$.complete();
   }
 }
 
-/**
- * @param config - The client configuration.
- * @returns A new client instance.
- */
 export const createClient = (config: ClientOptions): Client => {
   return new Client(config);
 };

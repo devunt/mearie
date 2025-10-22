@@ -70,7 +70,6 @@ describe('takeUntil', () => {
             next();
           }
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -94,7 +93,6 @@ describe('takeUntil', () => {
         next: (value) => {
           emitted.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -122,7 +120,6 @@ describe('takeUntil', () => {
       )({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -149,32 +146,6 @@ describe('takeUntil', () => {
 
       expect(notifierCancelled).toBe(true);
     });
-
-    it('should cancel notifier when source errors', async () => {
-      let notifierCancelled = false;
-
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      const notifier = (sink: Sink<void>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {
-            notifierCancelled = true;
-          },
-        });
-      };
-
-      await expect(pipe(source, takeUntil(notifier), collectAll)).rejects.toThrow('Source error');
-
-      expect(notifierCancelled).toBe(true);
-    });
   });
 
   describe('completion', () => {
@@ -193,7 +164,6 @@ describe('takeUntil', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -216,55 +186,12 @@ describe('takeUntil', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
       });
 
       expect(completed).toBe(true);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate errors from source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      const { source: notifier } = makeSubject<void>();
-
-      await expect(pipe(source, takeUntil(notifier), collectAll)).rejects.toThrow('Source error');
-    });
-
-    it('should not propagate errors from notifier', async () => {
-      const source = fromArray([1, 2, 3]);
-
-      const notifier = (sink: Sink<void>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Notifier error'));
-      };
-
-      const result = await pipe(source, takeUntil(notifier), collectAll);
-
-      expect(result).toEqual([1, 2, 3]);
-    });
-
-    it('should not propagate completion from notifier', async () => {
-      const source = fromArray([1, 2, 3]);
-      const notifier = fromArray<void>([]);
-
-      const result = await pipe(source, takeUntil(notifier), collectAll);
-
-      expect(result).toEqual([1, 2, 3]);
     });
   });
 

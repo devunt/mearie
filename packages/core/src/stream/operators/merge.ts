@@ -50,15 +50,6 @@ export const merge = <T>(...sources: Source<T>[]): Source<T> => {
             sink.next(value);
           }
         },
-        error(err) {
-          if (!ended) {
-            ended = true;
-            for (const tb of talkbacks) {
-              tb.cancel();
-            }
-            sink.error(err);
-          }
-        },
         complete() {
           activeCount--;
           checkComplete();

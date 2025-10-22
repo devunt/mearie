@@ -35,9 +35,6 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
         next() {
           complete();
         },
-        error() {
-          // do nothing
-        },
         complete() {
           // do nothing
         },
@@ -51,15 +48,6 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
         next(value) {
           if (!completed) {
             sink.next(value);
-          }
-        },
-        error(err) {
-          if (!completed) {
-            completed = true;
-            if (notifierTalkback) {
-              notifierTalkback.cancel();
-            }
-            sink.error(err);
           }
         },
         complete() {

@@ -33,9 +33,6 @@ export const take = <T>(count: number): Operator<T> => {
             }
           }
         },
-        error(err) {
-          sink.error(err);
-        },
         complete() {
           sink.complete();
         },

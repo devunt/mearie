@@ -30,12 +30,6 @@ export type Sink<T> = {
   next(value: T): void;
 
   /**
-   * Receive an error and end the stream.
-   * @param error - The error that occurred.
-   */
-  error(error: unknown): void;
-
-  /**
    * Receive completion signal.
    */
   complete(): void;

@@ -39,23 +39,11 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
                 sink.next(innerValue);
               }
             },
-            error(err) {
-              if (!ended) {
-                ended = true;
-                sink.error(err);
-              }
-            },
             complete() {
               activeInner--;
               checkComplete();
             },
           });
-        },
-        error(err) {
-          if (!ended) {
-            ended = true;
-            sink.error(err);
-          }
         },
         complete() {
           outerCompleted = true;

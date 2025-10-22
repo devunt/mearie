@@ -31,17 +31,10 @@ export const share = <T>(): Operator<T> => {
                 s.next(value);
               }
             },
-            error(err) {
-              const sinksToNotify = [...sinks];
-              sinks.length = 0;
-              for (const s of sinksToNotify) {
-                s.error(err);
-              }
-            },
             complete() {
-              const sinksToNotify = [...sinks];
+              const ss = [...sinks];
               sinks.length = 0;
-              for (const s of sinksToNotify) {
+              for (const s of ss) {
                 s.complete();
               }
             },

@@ -4,7 +4,7 @@ import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
-import type { Sink, Talkback } from '../types.ts';
+import type { Talkback } from '../types.ts';
 
 describe('map', () => {
   describe('basic transformation', () => {
@@ -241,47 +241,6 @@ describe('map', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('should propagate errors from source', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      await expect(
-        pipe(
-          source,
-          map((x) => x * 2),
-          collectAll,
-        ),
-      ).rejects.toThrow('Source error');
-    });
-
-    it('should propagate errors even after mapping some values', async () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.error(new Error('Error after values'));
-      };
-
-      await expect(
-        pipe(
-          source,
-          map((x) => x * 2),
-          collectAll,
-        ),
-      ).rejects.toThrow('Error after values');
-    });
-  });
-
   describe('completion', () => {
     it('should complete when source completes', async () => {
       const source = fromArray([1, 2, 3]);
@@ -321,7 +280,6 @@ describe('map', () => {
           receivedTalkback = tb;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -348,7 +306,6 @@ describe('map', () => {
             talkback.cancel();
           }
         },
-        error: () => {},
         complete: () => {},
       });
 

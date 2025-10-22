@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Sink } from '../types.ts';
 
 describe('subscribe', () => {
   describe('basic functionality', () => {
@@ -126,71 +125,6 @@ describe('subscribe', () => {
       );
 
       expect(completeCalls).toBe(1);
-    });
-
-    it('should call error on source error', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Test error'));
-      };
-
-      let errorReceived: Error | null = null;
-
-      pipe(
-        source,
-        subscribe({
-          error: (err) => {
-            errorReceived = err as Error;
-          },
-        }),
-      );
-
-      expect(errorReceived).not.toBeNull();
-      expect(errorReceived!.message).toBe('Test error');
-    });
-
-    it('should not call complete after error', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Error'));
-      };
-
-      let completed = false;
-
-      pipe(
-        source,
-        subscribe({
-          error: () => {},
-          complete: () => {
-            completed = true;
-          },
-        }),
-      );
-
-      expect(completed).toBe(false);
-    });
-
-    it('should not call error after complete', () => {
-      const source = fromArray([1, 2, 3]);
-      let errorCalled = false;
-
-      pipe(
-        source,
-        subscribe({
-          error: () => {
-            errorCalled = true;
-          },
-        }),
-      );
-
-      expect(errorCalled).toBe(false);
     });
   });
 
@@ -473,61 +407,6 @@ describe('subscribe', () => {
       );
 
       expect(values).toEqual(['', 'a', '']);
-    });
-  });
-
-  describe('error propagation', () => {
-    it('should receive errors from source', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.error(new Error('Source error'));
-      };
-
-      const values: number[] = [];
-      let errorReceived: Error | null = null;
-
-      pipe(
-        source,
-        subscribe({
-          next: (value) => {
-            values.push(value);
-          },
-          error: (err) => {
-            errorReceived = err as Error;
-          },
-        }),
-      );
-
-      expect(values).toEqual([1]);
-      expect(errorReceived!.message).toBe('Source error');
-    });
-
-    it('should not call next after error', () => {
-      const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Early error'));
-      };
-
-      let nextCalled = false;
-
-      pipe(
-        source,
-        subscribe({
-          next: () => {
-            nextCalled = true;
-          },
-          error: () => {},
-        }),
-      );
-
-      expect(nextCalled).toBe(false);
     });
   });
 

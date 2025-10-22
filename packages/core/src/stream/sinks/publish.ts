@@ -6,7 +6,6 @@ export const publish = <T>(source: Source<T>): void => {
       talkback.pull();
     },
     next() {},
-    error() {},
     complete() {},
   });
 };

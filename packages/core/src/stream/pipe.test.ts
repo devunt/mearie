@@ -186,7 +186,6 @@ describe('pipe', () => {
             operations.push('op1');
             sink.next(v);
           },
-          error: (e) => sink.error(e),
           complete: () => sink.complete(),
         });
       };
@@ -198,7 +197,6 @@ describe('pipe', () => {
             operations.push('op2');
             sink.next(v);
           },
-          error: (e) => sink.error(e),
           complete: () => sink.complete(),
         });
       };
@@ -210,7 +208,6 @@ describe('pipe', () => {
             operations.push('op3');
             sink.next(v);
           },
-          error: (e) => sink.error(e),
           complete: () => sink.complete(),
         });
       };
@@ -229,7 +226,6 @@ describe('pipe', () => {
         src({
           start: (tb) => sink.start(tb),
           next: (v) => sink.next(v * 2),
-          error: (e) => sink.error(e),
           complete: () => sink.complete(),
         });
       };
@@ -246,7 +242,6 @@ describe('pipe', () => {
         src({
           start: (tb) => sink.start(tb),
           next: (v) => sink.next(v + 1),
-          error: (e) => sink.error(e),
           complete: () => sink.complete(),
         });
       };

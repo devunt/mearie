@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Sink } from '../types.ts';
 
 describe('merge', () => {
   describe('basic merging', () => {
@@ -124,7 +123,6 @@ describe('merge', () => {
           tb.pull();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -139,85 +137,12 @@ describe('merge', () => {
       merge()({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
       });
 
       expect(completed).toBe(true);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate errors from any source', async () => {
-      const source1 = fromArray([1, 2]);
-      const source2 = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(3);
-        sink.error(new Error('Source 2 error'));
-      };
-
-      await expect(pipe(merge(source1, source2), collectAll)).rejects.toThrow('Source 2 error');
-    });
-
-    it('should cancel other sources when one errors', async () => {
-      let source1Cancelled = false;
-      const source1 = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {
-            source1Cancelled = true;
-          },
-        });
-        sink.next(1);
-        sink.next(2);
-      };
-
-      const source2 = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Source 2 error'));
-      };
-
-      await expect(pipe(merge(source1, source2), collectAll)).rejects.toThrow('Source 2 error');
-
-      expect(source1Cancelled).toBe(true);
-    });
-
-    it('should not emit values after error', () => {
-      const emitted: number[] = [];
-
-      const source1 = fromArray([1, 2, 3]);
-      const source2 = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.error(new Error('Early error'));
-      };
-
-      try {
-        pipe(merge(source1, source2))({
-          start: (tb) => {
-            tb.pull();
-          },
-          next: (value) => {
-            emitted.push(value);
-          },
-          error: () => {},
-          complete: () => {},
-        });
-      } catch {
-        // Ignore error
-      }
-
-      expect(emitted.length).toBeLessThanOrEqual(3);
     });
   });
 
@@ -237,7 +162,6 @@ describe('merge', () => {
           pullCalled = true;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -259,7 +183,6 @@ describe('merge', () => {
           cancelCalled = true;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 

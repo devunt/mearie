@@ -29,13 +29,4 @@ describe('makeSubject', () => {
     expect(await promise2).toEqual([1, 2]);
   });
 
-  it('should handle error', async () => {
-    const subject = makeSubject<number>();
-    const promise = pipe(subject.source, collectAll);
-
-    subject.next(1);
-    subject.error(new Error('test'));
-
-    await expect(promise).rejects.toThrow('test');
-  });
 });

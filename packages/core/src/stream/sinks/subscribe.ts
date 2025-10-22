@@ -14,12 +14,6 @@ export type Observer<T> = {
    * Called when the source completes.
    */
   complete?: () => void;
-
-  /**
-   * Called when an error occurs.
-   * @param error - The error that occurred.
-   */
-  error?: (error: unknown) => void;
 };
 
 /**
@@ -43,14 +37,6 @@ export const subscribe = <T>(observer: Observer<T>) => {
       next(value) {
         if (!closed && observer.next) {
           observer.next(value);
-        }
-      },
-      error(err) {
-        if (!closed) {
-          closed = true;
-          if (observer.error) {
-            observer.error(err);
-          }
         }
       },
       complete() {

@@ -212,7 +212,6 @@ describe('fromArray', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -228,7 +227,6 @@ describe('fromArray', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -254,7 +252,6 @@ describe('fromArray', () => {
             talkback.cancel();
           }
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -273,7 +270,6 @@ describe('fromArray', () => {
         next: (value) => {
           emitted.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -289,7 +285,6 @@ describe('fromArray', () => {
           tb.cancel();
         },
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -309,7 +304,6 @@ describe('fromArray', () => {
           receivedTalkback = tb;
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
 
@@ -326,7 +320,6 @@ describe('fromArray', () => {
           expect(() => tb.pull()).not.toThrow();
         },
         next: () => {},
-        error: () => {},
         complete: () => {},
       });
     });
@@ -435,7 +428,6 @@ describe('fromArray', () => {
         next: (value) => {
           emitted.push(value);
         },
-        error: () => {},
         complete: () => {},
       });
 
@@ -449,7 +441,6 @@ describe('fromArray', () => {
       source({
         start: () => {},
         next: () => {},
-        error: () => {},
         complete: () => {
           completed = true;
         },
@@ -469,7 +460,6 @@ describe('fromArray', () => {
         next: (value) => {
           events.push(`next:${value}`);
         },
-        error: () => {},
         complete: () => {
           events.push('complete');
         },

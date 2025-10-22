@@ -17,9 +17,6 @@ export const filter = <T>(predicate: (value: T) => boolean): Operator<T> => {
             sink.next(value);
           }
         },
-        error(err) {
-          sink.error(err);
-        },
         complete() {
           sink.complete();
         },

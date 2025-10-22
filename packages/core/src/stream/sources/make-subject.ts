@@ -43,13 +43,15 @@ export const makeSubject = <T>(): Subject<T> => {
   };
 
   const next = (value: T) => {
-    for (const sink of sinks) {
+    // eslint-disable-next-line unicorn/no-useless-spread
+    for (const sink of [...sinks]) {
       sink.next(value);
     }
   };
 
   const complete = () => {
-    for (const sink of sinks) {
+    // eslint-disable-next-line unicorn/no-useless-spread
+    for (const sink of [...sinks]) {
       sink.complete();
     }
     sinks.length = 0;

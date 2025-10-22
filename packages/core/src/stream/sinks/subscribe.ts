@@ -35,16 +35,14 @@ export const subscribe = <T>(observer: Observer<T>) => {
         }
       },
       next(value) {
-        if (!closed && observer.next) {
-          observer.next(value);
+        if (!closed) {
+          observer.next?.(value);
         }
       },
       complete() {
         if (!closed) {
           closed = true;
-          if (observer.complete) {
-            observer.complete();
-          }
+          observer.complete?.();
         }
       },
     });

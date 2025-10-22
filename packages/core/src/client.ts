@@ -7,7 +7,7 @@ import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
 import type { Source } from './stream/types.ts';
 import { pipe } from './stream/pipe.ts';
 import { filter } from './stream/operators/filter.ts';
-import { publish } from './stream/index.ts';
+import { subscribe } from './stream/index.ts';
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 export type QueryOptions = {};
@@ -24,6 +24,7 @@ export type ClientOptions = {
  *
  */
 export class Client {
+  private unsubscribe: () => void;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
@@ -35,7 +36,7 @@ export class Client {
     this.operations$ = makeSubject<Operation>();
     this.results$ = exchange((ops$) => ops$ as unknown as Source<OperationResult>)(this.operations$.source);
 
-    pipe(this.results$, publish);
+    this.unsubscribe = pipe(this.results$, subscribe({}));
   }
 
   private createOperationKey(artifact: Artifact, variables: unknown): string {
@@ -120,6 +121,7 @@ export class Client {
 
   dispose(): void {
     this.operations$.complete();
+    this.unsubscribe();
   }
 }
 

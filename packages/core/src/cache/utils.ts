@@ -39,7 +39,11 @@ export const resolveArguments = (
  * @returns Field cache key string in "fieldName@argsString" format.
  */
 export const makeFieldKey = (selection: FieldSelection, variables: Record<string, unknown>): FieldKey => {
-  const args = selection.args ? stringify(resolveArguments(selection.args, variables)) : '{}';
+  const args =
+    selection.args && Object.keys(selection.args).length > 0
+      ? stringify(resolveArguments(selection.args, variables))
+      : '{}';
+
   return `${selection.name}@${args}`;
 };
 

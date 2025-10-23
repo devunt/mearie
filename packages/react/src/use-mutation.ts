@@ -1,7 +1,7 @@
-import { useCallback, useReducer, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
-import { pipe, subscribe } from '@mearie/core/stream';
+import { pipe, collect } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
 export type MutationResult<T extends Artifact<'mutation'>> =
@@ -21,9 +21,7 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       error: AggregatedError;
     };
 
-export type UseMutationOptions = MutationOptions & {
-  skip?: boolean;
-};
+export type UseMutationOptions = MutationOptions;
 
 export type Mutation<T extends Artifact<'mutation'>> = [
   (
@@ -34,93 +32,61 @@ export type Mutation<T extends Artifact<'mutation'>> = [
   MutationResult<T>,
 ];
 
-type MutationState<T> = {
-  data: T | undefined;
-  loading: boolean;
-  error: AggregatedError | undefined;
-};
-
-type MutationAction<T> = { type: 'loading' } | { type: 'success'; data: T } | { type: 'error'; error: AggregatedError };
-
-const mutationReducer = <T>(state: MutationState<T>, action: MutationAction<T>): MutationState<T> => {
-  if (action.type === 'loading') {
-    return { ...state, loading: true, error: undefined };
-  } else if (action.type === 'success') {
-    return { data: action.data, loading: false, error: undefined };
-  } else if (action.type === 'error') {
-    return { ...state, loading: false, error: action.error };
-  } else {
-    return state;
-  }
-};
-
 export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
   const client = useClient();
-  const [state, dispatch] = useReducer(mutationReducer<DataOf<T>>, {
-    data: undefined,
-    loading: false,
-    error: undefined,
-  });
 
-  const subscriptionRef = useRef<(() => void) | null>(null);
+  const [data, setData] = useState<DataOf<T> | undefined>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<AggregatedError | undefined>();
 
-  const executeMutation = useCallback(
-    (variables?: VariablesOf<T>, skip?: boolean): Promise<DataOf<T>> => {
-      if (skip) {
-        throw new AggregatedError([], 'Mutation is skipped');
-      }
+  const execute = useCallback(
+    async (variables?: VariablesOf<T>, options?: UseMutationOptions): Promise<DataOf<T>> => {
+      setLoading(true);
+      setError(undefined);
 
-      subscriptionRef.current?.();
-
-      dispatch({ type: 'loading' });
-
-      return new Promise((resolve, reject) => {
-        const unsubscribe = pipe(
+      try {
+        const result = await pipe(
           // @ts-expect-error - conditional signature makes this hard to type correctly
-          client.executeMutation(mutation, variables),
-          subscribe({
-            next: (result) => {
-              if (result.errors && result.errors.length > 0) {
-                const error = new AggregatedError(result.errors);
-                dispatch({ type: 'error', error });
-                reject(error);
-              } else {
-                dispatch({ type: 'success', data: result.data as DataOf<T> });
-                resolve(result.data as DataOf<T>);
-              }
-              subscriptionRef.current = null;
-            },
-          }),
+          client.executeMutation(mutation, variables, options),
+          collect,
         );
 
-        subscriptionRef.current = unsubscribe;
-      });
+        if (result.errors && result.errors.length > 0) {
+          const err = new AggregatedError(result.errors);
+
+          setError(err);
+          setLoading(false);
+
+          throw err;
+        }
+
+        setData(result.data as DataOf<T>);
+        setLoading(false);
+
+        return result.data as DataOf<T>;
+      } catch (err) {
+        if (err instanceof AggregatedError) {
+          setError(err);
+        }
+
+        setLoading(false);
+
+        throw err;
+      }
     },
     [client, mutation],
   );
 
-  const mutate = useCallback(
-    (
-      ...[variables, options]: VariablesOf<T> extends undefined
-        ? [undefined?, UseMutationOptions?]
-        : [VariablesOf<T>, UseMutationOptions?]
-    ): Promise<DataOf<T>> => {
-      const { skip = false } = options ?? {};
-      return executeMutation(variables, skip);
-    },
-    [executeMutation],
-  );
-
   return [
-    mutate as (
+    execute as (
       ...[variables, options]: VariablesOf<T> extends undefined
         ? [undefined?, UseMutationOptions?]
         : [VariablesOf<T>, UseMutationOptions?]
     ) => Promise<DataOf<T>>,
     {
-      data: state.data,
-      loading: state.loading,
-      error: state.error,
+      data,
+      loading,
+      error,
     } as MutationResult<T>,
   ];
 };

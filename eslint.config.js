@@ -71,6 +71,7 @@ export default defineConfig(
         },
       ],
       'jsdoc/sort-tags': 'error',
+      'unicorn/catch-error-name': 'off',
       'unicorn/consistent-function-scoping': 'off',
       'unicorn/no-null': 'off',
       'unicorn/prefer-switch': 'off',

@@ -1,8 +1,9 @@
-import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, collect } from '@mearie/core/stream';
+import { getClient } from './client-context.svelte.ts';
 
-export type CreateMutationOptions = {
-  skip?: boolean;
-};
+export type CreateMutationOptions = MutationOptions;
 
 export type Mutation<T extends Artifact<'mutation'>> =
   | {
@@ -28,7 +29,7 @@ export type Mutation<T extends Artifact<'mutation'>> =
   | {
       data: DataOf<T> | undefined;
       loading: false;
-      error: Error;
+      error: AggregatedError;
       mutate: (
         ...[variables, options]: VariablesOf<T> extends undefined
           ? [undefined?, CreateMutationOptions?]
@@ -37,9 +38,46 @@ export type Mutation<T extends Artifact<'mutation'>> =
     };
 
 export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
-  const data = $state<DataOf<T> | undefined>();
-  const loading = $state(false);
-  const error = $state<Error | undefined>();
+  const client = getClient();
+
+  let data = $state<DataOf<T> | undefined>();
+  let loading = $state<boolean>(false);
+  let error = $state<AggregatedError | undefined>();
+
+  const execute = async (variables?: VariablesOf<T>, options?: CreateMutationOptions): Promise<DataOf<T>> => {
+    loading = true;
+    error = undefined;
+
+    try {
+      const result = await pipe(
+        // @ts-expect-error - conditional signature makes this hard to type correctly
+        client.executeMutation(mutation, variables, options),
+        collect,
+      );
+
+      if (result.errors && result.errors.length > 0) {
+        const err = new AggregatedError(result.errors);
+
+        error = err;
+        loading = false;
+
+        throw err;
+      }
+
+      data = result.data as DataOf<T>;
+      loading = false;
+
+      return result.data as DataOf<T>;
+    } catch (err) {
+      if (err instanceof AggregatedError) {
+        error = err;
+      }
+
+      loading = false;
+
+      throw err;
+    }
+  };
 
   return {
     get data() {
@@ -51,6 +89,6 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
     get error() {
       return error;
     },
-    mutate: async () => ({}) as DataOf<T>,
+    mutate: execute,
   } as Mutation<T>;
 };

@@ -1,6 +1,10 @@
-import type { Artifact, VariablesOf, DataOf } from '@mearie/core';
+import { untrack } from 'svelte';
+import type { Artifact, VariablesOf, DataOf, QueryOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, subscribe } from '@mearie/core/stream';
+import { getClient } from './client-context.svelte.ts';
 
-export type CreateQueryOptions = {
+export type CreateQueryOptions = QueryOptions & {
   skip?: boolean;
 };
 
@@ -20,7 +24,7 @@ export type Query<T extends Artifact<'query'>> =
   | {
       data: DataOf<T> | undefined;
       loading: false;
-      error: Error;
+      error: AggregatedError;
       refetch: () => void;
     };
 
@@ -30,9 +34,52 @@ export const createQuery = <T extends Artifact<'query'>>(
     ? [undefined?, CreateQueryOptions?]
     : [() => VariablesOf<T>, CreateQueryOptions?]
 ): Query<T> => {
-  const data = $state<DataOf<T> | undefined>();
-  const loading = $state(true);
-  const error = $state<Error | undefined>();
+  const client = getClient();
+
+  let data = $state<DataOf<T> | undefined>();
+  let loading = $state<boolean>(false);
+  let error = $state<AggregatedError | undefined>();
+
+  let unsubscribe: (() => void) | null = null;
+
+  const execute = () => {
+    unsubscribe?.();
+
+    if (options?.skip) {
+      return;
+    }
+
+    loading = true;
+    error = undefined;
+
+    unsubscribe = pipe(
+      // @ts-expect-error - conditional signature makes this hard to type correctly
+      client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options),
+      subscribe({
+        next: (result) => {
+          if (result.errors && result.errors.length > 0) {
+            error = new AggregatedError(result.errors);
+            loading = false;
+          } else {
+            data = result.data as DataOf<T>;
+            loading = false;
+          }
+        },
+      }),
+    );
+  };
+
+  const refetch = () => {
+    untrack(execute);
+  };
+
+  $effect(() => {
+    execute();
+
+    return () => {
+      unsubscribe?.();
+    };
+  });
 
   return {
     get data() {
@@ -44,6 +91,6 @@ export const createQuery = <T extends Artifact<'query'>>(
     get error() {
       return error;
     },
-    refetch: () => {},
+    refetch,
   } as Query<T>;
 };

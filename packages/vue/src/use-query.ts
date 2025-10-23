@@ -37,7 +37,7 @@ export const useQuery = <T extends Artifact<'query'>>(
   const client = useClient();
 
   const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(false);
+  const loading = ref<boolean>(!toValue(options?.skip));
   const error = ref<AggregatedError | undefined>(undefined);
 
   let unsubscribe: (() => void) | null = null;

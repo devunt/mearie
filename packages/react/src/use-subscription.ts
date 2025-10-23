@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
-import { stringify, AggregatedError } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -40,12 +40,12 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
   const [error, setError] = useState<AggregatedError | undefined>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
-  const variablesKey = useMemo(() => stringify(variables ?? {}), [variables]);
+  const stableOptions = useMemo(() => options, [options?.skip, options?.onData, options?.onError]);
 
   const execute = useCallback(() => {
     unsubscribe.current?.();
 
-    if (options?.skip) {
+    if (stableOptions?.skip) {
       return;
     }
 
@@ -54,7 +54,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
 
     unsubscribe.current = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, variables, options),
+      client.executeSubscription(subscription, variables, stableOptions),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -63,7 +63,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
             setError(err);
             setLoading(false);
 
-            options?.onError?.(err);
+            stableOptions?.onError?.(err);
           } else {
             const resultData = result.data as DataOf<T>;
 
@@ -71,12 +71,12 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
             setLoading(false);
             setError(undefined);
 
-            options?.onData?.(resultData);
+            stableOptions?.onData?.(resultData);
           }
         },
       }),
     );
-  }, [client, subscription, variablesKey, options]);
+  }, [client, subscription, variables, stableOptions]);
 
   useEffect(() => {
     execute();

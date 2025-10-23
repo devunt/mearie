@@ -36,7 +36,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
   const client = useClient();
 
   const [data, setData] = createSignal<DataOf<T> | undefined>();
-  const [loading, setLoading] = createSignal<boolean>(true);
+  const [loading, setLoading] = createSignal<boolean>(!options?.skip);
   const [error, setError] = createSignal<AggregatedError | undefined>();
 
   createEffect(() => {
@@ -49,7 +49,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 
     const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : undefined, options),
+      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : variables, options),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -64,6 +64,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 
             setData(() => resultData);
             setLoading(false);
+            setError(undefined);
 
             options?.onData?.(resultData);
           }

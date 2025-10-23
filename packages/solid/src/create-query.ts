@@ -37,7 +37,7 @@ export const createQuery = <T extends Artifact<'query'>>(
   const client = useClient();
 
   const [data, setData] = createSignal<DataOf<T> | undefined>();
-  const [loading, setLoading] = createSignal<boolean>(false);
+  const [loading, setLoading] = createSignal<boolean>(!options?.skip);
   const [error, setError] = createSignal<AggregatedError | undefined>();
 
   let unsubscribe: (() => void) | null = null;
@@ -54,7 +54,7 @@ export const createQuery = <T extends Artifact<'query'>>(
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options),
+      client.executeQuery(query, typeof variables === 'function' ? variables() : variables, options),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -63,6 +63,7 @@ export const createQuery = <T extends Artifact<'query'>>(
           } else {
             setData(() => result.data as DataOf<T>);
             setLoading(false);
+            setError(undefined);
           }
         },
       }),

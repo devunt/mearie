@@ -36,7 +36,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
   const client = useClient();
 
   const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(true);
+  const loading = ref<boolean>(!toValue(options?.skip));
   const error = ref<AggregatedError | undefined>(undefined);
 
   let unsubscribe: (() => void) | null = null;

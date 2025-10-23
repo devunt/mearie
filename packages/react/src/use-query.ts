@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Artifact, DataOf, QueryOptions, VariablesOf } from '@mearie/core';
-import { stringify, AggregatedError } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -41,12 +41,12 @@ export const useQuery = <T extends Artifact<'query'>>(
   const [error, setError] = useState<AggregatedError | undefined>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
-  const variablesKey = useMemo(() => stringify(variables ?? {}), [variables]);
+  const stableOptions = useMemo(() => options, [options?.skip]);
 
   const execute = useCallback(() => {
     unsubscribe.current?.();
 
-    if (options?.skip) {
+    if (stableOptions?.skip) {
       return;
     }
 
@@ -55,7 +55,7 @@ export const useQuery = <T extends Artifact<'query'>>(
 
     unsubscribe.current = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, variables, options),
+      client.executeQuery(query, variables, stableOptions),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -69,7 +69,7 @@ export const useQuery = <T extends Artifact<'query'>>(
         },
       }),
     );
-  }, [client, query, variablesKey, options]);
+  }, [client, query, variables, stableOptions]);
 
   useEffect(() => {
     execute();

@@ -10,6 +10,8 @@ import type { Source, Talkback } from '../types.ts';
 export const merge = <T extends readonly Source<unknown>[]>(
   ...sources: T
 ): Source<T[number] extends Source<infer U> ? U : never> => {
+  type U = T[number] extends Source<infer U> ? U : never;
+
   return (sink) => {
     if (sources.length === 0) {
       sink.start({ pull() {}, cancel() {} });
@@ -19,10 +21,13 @@ export const merge = <T extends readonly Source<unknown>[]>(
 
     let activeCount = sources.length;
     const talkbacks: Talkback[] = [];
+    const pendings: U[] = [];
+
+    let subscribed = false;
     let ended = false;
 
     const checkComplete = () => {
-      if (activeCount === 0 && !ended) {
+      if (activeCount === 0 && subscribed && !ended) {
         ended = true;
         sink.complete();
       }
@@ -49,7 +54,11 @@ export const merge = <T extends readonly Source<unknown>[]>(
         },
         next(value) {
           if (!ended) {
-            sink.next(value as T[number] extends Source<infer U> ? U : never);
+            if (subscribed) {
+              sink.next(value as U);
+            } else {
+              pendings.push(value as U);
+            }
           }
         },
         complete() {
@@ -58,5 +67,15 @@ export const merge = <T extends readonly Source<unknown>[]>(
         },
       });
     }
+
+    subscribed = true;
+    for (const value of pendings) {
+      if (!ended) {
+        sink.next(value);
+      }
+    }
+    pendings.length = 0;
+
+    checkComplete();
   };
 };

@@ -9,6 +9,7 @@ import { ExchangeError } from '../errors.ts';
 import { fromSubscription } from '../stream/sources/from-subscription.ts';
 import { map } from '../stream/operators/map.ts';
 import { filter } from '../stream/operators/filter.ts';
+import { share } from '../stream/operators/share.ts';
 import { tap } from '../stream/operators/tap.ts';
 import { takeUntil } from '../stream/operators/take-until.ts';
 
@@ -30,6 +31,7 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
       const teardowns$ = pipe(
         ops$,
         filter((op) => op.variant === 'teardown'),
+        share(),
       );
 
       const fragment$ = pipe(
@@ -77,12 +79,16 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
         ),
       );
 
-      const cache$ = pipe(
+      const query$ = pipe(
         ops$,
         filter(
           (op): op is RequestOperation<'query'> =>
             op.variant === 'request' && op.artifact.kind === 'query' && fetchPolicy !== 'network-only',
         ),
+      );
+
+      const cache$ = pipe(
+        query$,
         mergeMap((op) => {
           const teardown$ = pipe(
             teardowns$,
@@ -98,24 +104,20 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
             map((data) => ({ operation: op, data, errors: [] })),
           );
         }),
-      );
-
-      const emit$ = pipe(
-        cache$,
         filter(
           (result) =>
             fetchPolicy === 'cache-only' ||
-            fetchPolicy === 'cache-and-network' ||
+            (fetchPolicy === 'cache-and-network' && result.data !== null) ||
             (fetchPolicy === 'cache-first' && result.data !== null),
         ),
       );
 
       const network$ = pipe(
-        cache$,
-        filter(
-          (result) => fetchPolicy === 'cache-and-network' || (fetchPolicy === 'cache-first' && result.data === null),
-        ),
-        map((result) => result.operation),
+        query$,
+        filter((op) => {
+          const cached = cache.readQuery(op.artifact, op.variables);
+          return fetchPolicy === 'cache-and-network' || cached === null;
+        }),
       );
 
       const forward$ = pipe(
@@ -126,9 +128,15 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
             cache.writeQuery(result.operation.artifact, result.operation.variables, result.data);
           }
         }),
+        filter(
+          (result) =>
+            result.operation.variant !== 'request' ||
+            result.operation.artifact.kind !== 'query' ||
+            fetchPolicy === 'network-only',
+        ),
       );
 
-      return merge(fragment$, emit$, forward$);
+      return merge(fragment$, cache$, forward$);
     };
   };
 

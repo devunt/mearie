@@ -3,6 +3,7 @@ import { pipe } from '../stream/pipe.ts';
 import { filter } from '../stream/operators/filter.ts';
 import { merge } from '../stream/operators/merge.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
+import { delay } from '../stream/operators/delay.ts';
 import { fromArray } from '../stream/sources/from-array.ts';
 import { stringify } from '../utils.ts';
 import { fromValue } from '../stream/index.ts';
@@ -60,6 +61,7 @@ export const dedupExchange = (): Exchange => {
 
           return (op.metadata.dedup?.skip ?? false) || !isInflight;
         }),
+        delay(0),
         forward,
         mergeMap((result) => {
           if (result.operation.variant !== 'request') {

@@ -3,12 +3,14 @@ import { ExchangeError } from '../errors.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromValue } from '../stream/sources/from-value.ts';
+import { filter } from '../stream/operators/filter.ts';
 
 export const terminalExchange = (): Exchange => {
   return () => {
     return (ops$) => {
       return pipe(
         ops$,
+        filter((op) => op.variant !== 'teardown'),
         mergeMap((op) =>
           fromValue({
             operation: op,

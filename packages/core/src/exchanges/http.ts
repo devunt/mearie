@@ -115,13 +115,18 @@ export const httpExchange = (options: HttpOptions): Exchange => {
     return (ops$) => {
       const fetch$ = pipe(
         ops$,
-        filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind !== 'fragment'),
+        filter(
+          (op): op is RequestOperation =>
+            op.variant === 'request' && (op.artifact.kind === 'query' || op.artifact.kind === 'mutation'),
+        ),
         mergeMap((op) => fromPromise(executeFetch(url, op, { mode, credentials, headers }))),
       );
 
       const forward$ = pipe(
         ops$,
-        filter((op) => op.variant === 'teardown' || op.artifact.kind !== 'fragment'),
+        filter(
+          (op) => op.variant === 'teardown' || op.artifact.kind === 'subscription' || op.artifact.kind === 'fragment',
+        ),
         forward,
       );
 

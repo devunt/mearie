@@ -9,6 +9,8 @@ import { delay } from '../stream/operators/delay.ts';
 import { fromValue } from '../stream/sources/from-value.ts';
 import { merge } from '../stream/operators/merge.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
+import { share } from '../stream/operators/share.ts';
+import { tap } from '../stream/operators/tap.ts';
 
 declare module '../exchange.ts' {
   interface OperationMetadataMap {
@@ -38,14 +40,25 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
   return (forward) => {
     return (ops$) => {
       const { source: retries$, next } = makeSubject<Operation>();
+      const tornDown = new Set<string>();
 
       const teardowns$ = pipe(
         ops$,
         filter((op) => op.variant === 'teardown'),
+        tap((op) => {
+          tornDown.add(op.key);
+        }),
+        share(),
+      );
+
+      const requests$ = pipe(
+        ops$,
+        filter((op) => op.variant === 'request'),
       );
 
       const retriesDelayed$ = pipe(
         retries$,
+        filter((op) => !tornDown.has(op.key)),
         mergeMap((op) => {
           const teardown$ = pipe(
             teardowns$,
@@ -56,12 +69,15 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
         }),
       );
 
-      return pipe(
-        merge(ops$, retriesDelayed$),
-        filter((op) => op.variant === 'request'),
+      const forward$ = pipe(
+        merge(requests$, retriesDelayed$),
         forward,
         filter((result) => {
           if (!result.errors || result.errors.length === 0) {
+            return true;
+          }
+
+          if (result.operation.variant === 'request' && result.operation.artifact.kind === 'mutation') {
             return true;
           }
 
@@ -90,6 +106,8 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
           return false;
         }),
       );
+
+      return merge(forward$, teardowns$);
     };
   };
 };

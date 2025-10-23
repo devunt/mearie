@@ -1,4 +1,4 @@
-import type { Operator, Sink } from '../types.ts';
+import type { Operator, Sink, Talkback } from '../types.ts';
 
 /**
  * Shares a single source across multiple subscribers (multicast).
@@ -9,36 +9,83 @@ import type { Operator, Sink } from '../types.ts';
 export const share = <T>(): Operator<T> => {
   return (source) => {
     const sinks: Sink<T>[] = [];
+    let talkback: Talkback | undefined;
     let started = false;
+    let subscriptionPhase = false;
+    let completed = false;
+    const buffer: T[] = [];
 
     return (sink) => {
       sinks.push(sink);
 
+      if (completed) {
+        sink.start({ pull() {}, cancel() {} });
+        sink.complete();
+        return;
+      }
+
+      if (talkback) {
+        sink.start(talkback);
+      }
+
       if (!started) {
         started = true;
+        subscriptionPhase = true;
 
-        setTimeout(() => {
-          if (sinks.length === 0) return;
-
-          source({
-            start(tb) {
-              for (const s of sinks) {
-                s.start(tb);
-              }
-            },
-            next(value) {
+        source({
+          start(tb) {
+            talkback = tb;
+            for (const s of sinks) {
+              s.start(tb);
+            }
+          },
+          next(value) {
+            if (subscriptionPhase) {
+              buffer.push(value);
+            } else {
               for (const s of sinks) {
                 s.next(value);
               }
-            },
-            complete() {
+            }
+          },
+          complete() {
+            if (subscriptionPhase) {
+              setTimeout(() => {
+                if (completed) return;
+                completed = true;
+                for (const value of buffer) {
+                  for (const s of sinks) {
+                    s.next(value);
+                  }
+                }
+                buffer.length = 0;
+                const ss = [...sinks];
+                sinks.length = 0;
+                for (const s of ss) {
+                  s.complete();
+                }
+              }, 0);
+            } else {
+              completed = true;
               const ss = [...sinks];
               sinks.length = 0;
               for (const s of ss) {
                 s.complete();
               }
-            },
-          });
+            }
+          },
+        });
+
+        setTimeout(() => {
+          subscriptionPhase = false;
+          if (completed) return;
+
+          for (const value of buffer) {
+            for (const s of sinks) {
+              s.next(value);
+            }
+          }
+          buffer.length = 0;
         }, 0);
       }
     };

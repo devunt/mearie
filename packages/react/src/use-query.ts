@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Artifact, DataOf, QueryOptions, VariablesOf } from '@mearie/core';
-import { stringify, AggregatedError } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -28,32 +28,6 @@ export type UseQueryOptions = QueryOptions & {
   skip?: boolean;
 };
 
-type QueryState<T> = {
-  data: T | undefined;
-  loading: boolean;
-  error: AggregatedError | undefined;
-};
-
-type QueryAction<T> =
-  | { type: 'loading' }
-  | { type: 'success'; data: T }
-  | { type: 'error'; error: AggregatedError }
-  | { type: 'update'; data: T };
-
-const queryReducer = <T>(state: QueryState<T>, action: QueryAction<T>): QueryState<T> => {
-  if (action.type === 'loading') {
-    return { ...state, loading: true, error: undefined };
-  } else if (action.type === 'success') {
-    return { data: action.data, loading: false, error: undefined };
-  } else if (action.type === 'error') {
-    return { ...state, loading: false, error: action.error };
-  } else if (action.type === 'update') {
-    return { ...state, data: action.data };
-  } else {
-    return state;
-  }
-};
-
 export const useQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends undefined
@@ -61,58 +35,51 @@ export const useQuery = <T extends Artifact<'query'>>(
     : [VariablesOf<T>, UseQueryOptions?]
 ): Query<T> => {
   const client = useClient();
-  const { skip = false } = options ?? {};
-  const [state, dispatch] = useReducer(queryReducer<DataOf<T>>, {
-    data: undefined,
-    loading: !skip,
-    error: undefined,
-  });
 
-  const subscriptionRef = useRef<(() => void) | null>(null);
-  const variablesKey = useMemo(() => stringify(variables ?? {}), [variables]);
+  const [data, setData] = useState<DataOf<T> | undefined>();
+  const [loading, setLoading] = useState(!options?.skip);
+  const [error, setError] = useState<AggregatedError | undefined>();
 
-  const executeQuery = useCallback(() => {
-    if (skip) {
+  const unsubscribe = useRef<(() => void) | null>(null);
+  const stableOptions = useMemo(() => options, [options?.skip]);
+
+  const execute = useCallback(() => {
+    unsubscribe.current?.();
+
+    if (stableOptions?.skip) {
       return;
     }
 
-    subscriptionRef.current?.();
+    setLoading(true);
+    setError(undefined);
 
-    dispatch({ type: 'loading' });
-
-    const unsubscribe = pipe(
+    unsubscribe.current = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, variables),
+      client.executeQuery(query, variables, stableOptions),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
-            dispatch({ type: 'error', error: new AggregatedError(result.errors) });
+            setError(new AggregatedError(result.errors));
+            setLoading(false);
           } else {
-            dispatch({ type: 'success', data: result.data as DataOf<T> });
+            setData(result.data as DataOf<T>);
+            setLoading(false);
+            setError(undefined);
           }
         },
       }),
     );
-
-    subscriptionRef.current = unsubscribe;
-  }, [client, query, variables, variablesKey, skip]);
-
-  const refetch = useCallback(() => {
-    void executeQuery();
-  }, [executeQuery]);
+  }, [client, query, variables, stableOptions]);
 
   useEffect(() => {
-    executeQuery();
-
-    return () => {
-      subscriptionRef.current?.();
-    };
-  }, [executeQuery]);
+    execute();
+    return () => unsubscribe.current?.();
+  }, [execute]);
 
   return {
-    data: state.data,
-    loading: state.loading,
-    error: state.error,
-    refetch,
+    data,
+    loading,
+    error,
+    refetch: execute,
   } as Query<T>;
 };

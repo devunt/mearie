@@ -1,7 +1,10 @@
-import { createSignal, type Accessor } from 'solid-js';
-import type { Artifact, VariablesOf, DataOf } from '@mearie/core';
+import { createSignal, createEffect, onCleanup, untrack, type Accessor } from 'solid-js';
+import type { Artifact, VariablesOf, DataOf, QueryOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, subscribe } from '@mearie/core/stream';
+import { useClient } from './client-provider.tsx';
 
-export type CreateQueryOptions = {
+export type CreateQueryOptions = QueryOptions & {
   skip?: boolean;
 };
 
@@ -21,7 +24,7 @@ export type Query<T extends Artifact<'query'>> =
   | {
       data: DataOf<T> | undefined;
       loading: false;
-      error: Error;
+      error: AggregatedError;
       refetch: () => void;
     };
 
@@ -31,9 +34,53 @@ export const createQuery = <T extends Artifact<'query'>>(
     ? [undefined?, CreateQueryOptions?]
     : [Accessor<VariablesOf<T>>, CreateQueryOptions?]
 ): Query<T> => {
-  const [data] = createSignal<DataOf<T>>();
-  const [loading] = createSignal(true);
-  const [error] = createSignal<Error>();
+  const client = useClient();
+
+  const [data, setData] = createSignal<DataOf<T> | undefined>();
+  const [loading, setLoading] = createSignal<boolean>(!options?.skip);
+  const [error, setError] = createSignal<AggregatedError | undefined>();
+
+  let unsubscribe: (() => void) | null = null;
+
+  const execute = () => {
+    unsubscribe?.();
+
+    if (options?.skip) {
+      return;
+    }
+
+    setLoading(true);
+    setError(undefined);
+
+    unsubscribe = pipe(
+      // @ts-expect-error - conditional signature makes this hard to type correctly
+      client.executeQuery(query, typeof variables === 'function' ? variables() : variables, options),
+      subscribe({
+        next: (result) => {
+          if (result.errors && result.errors.length > 0) {
+            setError(new AggregatedError(result.errors));
+            setLoading(false);
+          } else {
+            setData(() => result.data as DataOf<T>);
+            setLoading(false);
+            setError(undefined);
+          }
+        },
+      }),
+    );
+  };
+
+  const refetch = () => {
+    untrack(execute);
+  };
+
+  createEffect(() => {
+    execute();
+
+    onCleanup(() => {
+      unsubscribe?.();
+    });
+  });
 
   return {
     get data() {
@@ -45,6 +92,6 @@ export const createQuery = <T extends Artifact<'query'>>(
     get error() {
       return error();
     },
-    refetch: () => {},
+    refetch,
   } as Query<T>;
 };

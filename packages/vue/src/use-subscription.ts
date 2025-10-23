@@ -1,5 +1,8 @@
-import { ref, type Ref, type MaybeRefOrGetter } from 'vue';
-import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
+import { ref, watchEffect, toValue, type Ref, type MaybeRefOrGetter } from 'vue';
+import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, subscribe } from '@mearie/core/stream';
+import { useClient } from './client-plugin.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
@@ -15,13 +18,13 @@ export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
-      error: Ref<Error>;
+      error: Ref<AggregatedError>;
     };
 
-export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = {
-  skip?: boolean;
+export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
+  skip?: MaybeRefOrGetter<boolean>;
   onData?: (data: DataOf<T>) => void;
-  onError?: (error: Error) => void;
+  onError?: (error: AggregatedError) => void;
 };
 
 export const useSubscription = <T extends Artifact<'subscription'>>(
@@ -30,9 +33,56 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
     ? [undefined?, UseSubscriptionOptions<T>?]
     : [MaybeRefOrGetter<VariablesOf<T>>, UseSubscriptionOptions<T>?]
 ): Subscription<T> => {
+  const client = useClient();
+
   const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref(true);
-  const error = ref<Error | undefined>(undefined);
+  const loading = ref<boolean>(!toValue(options?.skip));
+  const error = ref<AggregatedError | undefined>(undefined);
+
+  let unsubscribe: (() => void) | null = null;
+
+  const execute = () => {
+    unsubscribe?.();
+
+    if (toValue(options?.skip)) {
+      return;
+    }
+
+    loading.value = true;
+    error.value = undefined;
+
+    unsubscribe = pipe(
+      // @ts-expect-error - conditional signature makes this hard to type correctly
+      client.executeSubscription(subscription, toValue(variables), options),
+      subscribe({
+        next: (result) => {
+          if (result.errors && result.errors.length > 0) {
+            const err = new AggregatedError(result.errors);
+
+            error.value = err;
+            loading.value = false;
+
+            options?.onError?.(err);
+          } else {
+            const resultData = result.data as DataOf<T>;
+
+            data.value = resultData;
+            loading.value = false;
+
+            options?.onData?.(resultData);
+          }
+        },
+      }),
+    );
+  };
+
+  watchEffect((onCleanup) => {
+    execute();
+
+    onCleanup(() => {
+      unsubscribe?.();
+    });
+  });
 
   return {
     data,

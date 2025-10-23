@@ -1,36 +1,40 @@
-import { useState, useEffect } from 'react';
-import type { Artifact, DataOf, FragmentRefs, OperationResult } from '@mearie/core';
-import { pipe, subscribe } from '@mearie/core/stream';
+import { useSyncExternalStore, useCallback } from 'react';
+import type { Artifact, DataOf, FragmentOptions, FragmentRefs } from '@mearie/core';
+import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
+
+export type UseFragmentOptions = FragmentOptions;
 
 export type Fragment<T extends Artifact<'fragment'>> = DataOf<T>;
 
 export const useFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
   fragmentRef: FragmentRefs<T['name']>,
+  options?: UseFragmentOptions,
 ): Fragment<T> => {
   const client = useClient();
-  // eslint-disable-next-line unicorn/no-useless-undefined
-  const [data, setData] = useState<Fragment<T> | undefined>(undefined);
 
-  useEffect(() => {
-    const unsubscribe = pipe(
-      client.executeFragment(fragment, fragmentRef),
-      subscribe({
-        next: (result: OperationResult) => {
-          if (result.data !== undefined) {
-            setData(result.data as Fragment<T>);
-          }
-        },
-      }),
-    );
+  const subscribe_ = useCallback(
+    (onChange: () => void) => {
+      return pipe(
+        client.executeFragment(fragment, fragmentRef, options),
+        subscribe({
+          next: onChange,
+        }),
+      );
+    },
+    [client, fragment, fragmentRef, options],
+  );
 
-    return unsubscribe;
-  }, [client, fragment, fragmentRef]);
+  const snapshot = useCallback((): Fragment<T> => {
+    const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 
-  if (data === undefined) {
-    throw new Error('Fragment data not found');
-  }
+    if (result.data === undefined) {
+      throw new Error('Fragment data not found');
+    }
 
-  return data;
+    return result.data as Fragment<T>;
+  }, [client, fragment, fragmentRef, options]);
+
+  return useSyncExternalStore(subscribe_, snapshot, snapshot);
 };

@@ -6,6 +6,7 @@ export type { Observer } from './sinks/subscribe.ts';
 export { publish } from './sinks/publish.ts';
 export { collect } from './sinks/collect.ts';
 export { collectAll } from './sinks/collect-all.ts';
+export { peek } from './sinks/peek.ts';
 
 export { map } from './operators/map.ts';
 export { filter } from './operators/filter.ts';

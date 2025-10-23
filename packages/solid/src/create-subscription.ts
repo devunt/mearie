@@ -1,5 +1,8 @@
-import { createSignal, type Accessor } from 'solid-js';
-import type { VariablesOf, DataOf, Artifact } from '@mearie/core';
+import { createSignal, createEffect, onCleanup, type Accessor } from 'solid-js';
+import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
+import { AggregatedError } from '@mearie/core';
+import { pipe, subscribe } from '@mearie/core/stream';
+import { useClient } from './client-provider.tsx';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
@@ -15,13 +18,13 @@ export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: DataOf<T> | undefined;
       loading: false;
-      error: Error;
+      error: AggregatedError;
     };
 
-export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = {
+export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
   skip?: boolean;
   onData?: (data: DataOf<T>) => void;
-  onError?: (error: Error) => void;
+  onError?: (error: AggregatedError) => void;
 };
 
 export const createSubscription = <T extends Artifact<'subscription'>>(
@@ -30,9 +33,49 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
     ? [undefined?, CreateSubscriptionOptions<T>?]
     : [Accessor<VariablesOf<T>>, CreateSubscriptionOptions<T>?]
 ): Subscription<T> => {
-  const [data] = createSignal<DataOf<T>>();
-  const [loading] = createSignal(true);
-  const [error] = createSignal<Error>();
+  const client = useClient();
+
+  const [data, setData] = createSignal<DataOf<T> | undefined>();
+  const [loading, setLoading] = createSignal<boolean>(!options?.skip);
+  const [error, setError] = createSignal<AggregatedError | undefined>();
+
+  createEffect(() => {
+    if (options?.skip) {
+      return;
+    }
+
+    setLoading(true);
+    setError(undefined);
+
+    const unsubscribe = pipe(
+      // @ts-expect-error - conditional signature makes this hard to type correctly
+      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : variables, options),
+      subscribe({
+        next: (result) => {
+          if (result.errors && result.errors.length > 0) {
+            const err = new AggregatedError(result.errors);
+
+            setError(err);
+            setLoading(false);
+
+            options?.onError?.(err);
+          } else {
+            const resultData = result.data as DataOf<T>;
+
+            setData(() => resultData);
+            setLoading(false);
+            setError(undefined);
+
+            options?.onData?.(resultData);
+          }
+        },
+      }),
+    );
+
+    onCleanup(() => {
+      unsubscribe();
+    });
+  });
 
   return {
     get data() {

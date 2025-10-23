@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { merge } from './merge.ts';
 import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
+import { makeSubject } from '../sources/make-subject.ts';
 import { collectAll } from '../sinks/collect-all.ts';
+import { subscribe } from '../sinks/subscribe.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
 
@@ -289,6 +291,129 @@ describe('merge', () => {
       const result = await pipe(merge(source1, source2), collectAll);
 
       expect(result.length).toBe(5);
+    });
+  });
+
+  describe('hot and cold source interaction', () => {
+    it('should capture emissions to Subject triggered during synchronous source emission', () => {
+      const { source: subject$, next } = makeSubject<number>();
+      const logs: number[] = [];
+
+      pipe(
+        merge(fromArray([1, 2, 3]), subject$),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 1) {
+              next(100);
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual([1, 100, 2, 3]);
+    });
+
+    it('should work regardless of merge argument order (cold first)', () => {
+      const { source: subject$, next } = makeSubject<number>();
+      const logs: number[] = [];
+
+      pipe(
+        merge(fromArray([1, 2, 3]), subject$),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 2) {
+              next(200);
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual([1, 2, 200, 3]);
+    });
+
+    it('should work regardless of merge argument order (hot first)', () => {
+      const { source: subject$, next } = makeSubject<number>();
+      const logs: number[] = [];
+
+      pipe(
+        merge(subject$, fromArray([1, 2, 3])),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 2) {
+              next(200);
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual([1, 2, 200, 3]);
+    });
+
+    it('should handle multiple Subjects with cross-emission', () => {
+      const { source: subjectA$, next: nextA } = makeSubject<number>();
+      const { source: subjectB$, next: nextB } = makeSubject<number>();
+      const logs: number[] = [];
+
+      pipe(
+        merge(fromArray([1, 2]), subjectA$, subjectB$),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 1) {
+              nextA(10);
+            }
+            if (value === 2) {
+              nextB(20);
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual([1, 10, 2, 20]);
+    });
+
+    it('should handle nested Subject emissions', () => {
+      const { source: subject$, next } = makeSubject<number>();
+      const logs: number[] = [];
+
+      pipe(
+        merge(fromArray([1, 2, 3]), subject$),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 1) {
+              next(10);
+            }
+            if (value === 10) {
+              next(100);
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual([1, 10, 100, 2, 3]);
+    });
+
+    it('should preserve emission order with multiple cold sources and Subjects', () => {
+      const { source: subject$, next } = makeSubject<string>();
+      const logs: string[] = [];
+
+      pipe(
+        merge(fromArray(['a', 'b']), subject$, fromArray(['c', 'd'])),
+        subscribe({
+          next: (value) => {
+            logs.push(value);
+            if (value === 'b') {
+              next('X');
+            }
+          },
+        }),
+      );
+
+      expect(logs).toEqual(['a', 'b', 'X', 'c', 'd']);
     });
   });
 });

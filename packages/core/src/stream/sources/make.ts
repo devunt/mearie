@@ -39,6 +39,11 @@ export const make = <T>(
       },
       complete: () => {
         if (!cancelled) {
+          cancelled = true;
+          if (unsubscribe) {
+            unsubscribe();
+            unsubscribe = null;
+          }
           sink.complete();
         }
       },

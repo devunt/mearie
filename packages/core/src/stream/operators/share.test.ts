@@ -96,15 +96,17 @@ describe('share', () => {
   });
 
   describe('deferred execution', () => {
-    it('should start execution asynchronously', () => {
-      let executed = false;
+    it('should start source execution synchronously but defer value delivery', () => {
+      let sourceExecuted = false;
+      let valueDelivered = false;
 
       const source: Source<number> = (sink) => {
-        executed = true;
+        sourceExecuted = true;
         sink.start({
           pull: () => {},
           cancel: () => {},
         });
+        sink.next(1);
         sink.complete();
       };
 
@@ -112,22 +114,26 @@ describe('share', () => {
 
       shared({
         start: () => {},
-        next: () => {},
+        next: () => {
+          valueDelivered = true;
+        },
         complete: () => {},
       });
 
-      expect(executed).toBe(false);
+      expect(sourceExecuted).toBe(true);
+      expect(valueDelivered).toBe(false);
     });
 
-    it('should execute after setTimeout', async () => {
-      let executed = false;
+    it('should deliver completion after setTimeout', async () => {
+      let valueDelivered = false;
+      let completed = false;
 
       const source: Source<number> = (sink) => {
-        executed = true;
         sink.start({
           pull: () => {},
           cancel: () => {},
         });
+        sink.next(1);
         sink.complete();
       };
 
@@ -136,14 +142,20 @@ describe('share', () => {
       const promise = new Promise<void>((resolve) => {
         shared({
           start: () => {},
-          next: () => {},
-          complete: () => resolve(),
+          next: () => {
+            valueDelivered = true;
+          },
+          complete: () => {
+            completed = true;
+            resolve();
+          },
         });
       });
 
       await promise;
 
-      expect(executed).toBe(true);
+      expect(valueDelivered).toBe(true);
+      expect(completed).toBe(true);
     });
   });
 

@@ -1,0 +1,225 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"interface Node { id: ID! }\n        interface Timestamped { createdAt: String! updatedAt: String! }\n        type User implements Node & Timestamped {\n            id: ID!\n            createdAt: String!\n            updatedAt: String!\n            name: String!\n        }\"#)"
+---
+Document {
+    source: Source {
+        code: "interface Node { id: ID! }\n        interface Timestamped { createdAt: String! updatedAt: String! }\n        type User implements Node & Timestamped {\n            id: ID!\n            createdAt: String!\n            updatedAt: String!\n            name: String!\n        }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Interface(
+                    InterfaceTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Node",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Interface(
+                    InterfaceTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Timestamped",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createdAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "updatedAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [
+                            TypeName(
+                                Name(
+                                    "Node",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Timestamped",
+                                ),
+                            ),
+                        ],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createdAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "updatedAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

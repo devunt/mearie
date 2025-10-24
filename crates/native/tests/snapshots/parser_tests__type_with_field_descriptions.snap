@@ -1,0 +1,85 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"\"A user in the system\"\n        type User {\n            \"The user's unique identifier\"\n            id: ID!\n            \"The user's full name\"\n            name: String!\n        }\"#)"
+---
+Document {
+    source: Source {
+        code: "\"A user in the system\"\n        type User {\n            \"The user's unique identifier\"\n            id: ID!\n            \"The user's full name\"\n            name: String!\n        }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: Some(
+                            Description {
+                                value: "A user in the system",
+                            },
+                        ),
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: Some(
+                                    Description {
+                                        value: "The user's unique identifier",
+                                    },
+                                ),
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: Some(
+                                    Description {
+                                        value: "The user's full name",
+                                    },
+                                ),
+                                name: FieldName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

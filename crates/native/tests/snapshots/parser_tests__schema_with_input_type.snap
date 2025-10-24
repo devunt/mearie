@@ -1,0 +1,189 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"input UserInput { name: String! email: String! age: Int }\n        type Mutation { createUser(input: UserInput!): User }\n        type User { id: ID! }\"#)"
+---
+Document {
+    source: Source {
+        code: "input UserInput { name: String! email: String! age: Int }\n        type Mutation { createUser(input: UserInput!): User }\n        type User { id: ID! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "age",
+                                    ),
+                                ),
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Mutation",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createUser",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "input",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "UserInput",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "User",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

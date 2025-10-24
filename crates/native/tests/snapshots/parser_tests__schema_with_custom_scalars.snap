@@ -1,0 +1,101 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"scalar DateTime scalar JSON type User { createdAt: DateTime! metadata: JSON }\")"
+---
+Document {
+    source: Source {
+        code: "scalar DateTime scalar JSON type User { createdAt: DateTime! metadata: JSON }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Scalar(
+                    ScalarTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "DateTime",
+                            ),
+                        ),
+                        directives: [],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Scalar(
+                    ScalarTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "JSON",
+                            ),
+                        ),
+                        directives: [],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createdAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "DateTime",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "metadata",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "JSON",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

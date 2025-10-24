@@ -1,97 +1,140 @@
 use super::{
-    CodegenContext, DocumentNodeGenerator, EnumGenerator, FragmentGenerator, InputObjectGenerator,
-    ModuleAugmentationGenerator, OperationGenerator, OperationVariablesGenerator, Registry, Result, ScalarsGenerator,
-    SelectionSetGenerator,
+    CodegenContext,
+    generators::{OperationsGenerator, RuntimeGenerator, SchemaTypesGenerator},
 };
-use crate::span::SourceOwned;
+use crate::error::Result;
+use crate::schema::{DocumentIndex, SchemaIndex};
+use crate::source::SourceBuf;
 use oxc_ast::ast::{Statement, TSType};
 use oxc_codegen::Codegen;
 use oxc_span::{SPAN, SourceType};
 
+/// Code generation builder for GraphQL operations.
+///
+/// `Builder` orchestrates TypeScript code generation from GraphQL schema and executable documents.
+/// It generates three output files:
+/// - `types.d.ts` - Type definitions for operations, fragments, and input objects
+/// - `graphql.d.ts` - Module augmentation with enum types and public fragment types
+/// - `graphql.js` - Runtime document nodes and the `graphql()` function
+///
+/// # Architecture
+///
+/// Uses three specialized generators:
+/// - [`SchemaTypesGenerator`] - Generates scalar types, input objects, and enums
+/// - [`OperationsGenerator`] - Generates operation and fragment types
+/// - [`RuntimeGenerator`] - Generates document nodes and module augmentation
+///
+/// # Example
+///
+/// ```
+/// use mearie_native::codegen::{CodegenContext, Builder};
+/// use mearie_native::schema::{SchemaBuilder, DocumentIndex};
+/// use mearie_native::arena::Arena;
+///
+/// let arena = Arena::new();
+/// let ctx = CodegenContext::new();
+/// let schema = SchemaBuilder::new(&arena).build();
+/// let document = DocumentIndex::new();
+///
+/// let builder = Builder::new(&ctx, &schema, &document);
+/// let sources = builder.generate().unwrap();
+/// ```
 pub struct Builder<'a, 'b> {
     ctx: &'a CodegenContext,
-    registry: &'a Registry<'b>,
+    schema: &'a SchemaIndex<'b>,
+    document: &'a DocumentIndex<'b>,
 }
 
 impl<'a, 'b> Builder<'a, 'b> {
-    pub fn new(ctx: &'a CodegenContext, registry: &'a Registry<'b>) -> Self {
-        Self { ctx, registry }
+    /// Creates a new code generation builder.
+    ///
+    /// # Parameters
+    ///
+    /// - `ctx` - Codegen context containing AST builder
+    /// - `schema` - Schema index with type definitions
+    /// - `document` - Document index with operations and fragments
+    pub fn new(ctx: &'a CodegenContext, schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>) -> Self {
+        Self { ctx, schema, document }
     }
 
-    pub fn generate(&self) -> Result<Vec<SourceOwned>> {
+    /// Generates TypeScript code from GraphQL schema and operations.
+    ///
+    /// # Returns
+    ///
+    /// Returns three source files in order:
+    /// 1. `types.d.ts` - Type definitions
+    /// 2. `graphql.d.ts` - Module augmentation
+    /// 3. `graphql.js` - Runtime code
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if code generation fails due to:
+    /// - Invalid operation structure
+    /// - Missing schema types referenced by operations
+    /// - Invalid fragment spreads
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use mearie_native::codegen::{CodegenContext, Builder};
+    /// # use mearie_native::schema::{SchemaBuilder, DocumentIndex};
+    /// # use mearie_native::arena::Arena;
+    /// # let arena = Arena::new();
+    /// # let ctx = CodegenContext::new();
+    /// # let schema = SchemaBuilder::new(&arena).build();
+    /// # let document = DocumentIndex::new();
+    /// let builder = Builder::new(&ctx, &schema, &document);
+    /// let sources = builder.generate().unwrap();
+    ///
+    /// assert_eq!(sources.len(), 3);
+    /// assert_eq!(sources[0].file_path, "types.d.ts");
+    /// assert_eq!(sources[1].file_path, "graphql.d.ts");
+    /// assert_eq!(sources[2].file_path, "graphql.js");
+    /// ```
+    pub fn generate(&self) -> Result<Vec<SourceBuf>> {
         let ast = self.ctx.ast();
         let mut statements = ast.vec();
 
         let import_stmt = self.create_core_types_import(&ast);
         statements.push(import_stmt);
 
-        let scalars_generator = ScalarsGenerator::new(self.ctx, self.registry);
-        let scalars_stmt = scalars_generator.generate();
-        statements.push(scalars_stmt);
-
-        for schema_document in self.registry.schemas() {
-            let input_object_generator = InputObjectGenerator::new(self.ctx, self.registry, schema_document);
-            let input_object_stmts = input_object_generator.generate();
-            for stmt in input_object_stmts {
-                statements.push(stmt);
-            }
+        let schema_generator = SchemaTypesGenerator::new(self.ctx, self.schema);
+        let schema_stmts = schema_generator.generate();
+        for stmt in schema_stmts {
+            statements.push(stmt);
         }
 
-        let variables_generator = OperationVariablesGenerator::new(self.ctx, self.registry);
-        let selection_set_generator = SelectionSetGenerator::new(self.registry, self.ctx);
-        let fragment_generator = FragmentGenerator::new(self.ctx, &selection_set_generator);
-        let operation_generator = OperationGenerator::new(self.ctx, &variables_generator, &selection_set_generator);
-
-        for fragment in self.registry.fragments() {
-            let stmts = fragment_generator.generate_fragment(fragment)?;
-            for stmt in stmts {
-                statements.push(stmt);
-            }
-        }
-
-        for operation in self.registry.operations() {
-            let op_stmts = operation_generator.generate_operation(operation)?;
-            for stmt in op_stmts {
-                statements.push(stmt);
-            }
+        let operations_generator = OperationsGenerator::new(self.ctx, self.schema, self.document);
+        let operation_stmts = operations_generator.generate()?;
+        for stmt in operation_stmts {
+            statements.push(stmt);
         }
 
         let program = self.create_program(&ast, statements);
         let code = self.print_program(&program);
 
-        // Generate enums
-        let mut enum_statements = ast.vec();
-        for schema_document in self.registry.schemas() {
-            let enum_generator = EnumGenerator::new(self.ctx, schema_document);
-            let enum_stmts = enum_generator.generate();
-            for stmt in enum_stmts {
-                enum_statements.push(stmt);
-            }
-        }
+        let enum_statements = schema_generator.generate_enums_for_module();
 
-        // Generate public types (fragment $key exports)
         let public_statements = self.generate_public_types_statements(&ast);
 
-        let augmentation_generator = ModuleAugmentationGenerator::new(self.ctx, self.registry);
-        let module_augmentation =
-            augmentation_generator.generate_with_additional(enum_statements, public_statements)?;
+        let runtime_generator = RuntimeGenerator::new(self.ctx, self.schema, self.document);
+        let module_augmentation = runtime_generator.generate_module_augmentation(enum_statements, public_statements)?;
 
-        let document_node_generator = DocumentNodeGenerator::new(self.ctx, self.registry);
-        let documents_statements = document_node_generator.generate()?;
+        let documents_statements = runtime_generator.generate_document_nodes()?;
         let documents_code = self.generate_graphql_js(documents_statements);
 
         Ok(vec![
-            SourceOwned {
+            SourceBuf {
                 code,
                 file_path: "types.d.ts".to_string(),
                 start_line: 1,
             },
-            SourceOwned {
+            SourceBuf {
                 code: module_augmentation,
                 file_path: "graphql.d.ts".to_string(),
                 start_line: 1,
             },
-            SourceOwned {
+            SourceBuf {
                 code: documents_code,
                 file_path: "graphql.js".to_string(),
                 start_line: 1,
@@ -135,8 +178,8 @@ impl<'a, 'b> Builder<'a, 'b> {
 
         let mut statements = ast.vec();
 
-        for fragment in self.registry.fragments() {
-            let fragment_name = fragment.name.as_str();
+        for fragment in self.document.fragments() {
+            let fragment_name = fragment.name;
             let type_name_str = format!("{}$key", fragment_name);
             let type_name = ast.allocator.alloc_str(&type_name_str);
 
@@ -298,23 +341,19 @@ impl<'a, 'b> Builder<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ParseNode;
-    use crate::{ast::Document, parser::GraphQLContext, span::Source};
+    use crate::arena::Arena;
+    use crate::graphql::parser::Parser;
+    use crate::schema::{DocumentIndex, SchemaBuilder};
+    use crate::source::Source;
     use assertables::*;
-
-    fn parse_source(code: &str) -> Source<'_> {
-        Source {
-            code,
-            file_path: "test.graphql",
-            start_line: 1,
-        }
-    }
 
     #[test]
     fn test_operation_builder_new() {
+        let arena = Arena::new();
         let ctx = CodegenContext::new();
-        let registry = Registry::new();
-        let _builder = Builder::new(&ctx, &registry);
+        let schema = SchemaBuilder::new(&arena).build();
+        let document = DocumentIndex::new();
+        let _builder = Builder::new(&ctx, &schema, &document);
     }
 
     #[test]
@@ -338,18 +377,23 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -380,18 +424,23 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -428,18 +477,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -479,18 +534,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -553,18 +614,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -622,18 +689,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -688,18 +761,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -743,18 +822,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -807,18 +892,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);
@@ -875,18 +966,24 @@ mod tests {
             }
         "#;
 
-        let graphql_ctx = GraphQLContext::new();
-        let schema_source = parse_source(schema);
-        let schema_document = Document::parse(&graphql_ctx, &schema_source).unwrap();
-        let operations_source = parse_source(operations);
-        let operations_document = Document::parse(&graphql_ctx, &operations_source).unwrap();
+        let arena = Arena::new();
+        let schema_source = Source::ephemeral(schema);
+        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
+        let operations_source = Source::ephemeral(operations);
+        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
 
-        let mut registry = Registry::new();
-        registry.load_schema(schema_document);
-        registry.load_document(operations_document).unwrap();
+        let mut schema_builder = SchemaBuilder::new(&arena);
+        schema_builder.add_document(schema_document).unwrap();
+        let schema_index = schema_builder.build();
+
+        let mut document_index = DocumentIndex::new();
+
+        document_index
+            .add_document_with_source(operations_document, operations_source.clone())
+            .unwrap();
 
         let ctx = CodegenContext::new();
-        let builder = Builder::new(&ctx, &registry);
+        let builder = Builder::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
         assert_ok!(&result);

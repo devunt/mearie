@@ -1,0 +1,160 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query GetUsers($limit: Int = 10, $offset: Int = 0) { users(limit: $limit, offset: $offset) { id } }\")"
+---
+Document {
+    source: Source {
+        code: "query GetUsers($limit: Int = 10, $offset: Int = 0) { users(limit: $limit, offset: $offset) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 99,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUsers",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 15,
+                                end: 34,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "limit",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Int",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "10",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 33,
+                                end: 50,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "offset",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Int",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "0",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 53,
+                                        end: 97,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "users",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 59,
+                                                end: 72,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "limit",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "limit",
+                                                ),
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 74,
+                                                end: 89,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "offset",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "offset",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 93,
+                                                        end: 97,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

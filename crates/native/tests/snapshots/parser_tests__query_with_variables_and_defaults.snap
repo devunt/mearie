@@ -1,0 +1,263 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query GetUsers(\n            $limit: Int = 10\n            $offset: Int = 0\n            $sortBy: String = \"name\"\n            $ascending: Boolean = true\n        ) {\n            users(limit: $limit, offset: $offset, sortBy: $sortBy, ascending: $ascending) {\n                id\n                name\n            }\n        }\"#)"
+---
+Document {
+    source: Source {
+        code: "query GetUsers(\n            $limit: Int = 10\n            $offset: Int = 0\n            $sortBy: String = \"name\"\n            $ascending: Boolean = true\n        ) {\n            users(limit: $limit, offset: $offset, sortBy: $sortBy, ascending: $ascending) {\n                id\n                name\n            }\n        }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 317,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUsers",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 28,
+                                end: 58,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "limit",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Int",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "10",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 57,
+                                end: 87,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "offset",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Int",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "0",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 86,
+                                end: 124,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "sortBy",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "String",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                String(
+                                    "name",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 123,
+                                end: 159,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "ascending",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Boolean",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                Boolean(
+                                    true,
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 174,
+                                        end: 307,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "users",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 180,
+                                                end: 193,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "limit",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "limit",
+                                                ),
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 195,
+                                                end: 210,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "offset",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "offset",
+                                                ),
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 212,
+                                                end: 227,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "sortBy",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "sortBy",
+                                                ),
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 229,
+                                                end: 250,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "ascending",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "ascending",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 270,
+                                                        end: 293,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 289,
+                                                        end: 307,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "name",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,49 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"extend interface Node { createdAt: String }\")"
+---
+Document {
+    source: Source {
+        code: "extend interface Node { createdAt: String }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystemExtension(
+            Type(
+                Interface(
+                    InterfaceTypeExtension {
+                        name: TypeName(
+                            Name(
+                                "Node",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createdAt",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

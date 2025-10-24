@@ -1,0 +1,154 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query GetUser($id: ID!) { user(id: $id) { id name email } }\")"
+---
+Document {
+    source: Source {
+        code: "query GetUser($id: ID!) { user(id: $id) { id name email } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 59,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 14,
+                                end: 23,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "id",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "ID",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 26,
+                                        end: 57,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 31,
+                                                end: 38,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 42,
+                                                        end: 49,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 45,
+                                                        end: 55,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "name",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 50,
+                                                        end: 57,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "email",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,116 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query { users(ids: [1, 2, 3], tags: [\"admin\", \"user\"]) { id } }\"#)"
+---
+Document {
+    source: Source {
+        code: "query { users(ids: [1, 2, 3], tags: [\"admin\", \"user\"]) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 63,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 61,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "users",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 14,
+                                                end: 28,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "ids",
+                                                ),
+                                            ),
+                                            value: List(
+                                                [
+                                                    Int(
+                                                        "1",
+                                                    ),
+                                                    Int(
+                                                        "2",
+                                                    ),
+                                                    Int(
+                                                        "3",
+                                                    ),
+                                                ],
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 30,
+                                                end: 53,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "tags",
+                                                ),
+                                            ),
+                                            value: List(
+                                                [
+                                                    String(
+                                                        "admin",
+                                                    ),
+                                                    String(
+                                                        "user",
+                                                    ),
+                                                ],
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 57,
+                                                        end: 61,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

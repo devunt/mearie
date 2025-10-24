@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::graphql::ast::*;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Control {

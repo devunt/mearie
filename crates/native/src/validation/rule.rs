@@ -1,30 +1,46 @@
-use super::context::{SchemaProvider, ValidationContext};
+use super::context::ValidationContext;
 use super::visitor::{VisitNode, Visitor};
-use crate::ast::Document;
 use crate::error::MearieError;
+use crate::graphql::ast::Document;
+use crate::schema::{DocumentIndex, SchemaIndex};
+use crate::source::Source;
 
-pub trait ValidationRule<'a>: Visitor<'a, ValidationContext<'a>> + Default {
-    fn validate(schema: &'a dyn SchemaProvider<'a>, document: &'a Document<'a>) -> Result<(), MearieError> {
-        let mut ctx = ValidationContext::new(schema, document.source);
+pub trait ValidationRule<'a, 'b: 'a>: Visitor<'a, ValidationContext<'a, 'b>> + Default {
+    fn validate(
+        schema: &'a SchemaIndex<'b>,
+        document_index: &'a DocumentIndex<'b>,
+        document: &'a Document<'a>,
+        source: Source<'a>,
+    ) -> Result<(), MearieError> {
+        let mut ctx = ValidationContext::new(schema, document_index, source);
         let mut rule = Self::default();
         document.visit(&mut ctx, &mut rule);
-        ctx.to_result(())
-    }
 
-    fn validate_all(schema: &'a dyn SchemaProvider<'a>, document: &'a Document<'a>) -> Result<(), Vec<MearieError>> {
-        let mut ctx = ValidationContext::new(schema, document.source);
-        let mut rule = Self::default();
-        document.visit(&mut ctx, &mut rule);
-        ctx.to_result_all(())
+        let errors = ctx.errors();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors[0].clone())
+        }
     }
 }
 
-pub trait ValidateNode<'a> {
-    fn validate<R: ValidationRule<'a>>(&'a self, schema: &'a dyn SchemaProvider<'a>) -> Result<(), MearieError>;
+pub trait ValidateNode<'a, 'b> {
+    fn validate<R: ValidationRule<'a, 'b>>(
+        &'a self,
+        schema: &'a SchemaIndex<'b>,
+        document_index: &'a DocumentIndex<'b>,
+        source: Source<'a>,
+    ) -> Result<(), MearieError>;
 }
 
-impl<'a> ValidateNode<'a> for Document<'a> {
-    fn validate<R: ValidationRule<'a>>(&'a self, schema: &'a dyn SchemaProvider<'a>) -> Result<(), MearieError> {
-        R::validate(schema, self)
+impl<'a, 'b> ValidateNode<'a, 'b> for Document<'a> {
+    fn validate<R: ValidationRule<'a, 'b>>(
+        &'a self,
+        schema: &'a SchemaIndex<'b>,
+        document_index: &'a DocumentIndex<'b>,
+        source: Source<'a>,
+    ) -> Result<(), MearieError> {
+        R::validate(schema, document_index, self, source)
     }
 }

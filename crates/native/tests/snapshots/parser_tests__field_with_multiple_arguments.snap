@@ -1,0 +1,172 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"type Query {\n            users(\n                first: Int\n                after: String\n                orderBy: OrderBy\n                filter: UserFilter\n            ): [User!]!\n        }\n        type User { id: ID! }\"#)"
+---
+Document {
+    source: Source {
+        code: "type Query {\n            users(\n                first: Int\n                after: String\n                orderBy: OrderBy\n                filter: UserFilter\n            ): [User!]!\n        }\n        type User { id: ID! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "users",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "first",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "after",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "String",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "orderBy",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "OrderBy",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "filter",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "UserFilter",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "User",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,98 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query { user @skip(if: true) { id } }\")"
+---
+Document {
+    source: Source {
+        code: "query { user @skip(if: true) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 37,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 35,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [
+                                        Directive {
+                                            span: Span {
+                                                start: 13,
+                                                end: 28,
+                                            },
+                                            name: DirectiveName(
+                                                Name(
+                                                    "skip",
+                                                ),
+                                            ),
+                                            arguments: [
+                                                Argument {
+                                                    span: Span {
+                                                        start: 19,
+                                                        end: 27,
+                                                    },
+                                                    name: ArgumentName(
+                                                        Name(
+                                                            "if",
+                                                        ),
+                                                    ),
+                                                    value: Boolean(
+                                                        true,
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 31,
+                                                        end: 35,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

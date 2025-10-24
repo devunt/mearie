@@ -1,0 +1,123 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"type Example {\n            nullableList: [String]\n            nonNullList: [String]!\n            listOfNonNulls: [String!]\n            nonNullListOfNonNulls: [String!]!\n        }\"#)"
+---
+Document {
+    source: Source {
+        code: "type Example {\n            nullableList: [String]\n            nonNullList: [String]!\n            listOfNonNulls: [String!]\n            nonNullListOfNonNulls: [String!]!\n        }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Example",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "nullableList",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: List(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "nonNullList",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "String",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "listOfNonNulls",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: List(
+                                    NonNull(
+                                        Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "String",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "nonNullListOfNonNulls",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "String",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

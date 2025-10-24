@@ -1,0 +1,244 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query { user { ...UserComplete } }\n        fragment UserComplete on User { ...UserBasic ...UserProfile }\n        fragment UserBasic on User { id name }\n        fragment UserProfile on User { email avatar }\"#)"
+---
+Document {
+    source: Source {
+        code: "query { user { ...UserComplete } }\n        fragment UserComplete on User { ...UserBasic ...UserProfile }\n        fragment UserBasic on User { id name }\n        fragment UserProfile on User { email avatar }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 34,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 32,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            FragmentSpread(
+                                                FragmentSpread {
+                                                    span: Span {
+                                                        start: 15,
+                                                        end: 32,
+                                                    },
+                                                    fragment_name: FragmentName(
+                                                        Name(
+                                                            "UserComplete",
+                                                        ),
+                                                    ),
+                                                    directives: [],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 43,
+                        end: 104,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "UserComplete",
+                        ),
+                    ),
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            FragmentSpread(
+                                FragmentSpread {
+                                    span: Span {
+                                        start: 75,
+                                        end: 91,
+                                    },
+                                    fragment_name: FragmentName(
+                                        Name(
+                                            "UserBasic",
+                                        ),
+                                    ),
+                                    directives: [],
+                                },
+                            ),
+                            FragmentSpread(
+                                FragmentSpread {
+                                    span: Span {
+                                        start: 88,
+                                        end: 104,
+                                    },
+                                    fragment_name: FragmentName(
+                                        Name(
+                                            "UserProfile",
+                                        ),
+                                    ),
+                                    directives: [],
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 113,
+                        end: 151,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "UserBasic",
+                        ),
+                    ),
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 142,
+                                        end: 149,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "id",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 145,
+                                        end: 151,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "name",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 160,
+                        end: 205,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "UserProfile",
+                        ),
+                    ),
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 191,
+                                        end: 203,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "email",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 197,
+                                        end: 205,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "avatar",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

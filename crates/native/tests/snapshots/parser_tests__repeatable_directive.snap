@@ -1,0 +1,146 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"directive @tag(name: String!) repeatable on FIELD_DEFINITION type User { id: ID! @tag(name: \\\"public\\\") @tag(name: \\\"searchable\\\") }\")"
+---
+Document {
+    source: Source {
+        code: "directive @tag(name: String!) repeatable on FIELD_DEFINITION type User { id: ID! @tag(name: \"public\") @tag(name: \"searchable\") }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Directive(
+                DirectiveDefinition {
+                    description: None,
+                    name: DirectiveName(
+                        Name(
+                            "tag",
+                        ),
+                    ),
+                    arguments: [
+                        InputValueDefinition {
+                            description: None,
+                            name: ArgumentName(
+                                Name(
+                                    "name",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    repeatable: true,
+                    locations: [
+                        FieldDefinition,
+                    ],
+                },
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [
+                                    Directive {
+                                        span: Span {
+                                            start: 81,
+                                            end: 101,
+                                        },
+                                        name: DirectiveName(
+                                            Name(
+                                                "tag",
+                                            ),
+                                        ),
+                                        arguments: [
+                                            Argument {
+                                                span: Span {
+                                                    start: 86,
+                                                    end: 100,
+                                                },
+                                                name: ArgumentName(
+                                                    Name(
+                                                        "name",
+                                                    ),
+                                                ),
+                                                value: String(
+                                                    "public",
+                                                ),
+                                            },
+                                        ],
+                                    },
+                                    Directive {
+                                        span: Span {
+                                            start: 102,
+                                            end: 126,
+                                        },
+                                        name: DirectiveName(
+                                            Name(
+                                                "tag",
+                                            ),
+                                        ),
+                                        arguments: [
+                                            Argument {
+                                                span: Span {
+                                                    start: 107,
+                                                    end: 125,
+                                                },
+                                                name: ArgumentName(
+                                                    Name(
+                                                        "name",
+                                                    ),
+                                                ),
+                                                value: String(
+                                                    "searchable",
+                                                ),
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

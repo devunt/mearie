@@ -1,0 +1,120 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query { createUser(input: { name: \"John\", age: 30, tags: [\"admin\"] }) { id } }\"#)"
+---
+Document {
+    source: Source {
+        code: "query { createUser(input: { name: \"John\", age: 30, tags: [\"admin\"] }) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 78,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 76,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "createUser",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 19,
+                                                end: 68,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "input",
+                                                ),
+                                            ),
+                                            value: Object(
+                                                [
+                                                    ObjectField {
+                                                        name: ArgumentName(
+                                                            Name(
+                                                                "name",
+                                                            ),
+                                                        ),
+                                                        value: String(
+                                                            "John",
+                                                        ),
+                                                    },
+                                                    ObjectField {
+                                                        name: ArgumentName(
+                                                            Name(
+                                                                "age",
+                                                            ),
+                                                        ),
+                                                        value: Int(
+                                                            "30",
+                                                        ),
+                                                    },
+                                                    ObjectField {
+                                                        name: ArgumentName(
+                                                            Name(
+                                                                "tags",
+                                                            ),
+                                                        ),
+                                                        value: List(
+                                                            [
+                                                                String(
+                                                                    "admin",
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    },
+                                                ],
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 72,
+                                                        end: 76,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

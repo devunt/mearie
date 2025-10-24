@@ -1,0 +1,56 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"type User { tags: [String!]! }\")"
+---
+Document {
+    source: Source {
+        code: "type User { tags: [String!]! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "tags",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "String",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

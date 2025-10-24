@@ -1,0 +1,50 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"union SearchResult = User | Post | Comment | Tag\")"
+---
+Document {
+    source: Source {
+        code: "union SearchResult = User | Post | Comment | Tag",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Union(
+                    UnionTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "SearchResult",
+                            ),
+                        ),
+                        directives: [],
+                        members: [
+                            TypeName(
+                                Name(
+                                    "User",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Post",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Comment",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Tag",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,28 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"scalar DateTime\")"
+---
+Document {
+    source: Source {
+        code: "scalar DateTime",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Scalar(
+                    ScalarTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "DateTime",
+                            ),
+                        ),
+                        directives: [],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

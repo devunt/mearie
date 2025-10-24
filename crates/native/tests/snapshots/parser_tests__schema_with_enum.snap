@@ -1,0 +1,90 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"enum Status { ACTIVE INACTIVE PENDING } type User { status: Status! }\")"
+---
+Document {
+    source: Source {
+        code: "enum Status { ACTIVE INACTIVE PENDING } type User { status: Status! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Enum(
+                    EnumTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Status",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "ACTIVE",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "INACTIVE",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "PENDING",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "status",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "Status",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

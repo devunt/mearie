@@ -1,0 +1,196 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query GetUser { user { id } }\n        query GetPosts { posts { id } }\n        mutation CreatePost { createPost { id } }\"#)"
+---
+Document {
+    source: Source {
+        code: "query GetUser { user { id } }\n        query GetPosts { posts { id } }\n        mutation CreatePost { createPost { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 29,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 16,
+                                        end: 27,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 23,
+                                                        end: 27,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 38,
+                        end: 69,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetPosts",
+                        ),
+                    ),
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 55,
+                                        end: 67,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "posts",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 63,
+                                                        end: 67,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 78,
+                        end: 119,
+                    },
+                    operation_type: Mutation,
+                    name: Some(
+                        Name(
+                            "CreatePost",
+                        ),
+                    ),
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 100,
+                                        end: 117,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "createPost",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 113,
+                                                        end: 117,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

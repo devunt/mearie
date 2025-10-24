@@ -1,14 +1,15 @@
-pub mod ast;
-#[macro_use]
-pub mod error;
+pub mod arena;
 pub mod codegen;
-pub mod extractor;
-pub mod parser;
-pub mod span;
+pub mod error;
+pub mod extraction;
+pub mod graphql;
+pub mod pipeline;
+pub mod schema;
+pub mod source;
 pub mod validation;
 
 #[cfg(feature = "napi")]
-pub mod bindings;
+pub mod ffi;
 
 #[cfg(feature = "napi")]
-pub use bindings::*;
+pub use ffi::napi::*;

@@ -1,0 +1,187 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query {\n            search {\n                ...ResultFields\n                ... on User { email }\n                ... on Post { content }\n            }\n        }\n        fragment ResultFields on SearchResult { id }\"#)"
+---
+Document {
+    source: Source {
+        code: "query {\n            search {\n                ...ResultFields\n                ... on User { email }\n                ... on Post { content }\n            }\n        }\n        fragment ResultFields on SearchResult { id }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 162,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 20,
+                                        end: 152,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "search",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            FragmentSpread(
+                                                FragmentSpread {
+                                                    span: Span {
+                                                        start: 45,
+                                                        end: 80,
+                                                    },
+                                                    fragment_name: FragmentName(
+                                                        Name(
+                                                            "ResultFields",
+                                                        ),
+                                                    ),
+                                                    directives: [],
+                                                },
+                                            ),
+                                            InlineFragment(
+                                                InlineFragment {
+                                                    span: Span {
+                                                        start: 77,
+                                                        end: 98,
+                                                    },
+                                                    type_condition: Some(
+                                                        TypeName(
+                                                            Name(
+                                                                "User",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [
+                                                            Field(
+                                                                Field {
+                                                                    span: Span {
+                                                                        start: 91,
+                                                                        end: 98,
+                                                                    },
+                                                                    alias: None,
+                                                                    name: FieldName(
+                                                                        Name(
+                                                                            "email",
+                                                                        ),
+                                                                    ),
+                                                                    arguments: [],
+                                                                    directives: [],
+                                                                    selection_set: SelectionSet {
+                                                                        selections: [],
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                            InlineFragment(
+                                                InlineFragment {
+                                                    span: Span {
+                                                        start: 115,
+                                                        end: 138,
+                                                    },
+                                                    type_condition: Some(
+                                                        TypeName(
+                                                            Name(
+                                                                "Post",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [
+                                                            Field(
+                                                                Field {
+                                                                    span: Span {
+                                                                        start: 129,
+                                                                        end: 138,
+                                                                    },
+                                                                    alias: None,
+                                                                    name: FieldName(
+                                                                        Name(
+                                                                            "content",
+                                                                        ),
+                                                                    ),
+                                                                    arguments: [],
+                                                                    directives: [],
+                                                                    selection_set: SelectionSet {
+                                                                        selections: [],
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 171,
+                        end: 215,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "ResultFields",
+                        ),
+                    ),
+                    type_condition: TypeName(
+                        Name(
+                            "SearchResult",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 211,
+                                        end: 215,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "id",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

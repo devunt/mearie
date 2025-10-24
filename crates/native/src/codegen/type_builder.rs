@@ -1,5 +1,5 @@
 use super::constants::{LIST_TYPE, NULLABLE_TYPE, SCALARS_TYPE};
-use crate::ast::*;
+use crate::graphql::ast::*;
 use oxc_ast::AstBuilder;
 use oxc_ast::ast::TSType;
 use oxc_span::SPAN;
@@ -66,7 +66,7 @@ pub fn wrap_list<'a>(ast: &AstBuilder<'a>, inner_type: TSType<'a>) -> TSType<'a>
 pub fn map_type<'a>(ast: &AstBuilder<'a>, graphql_type: &Type<'a>) -> TSType<'a> {
     match graphql_type {
         Type::Named(named) => {
-            let inner = create_type_reference(ast, named.name);
+            let inner = create_type_reference(ast, named.name.as_str());
             wrap_nullable(ast, inner)
         }
         Type::List(inner_type) => {
@@ -75,7 +75,7 @@ pub fn map_type<'a>(ast: &AstBuilder<'a>, graphql_type: &Type<'a>) -> TSType<'a>
             wrap_nullable(ast, list)
         }
         Type::NonNull(non_null) => match non_null {
-            NonNullType::Named(named) => create_type_reference(ast, named.name),
+            NonNullType::Named(named) => create_type_reference(ast, named.name.as_str()),
             NonNullType::List(inner_type) => {
                 let inner = map_type(ast, inner_type);
                 wrap_list(ast, inner)

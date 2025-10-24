@@ -1,22 +1,22 @@
 use crate::error::MearieError;
 use crate::error::location::{Location, Span};
+use crate::graphql::ast::Document;
 use crate::schema::{DocumentIndex, SchemaIndex};
-use crate::source::Source;
 
 pub struct ValidationContext<'a, 'b> {
-    source: Source<'a>,
     errors: Vec<MearieError>,
     schema: &'a SchemaIndex<'b>,
     document: &'a DocumentIndex<'b>,
+    target: &'a Document<'a>,
 }
 
 impl<'a, 'b> ValidationContext<'a, 'b> {
-    pub fn new(schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>, source: Source<'a>) -> Self {
+    pub fn new(schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>, target: &'a Document<'a>) -> Self {
         Self {
-            source,
             errors: Vec::new(),
             schema,
             document,
+            target,
         }
     }
 
@@ -31,14 +31,9 @@ impl<'a, 'b> ValidationContext<'a, 'b> {
     }
 
     #[inline]
-    pub fn source(&self) -> &Source<'a> {
-        &self.source
-    }
-
-    #[inline]
     pub fn add_error(&mut self, message: impl Into<String>, span: Span) {
         self.errors
-            .push(MearieError::validation(message).at(Location::from_span(&self.source, span)));
+            .push(MearieError::validation(message).at(Location::from_span(self.target.source, span)));
     }
 
     #[inline]

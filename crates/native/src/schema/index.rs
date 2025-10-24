@@ -1,5 +1,5 @@
 use crate::graphql::ast::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 /// Fast O(1) schema index for GraphQL type lookups.
 ///
@@ -44,8 +44,8 @@ use rustc_hash::FxHashMap;
 pub struct SchemaIndex<'a> {
     types: FxHashMap<&'a str, TypeInfo<'a>>,
     fields: FxHashMap<&'a str, FxHashMap<&'a str, &'a FieldDefinition<'a>>>,
-    interface_implementors: FxHashMap<&'a str, Vec<&'a str>>,
-    union_members: FxHashMap<&'a str, Vec<&'a str>>,
+    interface_implementors: FxHashMap<&'a str, FxHashSet<&'a str>>,
+    union_members: FxHashMap<&'a str, FxHashSet<&'a str>>,
     directives: FxHashMap<&'a str, &'a DirectiveDefinition<'a>>,
     custom_scalars: Vec<&'a str>,
     query_type: Option<&'a str>,
@@ -78,8 +78,8 @@ impl<'a> SchemaIndex<'a> {
     pub(super) fn new(
         types: FxHashMap<&'a str, TypeInfo<'a>>,
         fields: FxHashMap<&'a str, FxHashMap<&'a str, &'a FieldDefinition<'a>>>,
-        interface_implementors: FxHashMap<&'a str, Vec<&'a str>>,
-        union_members: FxHashMap<&'a str, Vec<&'a str>>,
+        interface_implementors: FxHashMap<&'a str, FxHashSet<&'a str>>,
+        union_members: FxHashMap<&'a str, FxHashSet<&'a str>>,
         directives: FxHashMap<&'a str, &'a DirectiveDefinition<'a>>,
         custom_scalars: Vec<&'a str>,
         query_type: Option<&'a str>,
@@ -219,13 +219,13 @@ impl<'a> SchemaIndex<'a> {
 
     /// Gets possible concrete types for an interface or union.
     ///
-    /// Returns a pre-computed list of type names that either:
+    /// Returns a pre-computed set of type names that either:
     /// - Implement the given interface
     /// - Are members of the given union
     ///
     /// # Time Complexity
     ///
-    /// O(1) - returns pre-computed slice
+    /// O(1) - returns pre-computed set
     ///
     /// # Example
     ///
@@ -235,26 +235,23 @@ impl<'a> SchemaIndex<'a> {
     /// # let arena = Arena::new();
     /// # let builder = SchemaBuilder::new(&arena);
     /// # let index = builder.build();
-    /// let implementors = index.get_possible_types("Node");
-    /// for type_name in implementors {
+    /// for type_name in index.get_possible_types("Node") {
     ///     println!("Type {} implements Node", type_name);
     /// }
     /// ```
-    pub fn get_possible_types(&self, type_name: &str) -> &[&'a str] {
-        if let Some(implementors) = self.interface_implementors.get(type_name) {
-            implementors.as_slice()
-        } else if let Some(members) = self.union_members.get(type_name) {
-            members.as_slice()
-        } else {
-            &[]
-        }
+    pub fn get_possible_types(&self, type_name: &str) -> impl Iterator<Item = &'a str> + '_ {
+        self.interface_implementors
+            .get(type_name)
+            .or_else(|| self.union_members.get(type_name))
+            .into_iter()
+            .flat_map(|set| set.iter().copied())
     }
 
     /// Checks if a type implements an interface.
     ///
     /// # Time Complexity
     ///
-    /// O(1) average case for hash lookup, O(n) for Vec contains where n is number of implementors
+    /// O(1) - uses hash map and hash set lookups
     ///
     /// # Example
     ///
@@ -271,7 +268,7 @@ impl<'a> SchemaIndex<'a> {
     pub fn implements(&self, type_name: &str, interface_name: &str) -> bool {
         self.interface_implementors
             .get(interface_name)
-            .is_some_and(|implementors| implementors.contains(&type_name))
+            .is_some_and(|implementors| implementors.contains(type_name))
     }
 
     pub fn get_directive(&self, name: &str) -> Option<&'a DirectiveDefinition<'a>> {
@@ -315,8 +312,8 @@ mod tests {
     ) -> (
         FxHashMap<&'a str, TypeInfo<'a>>,
         FxHashMap<&'a str, FxHashMap<&'a str, &'a FieldDefinition<'a>>>,
-        FxHashMap<&'a str, Vec<&'a str>>,
-        FxHashMap<&'a str, Vec<&'a str>>,
+        FxHashMap<&'a str, FxHashSet<&'a str>>,
+        FxHashMap<&'a str, FxHashSet<&'a str>>,
     ) {
         let mut types = FxHashMap::default();
         let mut fields = FxHashMap::default();
@@ -343,7 +340,9 @@ mod tests {
         });
         types.insert(iface_name.as_str(), TypeInfo::Interface(iface_def));
 
-        interface_implementors.insert(iface_name.as_str(), vec![obj_name.as_str()]);
+        let mut iface_impls = FxHashSet::default();
+        iface_impls.insert(obj_name.as_str());
+        interface_implementors.insert(iface_name.as_str(), iface_impls);
 
         let union_name = TypeName::new(Name::new(arena.intern("SearchResult")));
         let union_def = arena.alloc(UnionTypeDefinition {
@@ -353,7 +352,9 @@ mod tests {
             description: None,
         });
         types.insert(union_name.as_str(), TypeInfo::Union(union_def));
-        union_members.insert(union_name.as_str(), vec![obj_name.as_str()]);
+        let mut union_member_set = FxHashSet::default();
+        union_member_set.insert(obj_name.as_str());
+        union_members.insert(union_name.as_str(), union_member_set);
 
         let enum_name = TypeName::new(Name::new(arena.intern("Status")));
         let enum_def = arena.alloc(EnumTypeDefinition {
@@ -539,11 +540,11 @@ mod tests {
             None,
         );
 
-        let possible = index.get_possible_types("Node");
+        let possible: Vec<_> = index.get_possible_types("Node").collect();
         assert_eq!(possible.len(), 1);
         assert_eq!(possible[0], "User");
 
-        let empty = index.get_possible_types("NonExistent");
+        let empty: Vec<_> = index.get_possible_types("NonExistent").collect();
         assert_eq!(empty.len(), 0);
     }
 
@@ -563,7 +564,7 @@ mod tests {
             None,
         );
 
-        let possible = index.get_possible_types("SearchResult");
+        let possible: Vec<_> = index.get_possible_types("SearchResult").collect();
         assert_eq!(possible.len(), 1);
         assert_eq!(possible[0], "User");
     }

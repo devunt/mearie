@@ -1,8 +1,9 @@
 use super::context::ValidationContext;
-use super::rule::ValidationRule;
 use super::rules::*;
 use super::visitor::{Control, Visitor};
 use crate::graphql::ast::*;
+
+pub trait ValidationRule<'a, 'b: 'a>: Visitor<'a, ValidationContext<'a, 'b>> + Default {}
 
 #[derive(Default)]
 pub struct Validator<'a, 'b> {

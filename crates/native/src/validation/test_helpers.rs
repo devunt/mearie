@@ -5,7 +5,8 @@ macro_rules! validate_rules {
         use $crate::graphql::parser::Parser;
         use $crate::schema::{DocumentIndex, SchemaBuilder};
         use $crate::source::Source;
-        use $crate::validation::rule::ValidateNode;
+        use $crate::validation::context::ValidationContext;
+        use $crate::validation::visitor::VisitNode;
 
         let arena = Arena::new();
 
@@ -21,9 +22,17 @@ macro_rules! validate_rules {
         let document_document = Parser::new(&arena).with_source(&document_source).parse().unwrap();
         let mut doc_index = DocumentIndex::new();
 
-        match doc_index.add_document(document_document) {
-            Ok(_) => document_document.validate::<$rule_type>(&schema_index, &doc_index, document_source.clone()),
-            Err(e) => Err(e),
+        doc_index.add_document(document_document).unwrap();
+
+        let mut ctx = ValidationContext::new(&schema_index, &doc_index, document_document);
+        let mut rule: $rule_type = Default::default();
+        document_document.visit(&mut ctx, &mut rule);
+
+        let errors = ctx.errors();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors[0].clone())
         }
     }};
 }

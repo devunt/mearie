@@ -2,7 +2,7 @@ use crate::arena::Arena;
 use crate::error::{MearieError, Result};
 use crate::graphql::ast::*;
 use crate::schema::{SchemaIndex, TypeInfo};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 /// Builder for constructing an immutable [`SchemaIndex`].
 ///
@@ -29,8 +29,8 @@ pub struct SchemaBuilder<'a> {
     arena: &'a Arena,
     types: FxHashMap<&'a str, TypeInfo<'a>>,
     fields: FxHashMap<&'a str, FxHashMap<&'a str, &'a FieldDefinition<'a>>>,
-    interface_implementors: FxHashMap<&'a str, Vec<&'a str>>,
-    union_members: FxHashMap<&'a str, Vec<&'a str>>,
+    interface_implementors: FxHashMap<&'a str, FxHashSet<&'a str>>,
+    union_members: FxHashMap<&'a str, FxHashSet<&'a str>>,
     directives: FxHashMap<&'a str, &'a DirectiveDefinition<'a>>,
     custom_scalars: Vec<&'a str>,
     query_type: Option<&'a str>,
@@ -151,7 +151,7 @@ impl<'a> SchemaBuilder<'a> {
             self.interface_implementors
                 .entry(interface_name.as_str())
                 .or_default()
-                .push(type_name);
+                .insert(type_name);
         }
 
         Ok(())
@@ -192,7 +192,7 @@ impl<'a> SchemaBuilder<'a> {
 
         self.types.insert(type_name, TypeInfo::Union(union));
 
-        let members: Vec<&'a str> = union.members.iter().map(|t| t.as_str()).collect();
+        let members: FxHashSet<&'a str> = union.members.iter().map(|t| t.as_str()).collect();
         self.union_members.insert(type_name, members);
 
         Ok(())
@@ -384,9 +384,9 @@ mod tests {
         builder.add_document(doc).unwrap();
         let index = builder.build();
 
-        let possible = index.get_possible_types("Node");
+        let possible: Vec<_> = index.get_possible_types("Node").collect();
         assert!(index.implements("User", "Node"));
-        assert_len_eq_x!(possible, 1);
+        assert_len_eq_x!(&possible, 1);
         assert_eq!(possible[0], "User");
     }
 
@@ -421,9 +421,9 @@ mod tests {
         builder.add_document(doc).unwrap();
         let index = builder.build();
 
-        let members = index.get_possible_types("SearchResult");
+        let members: Vec<_> = index.get_possible_types("SearchResult").collect();
         assert!(index.is_union("SearchResult"));
-        assert_len_eq_x!(members, 1);
+        assert_len_eq_x!(&members, 1);
         assert_eq!(members[0], "User");
     }
 

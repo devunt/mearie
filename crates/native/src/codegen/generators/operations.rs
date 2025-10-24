@@ -438,8 +438,8 @@ impl<'a, 'b> OperationsGenerator<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assertables::*;
     use crate::setup_codegen;
+    use assertables::*;
 
     #[test]
     fn test_generate_simple_operation() {

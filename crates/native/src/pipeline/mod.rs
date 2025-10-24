@@ -10,8 +10,7 @@ use crate::error::MearieError;
 use crate::graphql::parser::Parser;
 use crate::schema::{DocumentIndex, SchemaBuilder};
 use crate::source::{Source, SourceBuf};
-use crate::validation::Validator;
-use crate::validation::visitor::VisitNode;
+use crate::validation::{ValidationContext, Validator, visitor::VisitNode};
 
 pub struct Pipeline<'a> {
     arena: &'a Arena,
@@ -69,10 +68,9 @@ impl<'a> Pipeline<'a> {
     pub fn process(self) -> PipelineOutput {
         let mut errors = Vec::new();
 
-        // Step 1-2: Parse schema documents and build SchemaIndex
         let mut schema_builder = SchemaBuilder::new(self.arena);
-        for schema_source in &self.schemas {
-            match Parser::new(self.arena).with_source(schema_source).parse() {
+        for source in &self.schemas {
+            match Parser::new(self.arena).with_source(source).parse() {
                 Ok(document) => {
                     if let Err(e) = schema_builder.add_document(document) {
                         errors.push(e);
@@ -85,12 +83,11 @@ impl<'a> Pipeline<'a> {
         }
         let schema_index = schema_builder.build();
 
-        // Step 3-4: Parse executable documents and build DocumentIndex
         let mut document_index = DocumentIndex::new();
-        for doc_source in &self.documents {
-            match Parser::new(self.arena).with_source(doc_source).parse() {
+        for source in &self.documents {
+            match Parser::new(self.arena).with_source(source).parse() {
                 Ok(document) => {
-                    if let Err(e) = document_index.add_document_with_source(document, doc_source.clone()) {
+                    if let Err(e) = document_index.add_document(document) {
                         errors.push(e);
                     }
                 }
@@ -100,35 +97,21 @@ impl<'a> Pipeline<'a> {
             }
         }
 
-        // Step 5: Validate all documents
-        for doc in &self.documents {
-            match Parser::new(self.arena).with_source(doc).parse() {
-                Ok(parsed_doc) => {
-                    let mut validator = Validator::default();
-                    let mut ctx =
-                        crate::validation::ValidationContext::new(&schema_index, &document_index, doc.clone());
-                    parsed_doc.visit(&mut ctx, &mut validator);
-                    errors.extend(ctx.errors().iter().cloned());
-                }
-                Err(e) => {
-                    errors.push(e);
-                }
-            }
+        for document in document_index.documents() {
+            let mut validator = Validator::default();
+            let mut ctx = ValidationContext::new(&schema_index, &document_index, document);
+            document.visit(&mut ctx, &mut validator);
+            errors.extend(ctx.errors().iter().cloned());
         }
 
-        // Step 6: Generate code
-        let sources = if errors.is_empty() {
-            let ctx = CodegenContext::new();
-            let builder = CodegenBuilder::new(&ctx, &schema_index, &document_index);
-            match builder.generate() {
-                Ok(generated_sources) => generated_sources,
-                Err(e) => {
-                    errors.push(e);
-                    Vec::new()
-                }
+        let ctx = CodegenContext::new();
+        let builder = CodegenBuilder::new(&ctx, &schema_index, &document_index);
+        let sources = match builder.generate() {
+            Ok(generated_sources) => generated_sources,
+            Err(e) => {
+                errors.push(e);
+                Vec::new()
             }
-        } else {
-            Vec::new()
         };
 
         PipelineOutput { sources, errors }

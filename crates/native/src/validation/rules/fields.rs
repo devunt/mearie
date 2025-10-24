@@ -111,11 +111,13 @@ impl<'a, 'b> FieldRules<'a, 'b> {
                 if o1.len() != o2.len() {
                     return false;
                 }
+
+                let o2_map: FxHashMap<_, _> = o2.iter().map(|field| (field.name.as_str(), &field.value)).collect();
+
                 o1.iter().all(|field1| {
-                    o2.iter().any(|field2| {
-                        field1.name.as_str() == field2.name.as_str()
-                            && self.values_are_equal(&field1.value, &field2.value)
-                    })
+                    o2_map
+                        .get(field1.name.as_str())
+                        .is_some_and(|v2| self.values_are_equal(&field1.value, v2))
                 })
             }
             _ => false,

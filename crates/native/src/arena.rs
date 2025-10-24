@@ -39,6 +39,15 @@ impl Arena {
         }
 
         let allocated = self.bump.alloc_str(s);
+
+        // SAFETY: This lifetime extension from the arena's lifetime to 'static is sound because:
+        // 1. The memory is allocated in the bump allocator owned by this Arena
+        // 2. The bump allocator never moves or frees allocated memory until the Arena is dropped
+        // 3. The string is only stored internally in the FxHashSet with a 'static lifetime
+        // 4. The public API returns &str with the Arena's lifetime (not 'static), maintaining proper borrow checking
+        // 5. The Arena's Drop implementation will clean up all memory, including this string
+        //
+        // This pattern is safe and commonly used in arena allocators for string interning.
         let static_str = unsafe { std::mem::transmute::<&str, &'static str>(allocated) };
 
         interned.insert(static_str);

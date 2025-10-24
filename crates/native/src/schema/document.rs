@@ -1,6 +1,5 @@
 use crate::error::{MearieError, Result};
 use crate::graphql::ast::*;
-use crate::source::Source;
 use rustc_hash::FxHashMap;
 
 /// Fast O(1) index for GraphQL fragments and operations.
@@ -38,77 +37,25 @@ use rustc_hash::FxHashMap;
 /// }
 /// ```
 pub struct DocumentIndex<'a> {
-    fragments: FxHashMap<&'a str, &'a FragmentDefinition<'a>>,
+    documents: Vec<&'a Document<'a>>,
     operations: Vec<&'a OperationDefinition<'a>>,
     operations_by_name: FxHashMap<Option<&'a str>, &'a OperationDefinition<'a>>,
-    documents: Vec<&'a Document<'a>>,
-    document_sources: FxHashMap<*const Document<'a>, Source<'a>>,
+    fragments: FxHashMap<&'a str, &'a FragmentDefinition<'a>>,
 }
 
 impl<'a> DocumentIndex<'a> {
     /// Creates a new empty document index.
     pub fn new() -> Self {
         Self {
-            fragments: FxHashMap::default(),
+            documents: Vec::new(),
             operations: Vec::new(),
             operations_by_name: FxHashMap::default(),
-            documents: Vec::new(),
-            document_sources: FxHashMap::default(),
+            fragments: FxHashMap::default(),
         }
     }
 
-    /// Adds an executable document to the index.
-    ///
-    /// Processes fragments and operations. Type definitions, schema definitions,
-    /// and directives are ignored (use [`SchemaBuilder`](crate::schema::SchemaBuilder) for those).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if a fragment with the same name already exists.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use mearie_native::schema::DocumentIndex;
-    /// let mut index = DocumentIndex::new();
-    /// // index.add_document(doc)?;
-    /// ```
     pub fn add_document(&mut self, doc: &'a Document<'a>) -> Result<()> {
-        for definition in &doc.definitions {
-            match definition {
-                Definition::Executable(ExecutableDefinition::Fragment(fragment)) => {
-                    self.register_fragment(fragment)?;
-                }
-                Definition::Executable(ExecutableDefinition::Operation(operation)) => {
-                    self.register_operation(operation);
-                }
-                Definition::TypeSystem(_) | Definition::TypeSystemExtension(_) => {}
-            }
-        }
-        Ok(())
-    }
-
-    /// Adds an executable document to the index with source tracking.
-    ///
-    /// This method is used by the pipeline to track which source file each document came from,
-    /// enabling better error reporting during validation and codegen.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if a fragment with the same name already exists.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use mearie_native::schema::DocumentIndex;
-    /// # use mearie_native::source::Source;
-    /// let mut index = DocumentIndex::new();
-    /// let source = Source { code: "query { hello }", file_path: "query.graphql", start_line: 1 };
-    /// // index.add_document_with_source(doc, source)?;
-    /// ```
-    pub fn add_document_with_source(&mut self, doc: &'a Document<'a>, source: Source<'a>) -> Result<()> {
         self.documents.push(doc);
-        self.document_sources.insert(doc as *const _, source);
 
         for definition in &doc.definitions {
             match definition {
@@ -121,30 +68,8 @@ impl<'a> DocumentIndex<'a> {
                 Definition::TypeSystem(_) | Definition::TypeSystemExtension(_) => {}
             }
         }
-        Ok(())
-    }
 
-    /// Gets the source information for a document.
-    ///
-    /// Returns the source file information (file path, code, line number) that was provided
-    /// when the document was added via `add_document_with_source()`.
-    ///
-    /// # Returns
-    ///
-    /// `Some(source)` if the document was added with source tracking, `None` otherwise.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use mearie_native::schema::DocumentIndex;
-    /// # use mearie_native::source::Source;
-    /// let mut index = DocumentIndex::new();
-    /// let source = Source { code: "query { hello }", file_path: "query.graphql", start_line: 1 };
-    /// // index.add_document_with_source(doc, source)?;
-    /// // let retrieved_source = index.get_source_for_document(doc);
-    /// ```
-    pub fn get_source_for_document(&self, doc: &'a Document<'a>) -> Option<Source<'a>> {
-        self.document_sources.get(&(doc as *const _)).cloned()
+        Ok(())
     }
 
     fn register_fragment(&mut self, fragment: &'a FragmentDefinition<'a>) -> Result<()> {

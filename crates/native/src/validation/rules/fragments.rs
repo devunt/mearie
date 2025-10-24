@@ -29,10 +29,8 @@ impl<'a, 'b> FragmentRules<'a, 'b> {
             return true;
         }
 
-        let fragment_possible_types: FxHashSet<&str> =
-            ctx.schema().get_possible_types(fragment_type).iter().copied().collect();
-        let parent_possible_types: FxHashSet<&str> =
-            ctx.schema().get_possible_types(parent_type).iter().copied().collect();
+        let fragment_possible_types: FxHashSet<&str> = ctx.schema().get_possible_types(fragment_type).collect();
+        let parent_possible_types: FxHashSet<&str> = ctx.schema().get_possible_types(parent_type).collect();
 
         if fragment_possible_types.is_empty() && parent_possible_types.is_empty() {
             return false;
@@ -320,15 +318,6 @@ mod tests {
             FragmentRules,
             r#"type Query { user: User post: Post } type User { id: ID! } type Post { id: ID! }"#,
             r#"fragment UserFields on User { id } fragment PostFields on Post { id } query Q { user { ...UserFields } post { ...PostFields } }"#
-        ));
-    }
-
-    #[test]
-    fn test_unique_fragment_names_duplicate() {
-        assert_err!(validate_rules!(
-            FragmentRules,
-            r#"type User { id: ID! name: String }"#,
-            r#"fragment UserFields on User { id } fragment UserFields on User { name }"#
         ));
     }
 

@@ -18,9 +18,7 @@ macro_rules! setup_codegen {
         let operations_document = Parser::new(arena).with_source(operations_source).parse().unwrap();
 
         let mut document_index = DocumentIndex::new();
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = $crate::codegen::CodegenContext::new();
         (ctx, schema_index, document_index)

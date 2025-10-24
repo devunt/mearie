@@ -388,9 +388,7 @@ mod tests {
         let schema_index = schema_builder.build();
 
         let mut document_index = DocumentIndex::new();
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -435,9 +433,7 @@ mod tests {
         let schema_index = schema_builder.build();
 
         let mut document_index = DocumentIndex::new();
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -489,9 +485,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -546,9 +540,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -626,9 +618,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -701,9 +691,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -773,9 +761,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -834,9 +820,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -904,9 +888,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);
@@ -978,9 +960,7 @@ mod tests {
 
         let mut document_index = DocumentIndex::new();
 
-        document_index
-            .add_document_with_source(operations_document, operations_source.clone())
-            .unwrap();
+        document_index.add_document(operations_document).unwrap();
 
         let ctx = CodegenContext::new();
         let builder = Builder::new(&ctx, &schema_index, &document_index);

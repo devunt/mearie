@@ -134,12 +134,12 @@ mod integration_tests {
         assert!(index.implements("Post", "Node"));
         assert!(!index.implements("Query", "Node"));
 
-        let node_implementors = index.get_possible_types("Node");
+        let node_implementors: Vec<_> = index.get_possible_types("Node").collect();
         assert_eq!(node_implementors.len(), 2);
         assert!(node_implementors.contains(&"User"));
         assert!(node_implementors.contains(&"Post"));
 
-        let union_members = index.get_possible_types("SearchResult");
+        let union_members: Vec<_> = index.get_possible_types("SearchResult").collect();
         assert_eq!(union_members.len(), 2);
         assert!(union_members.contains(&"User"));
         assert!(union_members.contains(&"Post"));

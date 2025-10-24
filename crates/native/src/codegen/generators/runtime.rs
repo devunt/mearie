@@ -29,7 +29,7 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
 
         for operation in self.document.operations() {
             if let Some(name) = operation.name {
-                let original_source = self.get_operation_document_source(operation)?;
+                let original_source = self.get_operation_source(operation)?.to_string();
                 let var_name = format!("{}$node", name.as_str());
 
                 let stmt = self.generate_operation_document_node(name.as_str(), operation)?;
@@ -40,7 +40,7 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
         }
 
         for fragment in self.document.fragments() {
-            let original_source = self.get_fragment_document_source(fragment)?;
+            let original_source = self.get_fragment_source(fragment)?.to_string();
             let var_name = format!("{}$node", fragment.name.as_str());
 
             let stmt = self.generate_fragment_document_node(fragment)?;
@@ -563,74 +563,43 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
         }
     }
 
-    fn get_operation_source(&self, operation: &OperationDefinition<'b>) -> Result<String> {
+    fn find_definition_source<T>(
+        &self,
+        ptr: *const T,
+        matcher: impl Fn(&Definition<'b>) -> Option<*const T>,
+    ) -> Option<&'b str> {
         for doc in self.document.documents() {
             for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Operation(op)) = definition
-                    && std::ptr::eq(op as *const _, operation as *const _)
+                if let Some(def_ptr) = matcher(definition)
+                    && std::ptr::eq(def_ptr, ptr)
                 {
-                    let source = self
-                        .document
-                        .get_source_for_document(doc)
-                        .ok_or_else(|| crate::error::MearieError::codegen("Document source not found"))?;
-                    return Ok(source.code.to_string());
+                    return Some(doc.source.code);
                 }
             }
         }
-        Err(crate::error::MearieError::codegen("Operation source not found"))
+        None
     }
 
-    fn get_operation_document_source(&self, operation: &OperationDefinition<'b>) -> Result<String> {
-        for doc in self.document.documents() {
-            for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Operation(op)) = definition
-                    && std::ptr::eq(op as *const _, operation as *const _)
-                {
-                    let source = self
-                        .document
-                        .get_source_for_document(doc)
-                        .ok_or_else(|| crate::error::MearieError::codegen("Document source not found"))?;
-                    return Ok(source.code.to_string());
-                }
+    fn get_operation_source(&self, operation: &OperationDefinition<'b>) -> Result<&'b str> {
+        self.find_definition_source(operation as *const _, |def| {
+            if let Definition::Executable(ExecutableDefinition::Operation(op)) = def {
+                Some(op as *const _)
+            } else {
+                None
             }
-        }
-        Err(crate::error::MearieError::codegen(
-            "Operation document source not found",
-        ))
+        })
+        .ok_or_else(|| crate::error::MearieError::codegen("Operation source not found"))
     }
 
-    fn get_fragment_source(&self, fragment: &FragmentDefinition<'b>) -> Result<String> {
-        for doc in self.document.documents() {
-            for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Fragment(frag)) = definition
-                    && std::ptr::eq(frag as *const _, fragment as *const _)
-                {
-                    let source = self
-                        .document
-                        .get_source_for_document(doc)
-                        .ok_or_else(|| crate::error::MearieError::codegen("Document source not found"))?;
-                    return Ok(source.code.to_string());
-                }
+    fn get_fragment_source(&self, fragment: &FragmentDefinition<'b>) -> Result<&'b str> {
+        self.find_definition_source(fragment as *const _, |def| {
+            if let Definition::Executable(ExecutableDefinition::Fragment(frag)) = def {
+                Some(frag as *const _)
+            } else {
+                None
             }
-        }
-        Err(crate::error::MearieError::codegen("Fragment source not found"))
-    }
-
-    fn get_fragment_document_source(&self, fragment: &FragmentDefinition<'b>) -> Result<String> {
-        for doc in self.document.documents() {
-            for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Fragment(frag)) = definition
-                    && std::ptr::eq(frag as *const _, fragment as *const _)
-                {
-                    let source = self
-                        .document
-                        .get_source_for_document(doc)
-                        .ok_or_else(|| crate::error::MearieError::codegen("Document source not found"))?;
-                    return Ok(source.code.to_string());
-                }
-            }
-        }
-        Err(crate::error::MearieError::codegen("Fragment document source not found"))
+        })
+        .ok_or_else(|| crate::error::MearieError::codegen("Fragment source not found"))
     }
 
     fn collect_fragment_names(&self, selection_set: &SelectionSet<'b>, names: &mut std::collections::HashSet<String>) {
@@ -722,7 +691,7 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
 
     fn create_function_overload(&self, operation: &OperationDefinition<'b>) -> Option<Statement<'b>> {
         let operation_name = operation.name.as_ref()?.as_str();
-        let source = self.get_operation_source_for_module(operation)?;
+        let source = self.get_operation_source(operation).ok()?;
 
         let return_type = self.create_simple_return_type(operation_name);
         let return_type_annotation = self.ast.ts_type_annotation(SPAN, return_type);
@@ -789,7 +758,7 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
 
     fn create_function_overload_for_fragment(&self, fragment: &FragmentDefinition<'b>) -> Option<Statement<'b>> {
         let fragment_name = fragment.name.as_str();
-        let source = self.get_fragment_source_for_module(fragment)?;
+        let source = self.get_fragment_source(fragment).ok()?;
 
         let return_type = self.create_simple_fragment_return_type(fragment_name);
         let return_type_annotation = self.ast.ts_type_annotation(SPAN, return_type);
@@ -852,32 +821,6 @@ impl<'a: 'b, 'b> RuntimeGenerator<'a, 'b> {
         );
 
         Some(Statement::ExportNamedDeclaration(self.ast.alloc(export_decl)))
-    }
-
-    fn get_operation_source_for_module(&self, operation: &OperationDefinition<'b>) -> Option<&'b str> {
-        for doc in self.document.documents() {
-            for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Operation(op)) = definition
-                    && std::ptr::eq(op as *const _, operation as *const _)
-                {
-                    return self.document.get_source_for_document(doc).map(|s| s.code);
-                }
-            }
-        }
-        None
-    }
-
-    fn get_fragment_source_for_module(&self, fragment: &FragmentDefinition<'b>) -> Option<&'b str> {
-        for doc in self.document.documents() {
-            for definition in &doc.definitions {
-                if let Definition::Executable(ExecutableDefinition::Fragment(frag)) = definition
-                    && std::ptr::eq(frag as *const _, fragment as *const _)
-                {
-                    return self.document.get_source_for_document(doc).map(|s| s.code);
-                }
-            }
-        }
-        None
     }
 
     fn create_import_type(&self, type_name: &str) -> oxc_ast::ast::TSType<'b> {

@@ -204,10 +204,9 @@ impl<'a, 'b> SchemaTypesGenerator<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assertables::*;
     use crate::setup_codegen;
+    use assertables::*;
     use oxc_codegen::Codegen;
-
 
     #[test]
     fn test_scalars_generator_new() {
@@ -267,7 +266,8 @@ mod tests {
 
     #[test]
     fn test_generate_multiple_enums() {
-        let (ctx, schema_index, _) = setup_codegen!(r#"enum Status { ACTIVE INACTIVE } enum Role { ADMIN USER }"#, r#""#);
+        let (ctx, schema_index, _) =
+            setup_codegen!(r#"enum Status { ACTIVE INACTIVE } enum Role { ADMIN USER }"#, r#""#);
         let generator = SchemaTypesGenerator::new(&ctx, &schema_index);
 
         let statements = generator.generate_enums_for_module();
@@ -311,7 +311,10 @@ mod tests {
 
     #[test]
     fn test_generate_nested_input_object() {
-        let (ctx, schema_index, _) = setup_codegen!(r#"input AddressInput { street: String! city: String! } input CreateUserInput { name: String! address: AddressInput! }"#, r#""#);
+        let (ctx, schema_index, _) = setup_codegen!(
+            r#"input AddressInput { street: String! city: String! } input CreateUserInput { name: String! address: AddressInput! }"#,
+            r#""#
+        );
         let generator = SchemaTypesGenerator::new(&ctx, &schema_index);
 
         let statements = generator.generate();
@@ -320,7 +323,10 @@ mod tests {
 
     #[test]
     fn test_generate_input_object_output_code() {
-        let (ctx, schema_index, _) = setup_codegen!(r#"input CreateUserInput { name: String! email: String age: Int }"#, r#""#);
+        let (ctx, schema_index, _) = setup_codegen!(
+            r#"input CreateUserInput { name: String! email: String age: Int }"#,
+            r#""#
+        );
         let generator = SchemaTypesGenerator::new(&ctx, &schema_index);
 
         let statements = generator.generate();

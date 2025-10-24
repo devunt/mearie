@@ -41,6 +41,8 @@ pub struct DocumentIndex<'a> {
     operations: Vec<&'a OperationDefinition<'a>>,
     operations_by_name: FxHashMap<Option<&'a str>, &'a OperationDefinition<'a>>,
     fragments: FxHashMap<&'a str, &'a FragmentDefinition<'a>>,
+    operation_sources: FxHashMap<*const OperationDefinition<'a>, &'a str>,
+    fragment_sources: FxHashMap<*const FragmentDefinition<'a>, &'a str>,
 }
 
 impl<'a> DocumentIndex<'a> {
@@ -51,6 +53,8 @@ impl<'a> DocumentIndex<'a> {
             operations: Vec::new(),
             operations_by_name: FxHashMap::default(),
             fragments: FxHashMap::default(),
+            operation_sources: FxHashMap::default(),
+            fragment_sources: FxHashMap::default(),
         }
     }
 
@@ -61,9 +65,11 @@ impl<'a> DocumentIndex<'a> {
             match definition {
                 Definition::Executable(ExecutableDefinition::Fragment(fragment)) => {
                     self.register_fragment(fragment)?;
+                    self.fragment_sources.insert(fragment as *const _, doc.source.code);
                 }
                 Definition::Executable(ExecutableDefinition::Operation(operation)) => {
                     self.register_operation(operation);
+                    self.operation_sources.insert(operation as *const _, doc.source.code);
                 }
                 Definition::TypeSystem(_) | Definition::TypeSystemExtension(_) => {}
             }
@@ -192,6 +198,50 @@ impl<'a> DocumentIndex<'a> {
     /// Documents are stored in the order they were added.
     pub fn documents(&self) -> impl Iterator<Item = &'a Document<'a>> + '_ {
         self.documents.iter().copied()
+    }
+
+    /// Gets the source code for an operation definition.
+    ///
+    /// Returns the original GraphQL source string for the document containing this operation.
+    ///
+    /// # Time Complexity
+    ///
+    /// O(1) - uses hash map lookup with pointer equality
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use mearie_native::schema::DocumentIndex;
+    /// # let index = DocumentIndex::new();
+    /// # let operation = std::ptr::null();
+    /// if let Some(source) = index.get_operation_source(unsafe { &*operation }) {
+    ///     println!("Operation source: {}", source);
+    /// }
+    /// ```
+    pub fn get_operation_source(&self, operation: &OperationDefinition<'a>) -> Option<&'a str> {
+        self.operation_sources.get(&(operation as *const _)).copied()
+    }
+
+    /// Gets the source code for a fragment definition.
+    ///
+    /// Returns the original GraphQL source string for the document containing this fragment.
+    ///
+    /// # Time Complexity
+    ///
+    /// O(1) - uses hash map lookup with pointer equality
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use mearie_native::schema::DocumentIndex;
+    /// # let index = DocumentIndex::new();
+    /// # let fragment = std::ptr::null();
+    /// if let Some(source) = index.get_fragment_source(unsafe { &*fragment }) {
+    ///     println!("Fragment source: {}", source);
+    /// }
+    /// ```
+    pub fn get_fragment_source(&self, fragment: &FragmentDefinition<'a>) -> Option<&'a str> {
+        self.fragment_sources.get(&(fragment as *const _)).copied()
     }
 }
 

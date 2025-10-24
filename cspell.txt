@@ -3,6 +3,7 @@ dedup
 devunt
 iface
 insta
+itertools
 mearie
 msvc
 napi

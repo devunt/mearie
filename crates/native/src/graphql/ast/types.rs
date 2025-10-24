@@ -115,6 +115,12 @@ impl<'a> Type<'a> {
         !matches!(self, Type::NonNull(_))
     }
 
+    /// Returns true if this type is a list.
+    #[inline]
+    pub fn is_list(&self) -> bool {
+        matches!(self, Type::List(_) | Type::NonNull(NonNullType::List(_)))
+    }
+
     /// Returns the innermost named type, unwrapping all list and non-null wrappers.
     pub fn innermost_type(&self) -> TypeName<'a> {
         match self {

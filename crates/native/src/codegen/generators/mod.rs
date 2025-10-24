@@ -1,7 +1,7 @@
-mod operations;
+mod module;
 mod runtime;
-mod schema_types;
+mod types;
 
-pub use operations::*;
+pub use module::*;
 pub use runtime::*;
-pub use schema_types::*;
+pub use types::*;

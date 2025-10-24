@@ -298,6 +298,26 @@ impl<'a> SchemaIndex<'a> {
     pub fn types(&self) -> impl Iterator<Item = (&'a str, TypeInfo<'a>)> + '_ {
         self.types.iter().map(|(&name, &type_info)| (name, type_info))
     }
+
+    pub fn enums(&self) -> impl Iterator<Item = &'a EnumTypeDefinition<'a>> + '_ {
+        self.types.values().filter_map(|&type_info| {
+            if let TypeInfo::Enum(enum_def) = type_info {
+                Some(enum_def)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn input_objects(&self) -> impl Iterator<Item = &'a InputObjectTypeDefinition<'a>> + '_ {
+        self.types.values().filter_map(|&type_info| {
+            if let TypeInfo::InputObject(input_def) = type_info {
+                Some(input_def)
+            } else {
+                None
+            }
+        })
+    }
 }
 
 #[cfg(test)]

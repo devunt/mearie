@@ -5,7 +5,7 @@ pub use builder::PipelineBuilder;
 pub use config::PipelineConfig;
 
 use crate::arena::Arena;
-use crate::codegen::{Builder as CodegenBuilder, CodegenContext};
+use crate::codegen::{CodegenContext, Generator};
 use crate::error::MearieError;
 use crate::graphql::parser::Parser;
 use crate::schema::{DocumentIndex, SchemaBuilder};
@@ -70,30 +70,19 @@ impl<'a> Pipeline<'a> {
 
         let mut schema_builder = SchemaBuilder::new(self.arena);
         for source in &self.schemas {
-            match Parser::new(self.arena).with_source(source).parse() {
-                Ok(document) => {
-                    if let Err(e) = schema_builder.add_document(document) {
-                        errors.push(e);
-                    }
-                }
-                Err(e) => {
-                    errors.push(e);
-                }
+            let document = Parser::new(self.arena).with_source(source).parse();
+            if let Err(e) = document.and_then(|doc| schema_builder.add_document(doc)) {
+                errors.push(e);
             }
         }
+
         let schema_index = schema_builder.build();
 
         let mut document_index = DocumentIndex::new();
         for source in &self.documents {
-            match Parser::new(self.arena).with_source(source).parse() {
-                Ok(document) => {
-                    if let Err(e) = document_index.add_document(document) {
-                        errors.push(e);
-                    }
-                }
-                Err(e) => {
-                    errors.push(e);
-                }
+            let document = Parser::new(self.arena).with_source(source).parse();
+            if let Err(e) = document.and_then(|doc| document_index.add_document(doc)) {
+                errors.push(e);
             }
         }
 
@@ -105,14 +94,11 @@ impl<'a> Pipeline<'a> {
         }
 
         let ctx = CodegenContext::new();
-        let builder = CodegenBuilder::new(&ctx, &schema_index, &document_index);
-        let sources = match builder.generate() {
-            Ok(generated_sources) => generated_sources,
-            Err(e) => {
-                errors.push(e);
-                Vec::new()
-            }
-        };
+        let generator = Generator::new(&ctx, &schema_index, &document_index);
+        let sources = generator.generate().unwrap_or_else(|e| {
+            errors.push(e);
+            Vec::new()
+        });
 
         PipelineOutput { sources, errors }
     }

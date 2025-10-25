@@ -463,6 +463,17 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let name = field.name.as_str();
         let alias = field.alias.map(|a| a.as_str());
 
+        if name.starts_with("__") {
+            return Ok(SelectionNodeData::Field {
+                name,
+                type_name: None,
+                array: None,
+                alias,
+                args: None,
+                selections: None,
+            });
+        }
+
         let field_def = self
             .schema
             .get_field(parent_type, name)

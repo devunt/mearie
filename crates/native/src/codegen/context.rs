@@ -14,11 +14,6 @@ impl CodegenContext {
     }
 
     #[inline]
-    pub fn allocator(&self) -> &Allocator {
-        &self.alloc
-    }
-
-    #[inline]
     pub fn ast(&self) -> AstBuilder<'_> {
         AstBuilder::new(&self.alloc)
     }

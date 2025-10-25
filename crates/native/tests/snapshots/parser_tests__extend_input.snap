@@ -1,0 +1,88 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"input UserInput { name: String! } extend input UserInput { email: String! }\")"
+---
+Document {
+    source: Source {
+        code: "input UserInput { name: String! } extend input UserInput { email: String! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystemExtension(
+            Type(
+                InputObject(
+                    InputObjectTypeExtension {
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

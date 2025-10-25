@@ -1,0 +1,84 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"directive @auth(requires: Role!) on FIELD_DEFINITION | OBJECT enum Role { ADMIN USER }\")"
+---
+Document {
+    source: Source {
+        code: "directive @auth(requires: Role!) on FIELD_DEFINITION | OBJECT enum Role { ADMIN USER }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Directive(
+                DirectiveDefinition {
+                    description: None,
+                    name: DirectiveName(
+                        Name(
+                            "auth",
+                        ),
+                    ),
+                    arguments: [
+                        InputValueDefinition {
+                            description: None,
+                            name: ArgumentName(
+                                Name(
+                                    "requires",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Role",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    repeatable: false,
+                    locations: [
+                        FieldDefinition,
+                        Object,
+                    ],
+                },
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Enum(
+                    EnumTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Role",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "ADMIN",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "USER",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,48 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"\"User status\" enum Status { ACTIVE INACTIVE }\"#)"
+---
+Document {
+    source: Source {
+        code: "\"User status\" enum Status { ACTIVE INACTIVE }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Enum(
+                    EnumTypeDefinition {
+                        description: Some(
+                            Description {
+                                value: "User status",
+                            },
+                        ),
+                        name: TypeName(
+                            Name(
+                                "Status",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "ACTIVE",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "INACTIVE",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

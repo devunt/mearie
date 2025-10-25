@@ -1,0 +1,131 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"input AddressInput { street: String! city: String! }\n        input UserInput { name: String! address: AddressInput! }\"#)"
+---
+Document {
+    source: Source {
+        code: "input AddressInput { street: String! city: String! }\n        input UserInput { name: String! address: AddressInput! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "AddressInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "street",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "city",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "address",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "AddressInput",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

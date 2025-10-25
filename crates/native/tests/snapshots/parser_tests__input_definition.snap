@@ -1,0 +1,91 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"input UserInput { name: String! email: String! age: Int }\")"
+---
+Document {
+    source: Source {
+        code: "input UserInput { name: String! email: String! age: Int }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "age",
+                                    ),
+                                ),
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

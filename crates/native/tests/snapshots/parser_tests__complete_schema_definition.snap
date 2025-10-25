@@ -1,0 +1,192 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"schema {\n            query: Query\n            mutation: Mutation\n            subscription: Subscription\n        }\n        type Query { user: User }\n        type Mutation { createUser: User }\n        type Subscription { userAdded: User }\n        type User { id: ID! }\"#)"
+---
+Document {
+    source: Source {
+        code: "schema {\n            query: Query\n            mutation: Mutation\n            subscription: Subscription\n        }\n        type Query { user: User }\n        type Mutation { createUser: User }\n        type Subscription { userAdded: User }\n        type User { id: ID! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Schema(
+                SchemaDefinition {
+                    description: None,
+                    directives: [],
+                    query: Some(
+                        TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                    ),
+                    mutation: Some(
+                        TypeName(
+                            Name(
+                                "Mutation",
+                            ),
+                        ),
+                    ),
+                    subscription: Some(
+                        TypeName(
+                            Name(
+                                "Subscription",
+                            ),
+                        ),
+                    ),
+                },
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "user",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "User",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Mutation",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createUser",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "User",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Subscription",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "userAdded",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "User",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

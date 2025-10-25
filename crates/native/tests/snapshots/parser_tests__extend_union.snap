@@ -1,0 +1,61 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"union SearchResult = User | Post extend union SearchResult = Comment\")"
+---
+Document {
+    source: Source {
+        code: "union SearchResult = User | Post extend union SearchResult = Comment",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Union(
+                    UnionTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "SearchResult",
+                            ),
+                        ),
+                        directives: [],
+                        members: [
+                            TypeName(
+                                Name(
+                                    "User",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Post",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystemExtension(
+            Type(
+                Union(
+                    UnionTypeExtension {
+                        name: TypeName(
+                            Name(
+                                "SearchResult",
+                            ),
+                        ),
+                        directives: [],
+                        members: [
+                            TypeName(
+                                Name(
+                                    "Comment",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

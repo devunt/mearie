@@ -1,0 +1,1162 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"type Query {\n            user(id: ID!): User\n            users(first: Int, after: String): UserConnection!\n            post(id: ID!): Post\n            posts(first: Int, after: String): PostConnection!\n        }\n        type Mutation {\n            createUser(input: UserInput!): User!\n            updateUser(id: ID!, input: UserInput!): User!\n            deleteUser(id: ID!): Boolean!\n        }\n        type Subscription {\n            userAdded: User!\n            userUpdated: User!\n            userDeleted: ID!\n        }\n        type User implements Node {\n            id: ID!\n            name: String!\n            email: String!\n            posts(first: Int): PostConnection!\n        }\n        type Post implements Node {\n            id: ID!\n            title: String!\n            content: String!\n            author: User!\n        }\n        interface Node { id: ID! }\n        type UserConnection {\n            edges: [UserEdge!]!\n            pageInfo: PageInfo!\n        }\n        type UserEdge {\n            node: User!\n            cursor: String!\n        }\n        type PostConnection {\n            edges: [PostEdge!]!\n            pageInfo: PageInfo!\n        }\n        type PostEdge {\n            node: Post!\n            cursor: String!\n        }\n        type PageInfo {\n            hasNextPage: Boolean!\n            hasPreviousPage: Boolean!\n            startCursor: String\n            endCursor: String\n        }\n        input UserInput { name: String! email: String! }\"#)"
+---
+Document {
+    source: Source {
+        code: "type Query {\n            user(id: ID!): User\n            users(first: Int, after: String): UserConnection!\n            post(id: ID!): Post\n            posts(first: Int, after: String): PostConnection!\n        }\n        type Mutation {\n            createUser(input: UserInput!): User!\n            updateUser(id: ID!, input: UserInput!): User!\n            deleteUser(id: ID!): Boolean!\n        }\n        type Subscription {\n            userAdded: User!\n            userUpdated: User!\n            userDeleted: ID!\n        }\n        type User implements Node {\n            id: ID!\n            name: String!\n            email: String!\n            posts(first: Int): PostConnection!\n        }\n        type Post implements Node {\n            id: ID!\n            title: String!\n            content: String!\n            author: User!\n        }\n        interface Node { id: ID! }\n        type UserConnection {\n            edges: [UserEdge!]!\n            pageInfo: PageInfo!\n        }\n        type UserEdge {\n            node: User!\n            cursor: String!\n        }\n        type PostConnection {\n            edges: [PostEdge!]!\n            pageInfo: PageInfo!\n        }\n        type PostEdge {\n            node: Post!\n            cursor: String!\n        }\n        type PageInfo {\n            hasNextPage: Boolean!\n            hasPreviousPage: Boolean!\n            startCursor: String\n            endCursor: String\n        }\n        input UserInput { name: String! email: String! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "user",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "id",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "ID",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "User",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "users",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "first",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "after",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "String",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "UserConnection",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "post",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "id",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "ID",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Post",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "posts",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "first",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "after",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "String",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "PostConnection",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Mutation",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "createUser",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "input",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "UserInput",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "updateUser",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "id",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "ID",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "input",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "UserInput",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "deleteUser",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "id",
+                                            ),
+                                        ),
+                                        typ: NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "ID",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "Boolean",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Subscription",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "userAdded",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "userUpdated",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "userDeleted",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [
+                            TypeName(
+                                Name(
+                                    "Node",
+                                ),
+                            ),
+                        ],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "posts",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "first",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "PostConnection",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Post",
+                            ),
+                        ),
+                        implements: [
+                            TypeName(
+                                Name(
+                                    "Node",
+                                ),
+                            ),
+                        ],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "title",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "content",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "author",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Interface(
+                    InterfaceTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Node",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserConnection",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "edges",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "UserEdge",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "pageInfo",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "PageInfo",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserEdge",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "node",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "cursor",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "PostConnection",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "edges",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    List(
+                                        NonNull(
+                                            Named(
+                                                NamedType {
+                                                    name: TypeName(
+                                                        Name(
+                                                            "PostEdge",
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "pageInfo",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "PageInfo",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "PostEdge",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "node",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "Post",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "cursor",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "PageInfo",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "hasNextPage",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "Boolean",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "hasPreviousPage",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "Boolean",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "startCursor",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "endCursor",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystem(
+            Type(
+                InputObject(
+                    InputObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "UserInput",
+                            ),
+                        ),
+                        directives: [],
+                        fields: [
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                            InputValueDefinition {
+                                description: None,
+                                name: ArgumentName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                default_value: None,
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

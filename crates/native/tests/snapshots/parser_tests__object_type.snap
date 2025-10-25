@@ -1,0 +1,92 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"type User { id: ID! name: String! email: String }\")"
+---
+Document {
+    source: Source {
+        code: "type User { id: ID! name: String! email: String }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "name",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "String",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "email",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

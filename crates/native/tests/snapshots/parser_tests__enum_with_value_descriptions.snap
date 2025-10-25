@@ -1,0 +1,56 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"\"User account status\"\n        enum Status {\n            \"Account is active\"\n            ACTIVE\n            \"Account is inactive\"\n            INACTIVE\n        }\"#)"
+---
+Document {
+    source: Source {
+        code: "\"User account status\"\n        enum Status {\n            \"Account is active\"\n            ACTIVE\n            \"Account is inactive\"\n            INACTIVE\n        }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Enum(
+                    EnumTypeDefinition {
+                        description: Some(
+                            Description {
+                                value: "User account status",
+                            },
+                        ),
+                        name: TypeName(
+                            Name(
+                                "Status",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: Some(
+                                    Description {
+                                        value: "Account is active",
+                                    },
+                                ),
+                                value: Name(
+                                    "ACTIVE",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: Some(
+                                    Description {
+                                        value: "Account is inactive",
+                                    },
+                                ),
+                                value: Name(
+                                    "INACTIVE",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

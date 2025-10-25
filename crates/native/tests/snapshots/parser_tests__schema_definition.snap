@@ -1,0 +1,36 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"schema { query: Query mutation: Mutation }\")"
+---
+Document {
+    source: Source {
+        code: "schema { query: Query mutation: Mutation }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Schema(
+                SchemaDefinition {
+                    description: None,
+                    directives: [],
+                    query: Some(
+                        TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                    ),
+                    mutation: Some(
+                        TypeName(
+                            Name(
+                                "Mutation",
+                            ),
+                        ),
+                    ),
+                    subscription: None,
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,63 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"type User implements Node & Timestamped { id: ID! }\")"
+---
+Document {
+    source: Source {
+        code: "type User implements Node & Timestamped { id: ID! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [
+                            TypeName(
+                                Name(
+                                    "Node",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "Timestamped",
+                                ),
+                            ),
+                        ],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

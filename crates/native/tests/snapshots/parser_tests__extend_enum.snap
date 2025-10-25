@@ -1,0 +1,67 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"enum Status { ACTIVE INACTIVE } extend enum Status { PENDING }\")"
+---
+Document {
+    source: Source {
+        code: "enum Status { ACTIVE INACTIVE } extend enum Status { PENDING }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Enum(
+                    EnumTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Status",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "ACTIVE",
+                                ),
+                                directives: [],
+                            },
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "INACTIVE",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+        TypeSystemExtension(
+            Type(
+                Enum(
+                    EnumTypeExtension {
+                        name: TypeName(
+                            Name(
+                                "Status",
+                            ),
+                        ),
+                        directives: [],
+                        values: [
+                            EnumValueDefinition {
+                                description: None,
+                                value: Name(
+                                    "PENDING",
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

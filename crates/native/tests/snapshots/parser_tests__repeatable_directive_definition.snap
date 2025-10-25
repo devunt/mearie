@@ -1,0 +1,52 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"directive @tag(name: String!) repeatable on FIELD\")"
+---
+Document {
+    source: Source {
+        code: "directive @tag(name: String!) repeatable on FIELD",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Directive(
+                DirectiveDefinition {
+                    description: None,
+                    name: DirectiveName(
+                        Name(
+                            "tag",
+                        ),
+                    ),
+                    arguments: [
+                        InputValueDefinition {
+                            description: None,
+                            name: ArgumentName(
+                                Name(
+                                    "name",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    repeatable: true,
+                    locations: [
+                        Field,
+                    ],
+                },
+            ),
+        ),
+    ],
+}

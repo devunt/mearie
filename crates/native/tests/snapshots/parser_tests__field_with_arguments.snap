@@ -1,0 +1,91 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"type Query { users(first: Int, offset: Int): [User] }\")"
+---
+Document {
+    source: Source {
+        code: "type Query { users(first: Int, offset: Int): [User] }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "Query",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "users",
+                                    ),
+                                ),
+                                arguments: [
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "first",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                    InputValueDefinition {
+                                        description: None,
+                                        name: ArgumentName(
+                                            Name(
+                                                "offset",
+                                            ),
+                                        ),
+                                        typ: Named(
+                                            NamedType {
+                                                name: TypeName(
+                                                    Name(
+                                                        "Int",
+                                                    ),
+                                                ),
+                                            },
+                                        ),
+                                        default_value: None,
+                                        directives: [],
+                                    },
+                                ],
+                                typ: List(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "User",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,116 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"mutation CreateUser($input: UserInput!) { createUser(input: $input) { id } }\")"
+---
+Document {
+    source: Source {
+        code: "mutation CreateUser($input: UserInput!) { createUser(input: $input) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 76,
+                    },
+                    operation_type: Mutation,
+                    name: Some(
+                        Name(
+                            "CreateUser",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 20,
+                                end: 39,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "input",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "UserInput",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 42,
+                                        end: 74,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "createUser",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 53,
+                                                end: 66,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "input",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "input",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 70,
+                                                        end: 74,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,82 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query { userId: user { userName: name } }\")"
+---
+Document {
+    source: Source {
+        code: "query { userId: user { userName: name } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 41,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 39,
+                                    },
+                                    alias: Some(
+                                        FieldName(
+                                            Name(
+                                                "userId",
+                                            ),
+                                        ),
+                                    ),
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 23,
+                                                        end: 39,
+                                                    },
+                                                    alias: Some(
+                                                        FieldName(
+                                                            Name(
+                                                                "userName",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                    name: FieldName(
+                                                        Name(
+                                                            "name",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

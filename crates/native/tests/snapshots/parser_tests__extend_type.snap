@@ -1,0 +1,49 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"extend type User { avatar: String }\")"
+---
+Document {
+    source: Source {
+        code: "extend type User { avatar: String }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystemExtension(
+            Type(
+                Object(
+                    ObjectTypeExtension {
+                        name: TypeName(
+                            Name(
+                                "User",
+                            ),
+                        ),
+                        implements: [],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "avatar",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "String",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

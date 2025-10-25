@@ -9,7 +9,7 @@ export const normalize = (
   storage: Storage,
   data: unknown,
   variables: Record<string, unknown>,
-  accessor?: (storageKey: StorageKey, fieldKey: FieldKey) => void,
+  accessor?: (storageKey: StorageKey, fieldKey: FieldKey, oldValue: unknown, newValue: unknown) => void,
 ): void => {
   const normalizeField = (storageKey: StorageKey | null, selections: readonly Selection[], value: unknown): unknown => {
     if (value === null || value === undefined) {
@@ -37,7 +37,7 @@ export const normalize = (
         const fieldValue = data[selection.alias ?? selection.name];
 
         if (storageKey !== null) {
-          accessor?.(storageKey, fieldKey);
+          accessor?.(storageKey, fieldKey, storage[storageKey]?.[fieldKey], fieldValue);
         }
 
         fields[fieldKey] = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;

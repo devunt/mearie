@@ -253,6 +253,14 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let field_name = field.alias_or_name().as_str();
         let actual_field_name = field.name.as_str();
 
+        if actual_field_name.starts_with("__") {
+            let introspection_type = match actual_field_name {
+                "__typename" => self.ast.ts_type_string_keyword(SPAN),
+                _ => self.ast.ts_type_unknown_keyword(SPAN),
+            };
+            return Ok((field_name, introspection_type, false));
+        }
+
         let field_def = self.schema.get_field(parent_type, actual_field_name).ok_or_else(|| {
             MearieError::codegen(format!(
                 "Field '{}' not found on type '{}'",
@@ -617,5 +625,47 @@ mod tests {
         assert_ok!(&result);
         let source_buf = result.unwrap();
         assert_contains!(source_buf.code, "export type UserFields");
+    }
+
+    #[test]
+    fn test_typename_introspection_field() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"type Query { user: User } type User { id: ID! name: String! }"#,
+            r#"query GetUser { user { __typename id name } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, "__typename: string");
+    }
+
+    #[test]
+    fn test_typename_in_inline_fragment() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult }
+                union SearchResult = User | Post
+                type User { id: ID! name: String! }
+                type Post { id: ID! title: String! }
+            "#,
+            r#"
+                query Search {
+                    search {
+                        ... on User { __typename id name }
+                        ... on Post { __typename id title }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, "__typename: string");
     }
 }

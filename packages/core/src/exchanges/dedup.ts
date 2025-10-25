@@ -40,15 +40,20 @@ export const dedupExchange = (): Exchange => {
     return (ops$) => {
       const operations = new Map<string, Set<string>>();
 
-      const sideEffect$ = pipe(
+      const skip$ = pipe(
         ops$,
-        filter((op) => op.variant === 'request' && op.artifact.kind === 'mutation'),
+        filter(
+          (op) => op.variant === 'request' && (op.artifact.kind === 'mutation' || op.artifact.kind === 'fragment'),
+        ),
         forward,
       );
 
-      const idempotent$ = pipe(
+      const deduplicate$ = pipe(
         ops$,
-        filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind !== 'mutation'),
+        filter(
+          (op): op is RequestOperation =>
+            op.variant === 'request' && op.artifact.kind !== 'mutation' && op.artifact.kind !== 'fragment',
+        ),
         filter((op) => {
           const dedupKey = makeDedupKey(op);
           const isInflight = operations.has(dedupKey);
@@ -95,7 +100,7 @@ export const dedupExchange = (): Exchange => {
         forward,
       );
 
-      return merge(sideEffect$, idempotent$, teardown$);
+      return merge(skip$, deduplicate$, teardown$);
     };
   };
 };

@@ -1,3 +1,4 @@
+export * from '@mearie/core';
 export { ClientPlugin, useClient, type ClientPluginOptions } from './client-plugin.ts';
 export { useQuery, type Query, type UseQueryOptions } from './use-query.ts';
 export { useSubscription, type Subscription, type UseSubscriptionOptions } from './use-subscription.ts';

@@ -1,3 +1,4 @@
+export * from '@mearie/core';
 export { setClient, getClient } from './client-context.svelte.ts';
 export { createQuery, type Query, type CreateQueryOptions } from './create-query.svelte.ts';
 export { createSubscription, type Subscription, type CreateSubscriptionOptions } from './create-subscription.svelte.ts';

@@ -34,9 +34,11 @@ export class Cache {
       this.#storage,
       data,
       variables as Record<string, unknown>,
-      (storageKey, fieldKey) => {
-        const dependencyKey = makeDependencyKey(storageKey, fieldKey);
-        dependencies.add(dependencyKey);
+      (storageKey, fieldKey, oldValue, newValue) => {
+        if (oldValue !== newValue) {
+          const dependencyKey = makeDependencyKey(storageKey, fieldKey);
+          dependencies.add(dependencyKey);
+        }
       },
     );
 

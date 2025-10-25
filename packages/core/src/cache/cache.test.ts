@@ -18,7 +18,7 @@ const createArtifact = <K extends 'query' | 'fragment'>(
 ): Artifact<K> => ({
   kind,
   name,
-  source: '',
+  body: '',
   selections,
 });
 
@@ -1114,7 +1114,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact1, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
 
       expect(listener1).toHaveBeenCalledTimes(1);
-      expect(listener2).toHaveBeenCalledTimes(1);
+      expect(listener2).toHaveBeenCalledTimes(0);
     });
 
     it('should handle entity with composite key', () => {

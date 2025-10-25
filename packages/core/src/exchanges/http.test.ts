@@ -8,6 +8,7 @@ describe('httpExchange', () => {
   const mockFetch = vi.fn();
 
   beforeEach(() => {
+    mockFetch.mockClear();
     globalThis.fetch = mockFetch;
   });
 

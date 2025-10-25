@@ -3,8 +3,8 @@ import type { ArtifactKind, Artifact, Selection } from '@mearie/shared';
 import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 import { vi } from 'vitest';
-import { fromArray } from '../stream/sources/from-array.ts';
 import { subscribe } from '../stream/sinks/subscribe.ts';
+import type { Source } from '../stream/types.ts';
 
 let operationCounter = 0;
 
@@ -40,7 +40,7 @@ export const makeTestOperation = (options: TestOperationOptions = {}): Operation
   const artifact: Artifact = {
     kind,
     name,
-    source: '',
+    body: '',
     selections,
   };
 
@@ -76,6 +76,35 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
     );
 };
 
+export const fromArrayMicrotick = <T>(values: T[]): Source<T> => {
+  return (sink) => {
+    let cancelled = false;
+    let index = 0;
+
+    const next = () => {
+      if (cancelled) {
+        return;
+      }
+
+      if (index >= values.length) {
+        sink.complete();
+        return;
+      }
+
+      sink.next(values[index++]!);
+      queueMicrotask(() => next());
+    };
+
+    next();
+
+    return {
+      unsubscribe() {
+        cancelled = true;
+      },
+    };
+  };
+};
+
 export const testExchange = async (
   exchange: Exchange,
   forward: ExchangeIO,
@@ -85,7 +114,7 @@ export const testExchange = async (
   vi.useFakeTimers();
 
   const unsubscribe = pipe(
-    fromArray(operations),
+    fromArrayMicrotick(operations),
     exchange(forward),
     subscribe({
       next: (result) => {

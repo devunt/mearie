@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, stringify } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -40,6 +40,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
   const [error, setError] = useState<AggregatedError | undefined>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
+  const stableVariables = useMemo(() => stringify(variables), [variables]);
   const stableOptions = useMemo(() => options, [options?.skip, options?.onData, options?.onError]);
 
   const execute = useCallback(() => {
@@ -76,7 +77,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
         },
       }),
     );
-  }, [client, subscription, variables, stableOptions]);
+  }, [client, subscription, stableVariables, stableOptions]);
 
   useEffect(() => {
     execute();

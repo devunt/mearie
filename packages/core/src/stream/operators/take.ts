@@ -1,4 +1,4 @@
-import type { Operator, Talkback } from '../types.ts';
+import type { Operator, Subscription } from '../types.ts';
 
 /**
  * Takes only the first N values from the source and completes.
@@ -8,35 +8,51 @@ import type { Operator, Talkback } from '../types.ts';
 export const take = <T>(count: number): Operator<T> => {
   return (source) => {
     return (sink) => {
+      let subscription: Subscription | null = null;
+
       const limit = Math.floor(count);
       if (limit <= 0) {
-        sink.start({ pull() {}, cancel() {} });
         sink.complete();
-        return;
+        return {
+          unsubscribe() {},
+        };
       }
 
       let taken = 0;
-      let talkback: Talkback;
+      let completed = false;
 
-      source({
-        start(tb) {
-          talkback = tb;
-          sink.start(tb);
-        },
+      subscription = source({
         next(value) {
-          if (taken < limit) {
+          if (!completed && taken < limit) {
             sink.next(value);
             taken++;
             if (taken >= limit) {
-              talkback.cancel();
+              completed = true;
               sink.complete();
+              subscription?.unsubscribe();
             }
           }
         },
         complete() {
-          sink.complete();
+          if (!completed) {
+            completed = true;
+            sink.complete();
+          }
         },
       });
+
+      if (completed) {
+        subscription?.unsubscribe();
+      }
+
+      return {
+        unsubscribe() {
+          if (!completed) {
+            completed = true;
+            subscription.unsubscribe();
+          }
+        },
+      };
     };
   };
 };

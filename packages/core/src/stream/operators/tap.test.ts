@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tap } from './tap.ts';
+import { tap } from '../effects/tap.ts';
 import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';

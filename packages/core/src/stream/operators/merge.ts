@@ -1,4 +1,4 @@
-import type { Source, Talkback } from '../types.ts';
+import type { Source, Subscription } from '../types.ts';
 
 /**
  * Merges multiple sources into a single source.
@@ -14,68 +14,64 @@ export const merge = <T extends readonly Source<unknown>[]>(
 
   return (sink) => {
     if (sources.length === 0) {
-      sink.start({ pull() {}, cancel() {} });
       sink.complete();
-      return;
+      return {
+        unsubscribe() {},
+      };
     }
 
     let activeCount = sources.length;
-    const talkbacks: Talkback[] = [];
-    const pendings: U[] = [];
-
-    let subscribed = false;
+    const subscriptions: Subscription[] = [];
     let ended = false;
+    let ready = false;
+    const buffer: U[] = [];
 
     const checkComplete = () => {
-      if (activeCount === 0 && subscribed && !ended) {
+      if (activeCount === 0 && !ended) {
         ended = true;
         sink.complete();
       }
     };
 
-    sink.start({
-      pull() {
-        for (const tb of talkbacks) {
-          tb.pull();
-        }
-      },
-      cancel() {
-        ended = true;
-        for (const tb of talkbacks) {
-          tb.cancel();
-        }
-      },
-    });
-
     for (const source of sources) {
-      source({
-        start(talkback) {
-          talkbacks.push(talkback);
-        },
+      const subscription = source({
         next(value) {
           if (!ended) {
-            if (subscribed) {
+            if (ready) {
               sink.next(value as U);
             } else {
-              pendings.push(value as U);
+              buffer.push(value as U);
             }
           }
         },
         complete() {
           activeCount--;
-          checkComplete();
+          if (ready) {
+            checkComplete();
+          }
         },
       });
+      subscriptions.push(subscription);
     }
 
-    subscribed = true;
-    for (const value of pendings) {
+    ready = true;
+
+    for (const value of buffer) {
       if (!ended) {
         sink.next(value);
       }
     }
-    pendings.length = 0;
+    buffer.length = 0;
 
     checkComplete();
+
+    return {
+      unsubscribe() {
+        ended = true;
+        for (const sub of subscriptions) {
+          sub.unsubscribe();
+        }
+      },
+    };
   };
 };

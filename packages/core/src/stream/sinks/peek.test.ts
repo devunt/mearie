@@ -3,6 +3,7 @@ import { peek } from './peek.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { fromArray } from '../sources/from-array.ts';
 import { pipe } from '../pipe.ts';
+import type { Sink } from '../types.ts';
 
 describe('peek', () => {
   it('synchronously pulls the first value from a source', () => {
@@ -23,31 +24,29 @@ describe('peek', () => {
   });
 
   it('throws if source does not emit synchronously', () => {
-    const asyncSource = (sink: any) => {
-      sink.start({
-        pull: () => {},
-        cancel: () => {},
-      });
+    const asyncSource = (sink: Sink<number>) => {
       setTimeout(() => {
         sink.next(42);
-      }, 10);
+      }, 0);
+      return {
+        unsubscribe: () => {},
+      };
     };
 
     expect(() => peek(asyncSource)).toThrow('Source did not emit a value synchronously');
   });
 
   it('cancels subscription after reading first value', () => {
-    const cancelSpy = vi.fn();
-    const source = (sink: any) => {
-      sink.start({
-        pull: () => {},
-        cancel: cancelSpy,
-      });
+    const unsubscribe = vi.fn();
+    const source = (sink: Sink<number>) => {
       sink.next(100);
+      return {
+        unsubscribe,
+      };
     };
 
     const result = peek(source);
     expect(result).toBe(100);
-    expect(cancelSpy).toHaveBeenCalledOnce();
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });

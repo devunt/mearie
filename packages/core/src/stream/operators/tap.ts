@@ -9,10 +9,7 @@ import type { Operator } from '../types.ts';
 export const tap = <T>(fn: (value: T) => void): Operator<T> => {
   return (source) => {
     return (sink) => {
-      source({
-        start(talkback) {
-          sink.start(talkback);
-        },
+      return source({
         next(value) {
           fn(value);
           sink.next(value);

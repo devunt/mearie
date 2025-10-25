@@ -11,9 +11,6 @@ export const collectAll = <T>(source: Source<T>): Promise<T[]> => {
     const results: T[] = [];
 
     source({
-      start(talkback) {
-        talkback.pull();
-      },
       next(value) {
         results.push(value);
       },

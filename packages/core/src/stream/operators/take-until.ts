@@ -1,4 +1,4 @@
-import type { Source, Operator, Talkback } from '../types.ts';
+import type { Source, Operator, Subscription } from '../types.ts';
 
 /**
  * Emits values from the source until the notifier source emits a value.
@@ -9,41 +9,33 @@ import type { Source, Operator, Talkback } from '../types.ts';
 export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
   return (source) => {
     return (sink) => {
-      let sourceTalkback: Talkback | null = null;
-      let notifierTalkback: Talkback | null = null;
+      let sourceSubscription: Subscription | null = null;
+      let notifierSubscription: Subscription | null = null;
       let completed = false;
 
       const complete = () => {
         if (completed) return;
         completed = true;
 
-        if (sourceTalkback) {
-          sourceTalkback.cancel();
+        if (sourceSubscription) {
+          sourceSubscription.unsubscribe();
         }
 
-        if (notifierTalkback) {
-          notifierTalkback.cancel();
+        if (notifierSubscription) {
+          notifierSubscription.unsubscribe();
         }
 
         sink.complete();
       };
 
-      notifier({
-        start(tb) {
-          notifierTalkback = tb;
-          tb.pull();
-        },
+      notifierSubscription = notifier({
         next() {
           complete();
         },
         complete() {},
       });
 
-      source({
-        start(tb) {
-          sourceTalkback = tb;
-          sink.start(tb);
-        },
+      sourceSubscription = source({
         next(value) {
           if (!completed) {
             sink.next(value);
@@ -53,6 +45,12 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
           complete();
         },
       });
+
+      return {
+        unsubscribe() {
+          complete();
+        },
+      };
     };
   };
 };

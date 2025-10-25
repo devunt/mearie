@@ -4,7 +4,7 @@ import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('fromValue', () => {
   describe('basic functionality', () => {
@@ -190,9 +190,6 @@ describe('fromValue', () => {
       const events: string[] = [];
 
       source({
-        start: () => {
-          events.push('start');
-        },
         next: (value) => {
           events.push(`next:${value}`);
         },
@@ -201,74 +198,65 @@ describe('fromValue', () => {
         },
       });
 
-      expect(events).toEqual(['start', 'next:42', 'complete']);
+      expect(events).toEqual(['next:42', 'complete']);
     });
   });
 
   describe('cancellation', () => {
-    it('should not emit when cancelled before emission', () => {
+    it('should emit synchronously before unsubscribe can be called', () => {
       const source = fromValue(42);
       const emitted: number[] = [];
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
 
-      expect(emitted).toEqual([]);
+      expect(emitted).toEqual([42]);
+      subscription.unsubscribe();
     });
 
-    it('should not complete when cancelled', () => {
+    it('should complete synchronously', () => {
       const source = fromValue(42);
       let completed = false;
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {
           completed = true;
         },
       });
 
-      expect(completed).toBe(false);
+      expect(completed).toBe(true);
+      subscription.unsubscribe();
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', () => {
+  describe('subscription', () => {
+    it('should return subscription object', () => {
       const source = fromValue(42);
-      let receivedTalkback: Talkback | null = null;
 
-      source({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
+      expect(typeof subscription.unsubscribe).toBe('function');
     });
 
-    it('should have pull method that does nothing', () => {
+    it('should allow calling unsubscribe', () => {
       const source = fromValue(42);
 
-      source({
-        start: (tb) => {
-          expect(() => tb.pull()).not.toThrow();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 

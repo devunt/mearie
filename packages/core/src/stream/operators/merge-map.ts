@@ -1,4 +1,4 @@
-import type { Operator, Source } from '../types.ts';
+import type { Operator, Source, Subscription } from '../types.ts';
 
 /**
  * Maps each value to a source and flattens all sources into a single output source.
@@ -12,6 +12,8 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
       let outerCompleted = false;
       let activeInner = 0;
       let ended = false;
+      const innerSubscriptions: Subscription[] = [];
+      let outerSubscription: Subscription;
 
       const checkComplete = () => {
         if (outerCompleted && activeInner === 0 && !ended) {
@@ -20,20 +22,14 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
         }
       };
 
-      source({
-        start(talkback) {
-          sink.start(talkback);
-        },
+      outerSubscription = source({
         next(value) {
           if (ended) return;
 
           activeInner++;
           const innerSource = fn(value);
 
-          innerSource({
-            start(talkback) {
-              talkback.pull();
-            },
+          const innerSubscription = innerSource({
             next(innerValue) {
               if (!ended) {
                 sink.next(innerValue);
@@ -44,12 +40,25 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
               checkComplete();
             },
           });
+
+          innerSubscriptions.push(innerSubscription);
         },
         complete() {
           outerCompleted = true;
           checkComplete();
         },
       });
+
+      return {
+        unsubscribe() {
+          ended = true;
+          outerSubscription.unsubscribe();
+          for (const sub of innerSubscriptions) {
+            sub.unsubscribe();
+          }
+          innerSubscriptions.length = 0;
+        },
+      };
     };
   };
 };

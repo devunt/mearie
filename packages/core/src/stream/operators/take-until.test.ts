@@ -61,9 +61,6 @@ describe('takeUntil', () => {
         source,
         takeUntil(notifier),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: (value) => {
           emitted.push(value);
           if (value === 3) {
@@ -87,9 +84,6 @@ describe('takeUntil', () => {
         source,
         takeUntil(notifier),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: (value) => {
           emitted.push(value);
         },
@@ -106,19 +100,17 @@ describe('takeUntil', () => {
       const { source: notifier, next } = makeSubject<void>();
 
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {
+        return {
+          unsubscribe: () => {
             sourceCancelled = true;
           },
-        });
+        };
       };
 
       pipe(
         source,
         takeUntil(notifier),
       )({
-        start: () => {},
         next: () => {},
         complete: () => {},
       });
@@ -134,12 +126,11 @@ describe('takeUntil', () => {
       const source = fromArray([1, 2, 3]);
 
       const notifier = (sink: Sink<void>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {
+        return {
+          unsubscribe: () => {
             notifierCancelled = true;
           },
-        });
+        };
       };
 
       await pipe(source, takeUntil(notifier), collectAll);
@@ -160,9 +151,6 @@ describe('takeUntil', () => {
         source,
         takeUntil(notifier),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;
@@ -182,9 +170,6 @@ describe('takeUntil', () => {
         source,
         takeUntil(notifier),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;

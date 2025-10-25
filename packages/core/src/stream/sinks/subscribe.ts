@@ -1,4 +1,4 @@
-import type { Source } from '../types.ts';
+import type { Source, Subscription } from '../types.ts';
 
 /**
  * Observer pattern for consuming values from a Source.
@@ -25,15 +25,8 @@ export type Observer<T> = {
 export const subscribe = <T>(observer: Observer<T>) => {
   return (source: Source<T>): (() => void) => {
     let closed = false;
-    let talkback: { pull: () => void; cancel: () => void } | null = null;
 
-    source({
-      start(tb) {
-        talkback = tb;
-        if (!closed) {
-          tb.pull();
-        }
-      },
+    const subscription: Subscription = source({
       next(value) {
         if (!closed) {
           observer.next?.(value);
@@ -49,9 +42,7 @@ export const subscribe = <T>(observer: Observer<T>) => {
 
     return () => {
       closed = true;
-      if (talkback) {
-        talkback.cancel();
-      }
+      subscription.unsubscribe();
     };
   };
 };

@@ -13,9 +13,6 @@ export const collect = <T>(source: Source<T>): Promise<T> => {
     let hasValue = false;
 
     source({
-      start(talkback) {
-        talkback.pull();
-      },
       next(value) {
         lastValue = value;
         hasValue = true;

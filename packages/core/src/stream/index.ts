@@ -1,4 +1,4 @@
-export type { Talkback, Sink, Source, Operator } from './types.ts';
+export type { Subscription, Sink, Source, Operator } from './types.ts';
 export { pipe } from './pipe.ts';
 
 export { subscribe } from './sinks/subscribe.ts';
@@ -10,12 +10,14 @@ export { peek } from './sinks/peek.ts';
 
 export { map } from './operators/map.ts';
 export { filter } from './operators/filter.ts';
-export { tap } from './operators/tap.ts';
 export { take } from './operators/take.ts';
 export { takeUntil } from './operators/take-until.ts';
 export { share } from './operators/share.ts';
 export { merge } from './operators/merge.ts';
 export { mergeMap } from './operators/merge-map.ts';
+export { tap } from './operators/tap.ts';
+export { initialize } from './operators/initialize.ts';
+export { finalize } from './operators/finalize.ts';
 
 export { fromValue } from './sources/from-value.ts';
 export { fromArray } from './sources/from-array.ts';

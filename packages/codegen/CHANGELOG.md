@@ -1,5 +1,22 @@
 # @mearie/codegen
 
+## 0.1.0-next.4
+
+### Minor Changes
+
+- e774b55: Implement fragment colocation type system with new Artifact-based architecture supporting FragmentRefs for type-safe fragment composition
+- a739cd0: Consolidate extractor package into shared package and move internal utilities to codegen
+
+### Patch Changes
+
+- Updated dependencies [e15914c]
+- Updated dependencies [f858e35]
+- Updated dependencies [e31848b]
+- Updated dependencies [e774b55]
+- Updated dependencies [a739cd0]
+  - @mearie/shared@0.1.0-next.4
+  - @mearie/native@0.1.0-next.4
+
 ## 0.0.1-next.3
 
 ### Patch Changes

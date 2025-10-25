@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useCallback } from 'react';
-import type { Artifact, DataOf, FragmentOptions, FragmentRefs } from '@mearie/core';
+import { AggregatedError, type Artifact, type DataOf, type FragmentOptions, type FragmentRefs } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -29,8 +29,8 @@ export const useFragment = <T extends Artifact<'fragment'>>(
   const snapshot = useCallback((): Fragment<T> => {
     const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 
-    if (result.data === undefined) {
-      throw new Error('Fragment data not found');
+    if (result.errors && result.errors.length > 0) {
+      throw new AggregatedError(result.errors);
     }
 
     return result.data as Fragment<T>;

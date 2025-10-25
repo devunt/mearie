@@ -12,6 +12,7 @@ import { filter } from '../stream/operators/filter.ts';
 import { share } from '../stream/operators/share.ts';
 import { tap } from '../stream/operators/tap.ts';
 import { takeUntil } from '../stream/operators/take-until.ts';
+import { isFragmentRef } from '../cache/utils.ts';
 
 export type CacheOptions = {
   schemaMeta?: SchemaMeta;
@@ -49,6 +50,14 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
                   { exchangeName: 'cache' },
                 ),
               ],
+            });
+          }
+
+          if (!isFragmentRef(fragmentRef)) {
+            return fromValue({
+              operation: op,
+              data: fragmentRef,
+              errors: [],
             });
           }
 

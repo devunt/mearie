@@ -36,12 +36,13 @@ const reviews = new Map<string, Review>();
 const eventTarget = new EventTarget();
 
 const encodeGlobalId = (type: string, id: string): string => {
-  return Buffer.from(`${type}:${id}`).toString('base64');
+  return Buffer.from(`${type}:${id}`).toString('base64').replace(/=/g, '');
 };
 
 const decodeGlobalId = (globalId: string): { type: string; id: string } | null => {
   try {
-    const decoded = Buffer.from(globalId, 'base64').toString('utf8');
+    const padded = globalId + '='.repeat((4 - (globalId.length % 4)) % 4);
+    const decoded = Buffer.from(padded, 'base64').toString('utf8');
     const [type, id] = decoded.split(':');
     return type && id ? { type, id } : null;
   } catch {
@@ -78,12 +79,13 @@ const generateReview = (trackId: string): Review => {
 };
 
 const encodeCursor = (index: number): string => {
-  return Buffer.from(String(index)).toString('base64');
+  return Buffer.from(String(index)).toString('base64').replace(/=/g, '');
 };
 
 const decodeCursor = (cursor: string): number => {
   try {
-    return Number.parseInt(Buffer.from(cursor, 'base64').toString('utf8'), 10);
+    const padded = cursor + '='.repeat((4 - (cursor.length % 4)) % 4);
+    return Number.parseInt(Buffer.from(padded, 'base64').toString('utf8'), 10);
   } catch {
     return 0;
   }
@@ -146,11 +148,31 @@ export const resolvers = {
       }
     },
 
-    track: (_parent: unknown, args: { id: string }) => trackMap.get(args.id) ?? null,
-    album: (_parent: unknown, args: { id: string }) => albumMap.get(args.id) ?? null,
-    artist: (_parent: unknown, args: { id: string }) => artistMap.get(args.id) ?? null,
-    genre: (_parent: unknown, args: { id: string }) => genreMap.get(args.id) ?? null,
-    playlist: (_parent: unknown, args: { id: string }) => playlists.get(args.id) ?? null,
+    track: (_parent: unknown, args: { id: string }) => {
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Track') return null;
+      return trackMap.get(decoded.id) ?? null;
+    },
+    album: (_parent: unknown, args: { id: string }) => {
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Album') return null;
+      return albumMap.get(decoded.id) ?? null;
+    },
+    artist: (_parent: unknown, args: { id: string }) => {
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Artist') return null;
+      return artistMap.get(decoded.id) ?? null;
+    },
+    genre: (_parent: unknown, args: { id: string }) => {
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Genre') return null;
+      return genreMap.get(decoded.id) ?? null;
+    },
+    playlist: (_parent: unknown, args: { id: string }) => {
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Playlist') return null;
+      return playlists.get(decoded.id) ?? null;
+    },
 
     tracks: (
       _parent: unknown,
@@ -251,7 +273,13 @@ export const resolvers = {
       _parent: unknown,
       args: { input: { name: string; description?: string; trackIds?: string[] } },
     ) => {
-      const playlist = generatePlaylist(args.input.trackIds);
+      const decodedTrackIds = args.input.trackIds?.map((globalId) => {
+        const decoded = decodeGlobalId(globalId);
+        if (!decoded || decoded.type !== 'Track') return null;
+        return decoded.id;
+      }).filter((id): id is string => id !== null);
+
+      const playlist = generatePlaylist(decodedTrackIds);
       playlist.name = args.input.name;
       playlist.description = args.input.description ?? null;
 
@@ -262,16 +290,24 @@ export const resolvers = {
     },
 
     deletePlaylist: (_parent: unknown, args: { id: string }) => {
-      const deleted = playlists.delete(args.id);
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Playlist') return false;
+      const deleted = playlists.delete(decoded.id);
       return deleted;
     },
 
     addTrackToPlaylist: (_parent: unknown, args: { playlistId: string; trackId: string }) => {
-      const playlist = playlists.get(args.playlistId);
+      const decodedPlaylist = decodeGlobalId(args.playlistId);
+      if (!decodedPlaylist || decodedPlaylist.type !== 'Playlist') throw new Error('Invalid playlist ID');
+
+      const decodedTrack = decodeGlobalId(args.trackId);
+      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
+
+      const playlist = playlists.get(decodedPlaylist.id);
       if (!playlist) throw new Error('Playlist not found');
 
-      if (!playlist.trackIds.includes(args.trackId)) {
-        playlist.trackIds.push(args.trackId);
+      if (!playlist.trackIds.includes(decodedTrack.id)) {
+        playlist.trackIds.push(decodedTrack.id);
         eventTarget.dispatchEvent(new CustomEvent('playlistUpdated', { detail: playlist }));
       }
 
@@ -279,17 +315,26 @@ export const resolvers = {
     },
 
     removeTrackFromPlaylist: (_parent: unknown, args: { playlistId: string; trackId: string }) => {
-      const playlist = playlists.get(args.playlistId);
+      const decodedPlaylist = decodeGlobalId(args.playlistId);
+      if (!decodedPlaylist || decodedPlaylist.type !== 'Playlist') throw new Error('Invalid playlist ID');
+
+      const decodedTrack = decodeGlobalId(args.trackId);
+      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
+
+      const playlist = playlists.get(decodedPlaylist.id);
       if (!playlist) throw new Error('Playlist not found');
 
-      playlist.trackIds = playlist.trackIds.filter((id) => id !== args.trackId);
+      playlist.trackIds = playlist.trackIds.filter((id) => id !== decodedTrack.id);
       eventTarget.dispatchEvent(new CustomEvent('playlistUpdated', { detail: playlist }));
 
       return playlist;
     },
 
     createReview: (_parent: unknown, args: { input: { trackId: string; rating: number; text?: string } }) => {
-      const review = generateReview(args.input.trackId);
+      const decodedTrack = decodeGlobalId(args.input.trackId);
+      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
+
+      const review = generateReview(decodedTrack.id);
       review.rating = args.input.rating;
       review.text = args.input.text ?? null;
 
@@ -300,7 +345,9 @@ export const resolvers = {
     },
 
     deleteReview: (_parent: unknown, args: { id: string }) => {
-      return reviews.delete(args.id);
+      const decoded = decodeGlobalId(args.id);
+      if (!decoded || decoded.type !== 'Review') return false;
+      return reviews.delete(decoded.id);
     },
   },
 

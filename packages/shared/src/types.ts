@@ -25,7 +25,7 @@ export type Artifact<
 > = {
   readonly kind: Kind;
   readonly name: Name;
-  readonly source: string;
+  readonly body: string;
   readonly selections: readonly Selection[];
 
   readonly ' $data'?: Data;

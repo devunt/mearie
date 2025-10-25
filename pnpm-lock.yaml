@@ -119,7 +119,7 @@ importers:
 
   examples/server:
     dependencies:
-      '@mearie/fixture':
+      '@mearie-internal/fixture':
         specifier: workspace:*
         version: link:../../fixture
       graphql-yoga:

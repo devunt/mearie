@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mearie/docs", "@mearie/fixture", "@mearie/examples-*"]
+  "ignore": ["!@mearie/*"]
 }

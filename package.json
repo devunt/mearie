@@ -1,5 +1,5 @@
 {
-  "name": "@mearie/monorepo",
+  "name": "@mearie-internal/monorepo",
   "version": "0.0.0",
   "private": true,
   "description": "Type-safe, zero-overhead GraphQL client",
@@ -27,9 +27,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "build": "turbo build --filter=!@mearie/docs --filter=!@mearie/examples-*",
-    "build:docs": "turbo build --filter=@mearie/docs",
-    "build:examples": "turbo build --filter=@mearie/examples-*",
+    "build": "turbo build --filter=!@mearie-internal/*",
+    "build:docs": "turbo build --filter=@mearie-internal/docs",
+    "build:examples": "turbo build --filter=@mearie-internal/examples-*",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
     "changeset:version": "changeset version",

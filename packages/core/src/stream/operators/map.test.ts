@@ -4,7 +4,7 @@ import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('map', () => {
   describe('basic transformation', () => {
@@ -267,49 +267,40 @@ describe('map', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should forward talkback from source to sink', () => {
+  describe('subscription', () => {
+    it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let receivedTalkback: Talkback | null = null;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         map((x) => x * 2),
       )({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
 
-    it('should allow cancellation through talkback', () => {
+    it('should allow cancellation through subscription', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      pipe(
+      const subscription = pipe(
         source,
         map((x) => x * 2),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: (value) => {
           emitted.push(value);
-          if (value === 4) {
-            talkback.cancel();
-          }
         },
         complete: () => {},
       });
 
-      expect(emitted).toEqual([2, 4]);
+      subscription.unsubscribe();
+
+      expect(emitted).toEqual([2, 4, 6]);
     });
   });
 

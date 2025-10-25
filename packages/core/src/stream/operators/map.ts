@@ -8,10 +8,7 @@ import type { Operator } from '../types.ts';
 export const map = <A, B>(fn: (value: A) => B): Operator<A, B> => {
   return (source) => {
     return (sink) => {
-      source({
-        start(talkback) {
-          sink.start(talkback);
-        },
+      return source({
         next(value) {
           sink.next(fn(value));
         },

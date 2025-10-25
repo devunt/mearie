@@ -198,9 +198,6 @@ describe('mergeMap', () => {
         source,
         mergeMap((x) => fromValue(x)),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;
@@ -231,9 +228,6 @@ describe('mergeMap', () => {
         source,
         mergeMap((x) => fromValue(x)),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;

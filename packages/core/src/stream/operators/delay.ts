@@ -1,4 +1,4 @@
-import type { Operator } from '../types.ts';
+import type { Operator, Subscription } from '../types.ts';
 
 /**
  * Delays each value emitted by a source by the specified time.
@@ -11,20 +11,7 @@ export const delay = <T>(ms: number): Operator<T, T> => {
       let cancelled = false;
       const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-      source({
-        start(tb) {
-          sink.start({
-            pull: () => tb.pull(),
-            cancel() {
-              cancelled = true;
-              for (const timeout of timeouts) {
-                clearTimeout(timeout);
-              }
-              timeouts.length = 0;
-              tb.cancel();
-            },
-          });
-        },
+      const upstreamSubscription: Subscription = source({
         next(value) {
           const timeout = setTimeout(() => {
             if (!cancelled) {
@@ -42,6 +29,17 @@ export const delay = <T>(ms: number): Operator<T, T> => {
           timeouts.push(timeout);
         },
       });
+
+      return {
+        unsubscribe() {
+          cancelled = true;
+          for (const timeout of timeouts) {
+            clearTimeout(timeout);
+          }
+          timeouts.length = 0;
+          upstreamSubscription.unsubscribe();
+        },
+      };
     };
   };
 };

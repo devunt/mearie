@@ -31,15 +31,14 @@ export const makeSubject = <T>(): Subject<T> => {
   const source: Source<T> = (sink) => {
     sinks.push(sink);
 
-    sink.start({
-      pull() {},
-      cancel() {
+    return {
+      unsubscribe() {
         const idx = sinks.indexOf(sink);
         if (idx !== -1) {
           sinks.splice(idx, 1);
         }
       },
-    });
+    };
   };
 
   const next = (value: T) => {

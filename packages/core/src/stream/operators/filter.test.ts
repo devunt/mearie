@@ -5,7 +5,7 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('filter', () => {
   describe('basic filtering', () => {
@@ -367,49 +367,39 @@ describe('filter', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should forward talkback from source to sink', () => {
+  describe('subscription', () => {
+    it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let receivedTalkback: Talkback | null = null;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         filter((x) => x > 0),
       )({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
 
-    it('should allow cancellation through talkback', () => {
+    it('should allow cancellation through subscription', () => {
       const source = fromArray([2, 4, 6, 8]);
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      pipe(
+      const subscription = pipe(
         source,
         filter((x) => x % 2 === 0),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: (value) => {
           emitted.push(value);
-          if (value === 6) {
-            talkback.cancel();
-          }
         },
         complete: () => {},
       });
 
-      expect(emitted).toEqual([2, 4, 6]);
+      expect(emitted).toEqual([2, 4, 6, 8]);
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 

@@ -3,7 +3,7 @@ import { fromSubscription } from './from-subscription.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('fromSubscription', () => {
   describe('basic functionality', () => {
@@ -16,7 +16,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -39,7 +38,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -64,19 +62,15 @@ describe('fromSubscription', () => {
       const poke = () => unsubscribe;
 
       const source = fromSubscription(pull, poke);
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
       expect(unsubscribe).not.toHaveBeenCalled();
 
-      talkback.cancel();
+      subscription.unsubscribe();
 
       expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
@@ -94,7 +88,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -112,28 +105,7 @@ describe('fromSubscription', () => {
   });
 
   describe('cancellation', () => {
-    it('should not emit if cancelled before subscription', () => {
-      let state = 1;
-      const pull = () => state;
-      const poke = () => () => {};
-
-      const source = fromSubscription(pull, poke);
-      const emitted: number[] = [];
-
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
-        next: (value) => {
-          emitted.push(value);
-        },
-        complete: () => {},
-      });
-
-      expect(emitted).toEqual([]);
-    });
-
-    it('should not emit after cancellation', () => {
+    it('should not emit after subscription is cancelled', () => {
       let state = 1;
       const pull = () => state;
       let signal: (() => void) | null = null;
@@ -144,12 +116,8 @@ describe('fromSubscription', () => {
 
       const source = fromSubscription(pull, poke);
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
@@ -158,7 +126,7 @@ describe('fromSubscription', () => {
 
       expect(emitted).toEqual([1]);
 
-      talkback.cancel();
+      subscription.unsubscribe();
 
       state = 2;
       signal!();
@@ -166,28 +134,54 @@ describe('fromSubscription', () => {
       expect(emitted).toEqual([1]);
     });
 
-    it('should not setup poke if cancelled after initial value', () => {
+    it('should not emit new values after cancellation', () => {
+      let state = 1;
+      const pull = () => state;
+      let signal: (() => void) | null = null;
+      const poke = (s: () => void) => {
+        signal = s;
+        return () => {};
+      };
+
+      const source = fromSubscription(pull, poke);
+      const emitted: number[] = [];
+
+      const subscription = source({
+        next: (value) => {
+          emitted.push(value);
+        },
+        complete: () => {},
+      });
+
+      expect(emitted).toEqual([1]);
+
+      subscription.unsubscribe();
+
+      state = 2;
+      signal!();
+
+      expect(emitted).toEqual([1]);
+    });
+
+    it('should setup poke even if unsubscribed immediately', () => {
       let state = 1;
       const pull = () => state;
       const poke = vi.fn(() => () => {});
 
       const source = fromSubscription(pull, poke);
-      let cancelled = false;
+      const emitted: number[] = [];
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-          cancelled = true;
-        },
-        next: () => {
-          if (cancelled) {
-            throw new Error('Should not emit after cancellation');
-          }
+      const subscription = source({
+        next: (value) => {
+          emitted.push(value);
         },
         complete: () => {},
       });
 
-      expect(poke).not.toHaveBeenCalled();
+      subscription.unsubscribe();
+
+      expect(emitted).toEqual([1]);
+      expect(poke).toHaveBeenCalled();
     });
 
     it('should call unsubscribe only once', () => {
@@ -197,19 +191,15 @@ describe('fromSubscription', () => {
       const poke = () => unsubscribe;
 
       const source = fromSubscription(pull, poke);
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      talkback.cancel();
-      talkback.cancel();
-      talkback.cancel();
+      subscription.unsubscribe();
+      subscription.unsubscribe();
+      subscription.unsubscribe();
 
       expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
@@ -229,7 +219,6 @@ describe('fromSubscription', () => {
       const emitted: string[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -255,7 +244,6 @@ describe('fromSubscription', () => {
       const emitted: { count: number }[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -281,7 +269,6 @@ describe('fromSubscription', () => {
       const emitted: number[][] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -312,7 +299,6 @@ describe('fromSubscription', () => {
       const emitted: (number | null)[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -341,7 +327,6 @@ describe('fromSubscription', () => {
       const emitted: (number | undefined)[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -367,7 +352,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -396,7 +380,6 @@ describe('fromSubscription', () => {
       const emitted: boolean[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -425,7 +408,6 @@ describe('fromSubscription', () => {
       const emitted: string[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -460,7 +442,6 @@ describe('fromSubscription', () => {
           source,
           map((x) => x * 2),
         )({
-          start: () => {},
           next: (value) => {
             emitted.push(value);
             if (emitted.length === 3) {
@@ -482,42 +463,37 @@ describe('fromSubscription', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', () => {
+  describe('subscription', () => {
+    it('should return subscription object', () => {
       let state = 1;
       const pull = () => state;
       const poke = () => () => {};
 
       const source = fromSubscription(pull, poke);
-      let receivedTalkback: Talkback | null = null;
 
-      source({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
+      expect(typeof subscription.unsubscribe).toBe('function');
     });
 
-    it('should have pull method that does nothing', () => {
+    it('should allow calling unsubscribe', () => {
       let state = 1;
       const pull = () => state;
       const poke = () => () => {};
 
       const source = fromSubscription(pull, poke);
 
-      source({
-        start: (tb) => {
-          expect(() => tb.pull()).not.toThrow();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 
@@ -535,7 +511,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -563,7 +538,6 @@ describe('fromSubscription', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -584,17 +558,13 @@ describe('fromSubscription', () => {
       const poke = () => undefined as unknown as () => void;
 
       const source = fromSubscription(pull, poke);
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(() => talkback.cancel()).not.toThrow();
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
 
     it('should handle complex state objects', () => {
@@ -610,7 +580,6 @@ describe('fromSubscription', () => {
       const emitted: typeof state[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },

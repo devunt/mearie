@@ -6,7 +6,9 @@ import type { Source } from '../types.ts';
  */
 export const empty = <T = never>(): Source<T> => {
   return (sink) => {
-    sink.start({ pull: () => {}, cancel: () => {} });
     sink.complete();
+    return {
+      unsubscribe() {},
+    };
   };
 };

@@ -3,7 +3,7 @@ import { fromPromise } from './from-promise.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('fromPromise', () => {
   describe('basic functionality', () => {
@@ -50,7 +50,6 @@ describe('fromPromise', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: () => {},
           complete: () => {
             completed = true;
@@ -72,7 +71,6 @@ describe('fromPromise', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: (value) => {
             emitted.push(value);
           },
@@ -94,7 +92,6 @@ describe('fromPromise', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: () => {},
           complete: () => {
             completed = true;
@@ -113,7 +110,6 @@ describe('fromPromise', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: () => {},
           complete: () => {
             completed = true;
@@ -135,18 +131,15 @@ describe('fromPromise', () => {
 
       const source = fromPromise(promise);
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-          tb.cancel();
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
+
+      subscription.unsubscribe();
 
       resolvePromise!(42);
       await promise;
@@ -155,7 +148,7 @@ describe('fromPromise', () => {
       expect(emitted).toEqual([]);
     });
 
-    it('should not emit if cancelled after start', async () => {
+    it('should not emit if cancelled after subscription', async () => {
       let resolvePromise: (value: number) => void;
       const promise = new Promise<number>((resolve) => {
         resolvePromise = resolve;
@@ -163,19 +156,15 @@ describe('fromPromise', () => {
 
       const source = fromPromise(promise);
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
 
-      talkback.cancel();
+      subscription.unsubscribe();
       resolvePromise!(42);
       await promise;
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -191,18 +180,15 @@ describe('fromPromise', () => {
 
       const source = fromPromise(promise);
       let completed = false;
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-          tb.cancel();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {
           completed = true;
         },
       });
+
+      subscription.unsubscribe();
 
       resolvePromise!(42);
       await promise;
@@ -236,7 +222,6 @@ describe('fromPromise', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: (value) => {
             emitted.push(value);
           },
@@ -326,44 +311,34 @@ describe('fromPromise', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', async () => {
+  describe('subscription', () => {
+    it('should provide subscription', async () => {
       const promise = Promise.resolve(42);
       const source = fromPromise(promise);
-      let receivedTalkback: Talkback | null = null;
 
-      await new Promise<void>((resolve) => {
-        source({
-          start: (tb) => {
-            receivedTalkback = tb;
-          },
+      const subscription = await new Promise<Subscription>((resolve) => {
+        const sub = source({
           next: () => {},
           complete: () => {
-            resolve();
+            resolve(sub);
           },
         });
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
 
-    it('should have pull method that does nothing', async () => {
+    it('should have unsubscribe method that does not throw', () => {
       const promise = Promise.resolve(42);
       const source = fromPromise(promise);
 
-      await new Promise<void>((resolve) => {
-        source({
-          start: (tb) => {
-            expect(() => tb.pull()).not.toThrow();
-          },
-          next: () => {},
-          complete: () => {
-            resolve();
-          },
-        });
+      const subscription = source({
+        next: () => {},
+        complete: () => {},
       });
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 
@@ -374,7 +349,6 @@ describe('fromPromise', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -395,7 +369,6 @@ describe('fromPromise', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -449,20 +422,19 @@ describe('fromPromise', () => {
       expect(result).toEqual([Infinity]);
     });
 
-    it('should handle cancellation immediately after start', async () => {
+    it('should handle cancellation immediately after subscription', async () => {
       const promise = Promise.resolve(42);
       const source = fromPromise(promise);
       const emitted: number[] = [];
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
+
+      subscription.unsubscribe();
 
       await promise;
       await new Promise((resolve) => setTimeout(resolve, 0));

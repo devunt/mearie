@@ -1,49 +1,45 @@
 import { describe, it, expect } from 'vitest';
 import { share } from './share.ts';
 import { fromArray } from '../sources/from-array.ts';
-import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
 import type { Source } from '../types.ts';
+import { initialize } from './initialize.ts';
+import { delay } from './delay.ts';
+import { fromValue } from '../sources/from-value.ts';
+import { lazy } from '../sources/lazy.ts';
 
 describe('share', () => {
   describe('basic multicast behavior', () => {
     it('should share source across multiple subscribers', async () => {
       let sourceExecutions = 0;
 
-      const source: Source<number> = (sink) => {
-        sourceExecutions++;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.next(2);
-        sink.next(3);
-        sink.complete();
-      };
-
-      const shared = pipe(source, share());
+      const source = fromArray([1, 2, 3]);
+      const shared = pipe(
+        source,
+        initialize(() => sourceExecutions++),
+        delay(0),
+        share(),
+      );
 
       const values1: number[] = [];
       const values2: number[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(sourceExecutions).toBe(1);
       expect(values1).toEqual([1, 2, 3]);
@@ -51,108 +47,83 @@ describe('share', () => {
     });
 
     it('should execute source only once for multiple subscribers', async () => {
+      let sourceCalled = 0;
       const source = fromArray([1, 2, 3]);
-      let startCalled = 0;
 
-      const trackedSource: Source<number> = (sink) => {
-        source({
-          start: (tb) => {
-            startCalled++;
-            sink.start(tb);
-          },
-          next: (value) => sink.next(value),
-          complete: () => sink.complete(),
-        });
-      };
-
-      const shared = pipe(trackedSource, share());
+      const shared = pipe(
+        source,
+        initialize(() => sourceCalled++),
+        share(),
+      );
 
       await Promise.all([
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
       ]);
 
-      expect(startCalled).toBe(1);
+      expect(sourceCalled).toBe(1);
     });
   });
 
-  describe('deferred execution', () => {
-    it('should start source execution synchronously but defer value delivery', () => {
+  describe('synchronous execution', () => {
+    it('should start source execution lazily on first subscription', () => {
       let sourceExecuted = false;
-      let valueDelivered = false;
 
       const source: Source<number> = (sink) => {
         sourceExecuted = true;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         sink.next(1);
         sink.complete();
+        return { unsubscribe: () => {} };
+      };
+
+      const shared = pipe(source, share());
+
+      expect(sourceExecuted).toBe(false);
+
+      shared({
+        next: () => {},
+        complete: () => {},
+      });
+
+      expect(sourceExecuted).toBe(true);
+    });
+
+    it('should deliver values and completion synchronously', () => {
+      let valueDelivered = false;
+      let completed = false;
+
+      const source: Source<number> = (sink) => {
+        sink.next(1);
+        sink.complete();
+        return { unsubscribe: () => {} };
       };
 
       const shared = pipe(source, share());
 
       shared({
-        start: () => {},
         next: () => {
           valueDelivered = true;
         },
-        complete: () => {},
+        complete: () => {
+          completed = true;
+        },
       });
-
-      expect(sourceExecuted).toBe(true);
-      expect(valueDelivered).toBe(false);
-    });
-
-    it('should deliver completion after setTimeout', async () => {
-      let valueDelivered = false;
-      let completed = false;
-
-      const source: Source<number> = (sink) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        sink.next(1);
-        sink.complete();
-      };
-
-      const shared = pipe(source, share());
-
-      const promise = new Promise<void>((resolve) => {
-        shared({
-          start: () => {},
-          next: () => {
-            valueDelivered = true;
-          },
-          complete: () => {
-            completed = true;
-            resolve();
-          },
-        });
-      });
-
-      await promise;
 
       expect(valueDelivered).toBe(true);
       expect(completed).toBe(true);
@@ -162,35 +133,34 @@ describe('share', () => {
   describe('value distribution', () => {
     it('should send same values to all subscribers', async () => {
       const source = fromArray([1, 2, 3, 4, 5]);
-      const shared = pipe(source, share());
+      const shared = pipe(source, delay(0), share());
 
       const values1: number[] = [];
       const values2: number[] = [];
       const values3: number[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values3.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise3 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values3.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2, promise3]);
 
       expect(values1).toEqual([1, 2, 3, 4, 5]);
       expect(values2).toEqual([1, 2, 3, 4, 5]);
@@ -198,28 +168,34 @@ describe('share', () => {
     });
 
     it('should send single value to all subscribers', async () => {
-      const source = fromValue(42);
+      const source: Source<number> = (sink) => {
+        setTimeout(() => {
+          sink.next(42);
+          sink.complete();
+        }, 10);
+        return { unsubscribe: () => {} };
+      };
+
       const shared = pipe(source, share());
 
       const values1: number[] = [];
       const values2: number[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(values1).toEqual([42]);
       expect(values2).toEqual([42]);
@@ -238,7 +214,6 @@ describe('share', () => {
       await Promise.all([
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => {
               completed1 = true;
@@ -248,7 +223,6 @@ describe('share', () => {
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => {
               completed2 = true;
@@ -258,7 +232,6 @@ describe('share', () => {
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => {
               completed3 = true;
@@ -279,7 +252,6 @@ describe('share', () => {
 
       await new Promise<void>((resolve) => {
         shared({
-          start: () => {},
           next: () => {},
           complete: () => resolve(),
         });
@@ -293,28 +265,28 @@ describe('share', () => {
       const shared = pipe(
         source,
         map((x) => x * 2),
+        delay(0),
         share(),
       );
 
       const values1: number[] = [];
       const values2: number[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(values1).toEqual([2, 4, 6]);
       expect(values2).toEqual([2, 4, 6]);
@@ -324,6 +296,7 @@ describe('share', () => {
       const source = fromArray([1, 2, 3]);
       const shared = pipe(
         source,
+        delay(0),
         share(),
         map((x) => x * 2),
       );
@@ -331,59 +304,54 @@ describe('share', () => {
       const values1: number[] = [];
       const values2: number[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(values1).toEqual([2, 4, 6]);
       expect(values2).toEqual([2, 4, 6]);
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback to subscribers', async () => {
+  describe('subscription', () => {
+    it('should provide subscription to subscribers', async () => {
       const source = fromArray([1, 2, 3]);
       const shared = pipe(source, share());
 
-      let talkback1Received = false;
-      let talkback2Received = false;
+      let subscription1Received = false;
+      let subscription2Received = false;
 
       await Promise.all([
         new Promise<void>((resolve) => {
-          shared({
-            start: (tb) => {
-              talkback1Received = !!tb;
-            },
+          const sub = shared({
             next: () => {},
             complete: () => resolve(),
           });
+          subscription1Received = !!sub;
         }),
         new Promise<void>((resolve) => {
-          shared({
-            start: (tb) => {
-              talkback2Received = !!tb;
-            },
+          const sub = shared({
             next: () => {},
             complete: () => resolve(),
           });
+          subscription2Received = !!sub;
         }),
       ]);
 
-      expect(talkback1Received).toBe(true);
-      expect(talkback2Received).toBe(true);
+      expect(subscription1Received).toBe(true);
+      expect(subscription2Received).toBe(true);
     });
   });
 
@@ -393,12 +361,9 @@ describe('share', () => {
 
       const source: Source<number> = (sink) => {
         sideEffectCount++;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         sink.next(1);
         sink.complete();
+        return { unsubscribe: () => {} };
       };
 
       const shared = pipe(source, share());
@@ -406,21 +371,18 @@ describe('share', () => {
       await Promise.all([
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
@@ -434,27 +396,26 @@ describe('share', () => {
   describe('value types', () => {
     it('should share objects', async () => {
       const source = fromArray([{ id: 1 }, { id: 2 }]);
-      const shared = pipe(source, share());
+      const shared = pipe(source, delay(0), share());
 
       const values1: { id: number }[] = [];
       const values2: { id: number }[] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(values1).toEqual([{ id: 1 }, { id: 2 }]);
       expect(values2).toEqual([{ id: 1 }, { id: 2 }]);
@@ -465,27 +426,26 @@ describe('share', () => {
         [1, 2],
         [3, 4],
       ]);
-      const shared = pipe(source, share());
+      const shared = pipe(source, delay(0), share());
 
       const values1: number[][] = [];
       const values2: number[][] = [];
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values1.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => values2.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values1.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => values2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(values1).toEqual([
         [1, 2],
@@ -502,38 +462,29 @@ describe('share', () => {
     it('should be useful for deduplication', async () => {
       let apiCalls = 0;
 
-      const apiCall: Source<string> = (sink) => {
-        apiCalls++;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
-        setTimeout(() => {
-          sink.next('data');
-          sink.complete();
-        }, 10);
-      };
-
-      const shared = pipe(apiCall, share());
+      const source = fromValue(0);
+      const shared = pipe(
+        source,
+        initialize(() => apiCalls++),
+        delay(0),
+        share(),
+      );
 
       await Promise.all([
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
         }),
         new Promise<void>((resolve) => {
           shared({
-            start: () => {},
             next: () => {},
             complete: () => resolve(),
           });
@@ -546,40 +497,35 @@ describe('share', () => {
     it('should be useful for expensive computations', async () => {
       let computations = 0;
 
-      const expensiveComputation: Source<number> = (sink) => {
-        computations++;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
+      const source = lazy(() => {
         const result = Array.from({ length: 1000 }, (_, i) => i).reduce((a, b) => a + b, 0);
-        sink.next(result);
-        sink.complete();
-      };
+        computations++;
+        return fromValue(result);
+      });
+      const shared = pipe(source, delay(0), share());
 
-      const shared = pipe(expensiveComputation, share());
+      const results1: number[] = [];
+      const results2: number[] = [];
 
-      const results: number[] = [];
+      const promise1 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => results1.push(v),
+          complete: () => resolve(),
+        });
+      });
 
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => results.push(v),
-            complete: () => resolve(),
-          });
-        }),
-        new Promise<void>((resolve) => {
-          shared({
-            start: () => {},
-            next: (v) => results.push(v),
-            complete: () => resolve(),
-          });
-        }),
-      ]);
+      const promise2 = new Promise<void>((resolve) => {
+        shared({
+          next: (v) => results2.push(v),
+          complete: () => resolve(),
+        });
+      });
+
+      await Promise.all([promise1, promise2]);
 
       expect(computations).toBe(1);
-      expect(results[0]).toBe(results[1]);
+      expect(results1).toEqual(results2);
+      expect(results1[0]).toBe(499_500);
     });
   });
 });

@@ -10,10 +10,7 @@ export function filter<T>(predicate: (value: T) => boolean): Operator<T>;
 export function filter<T>(predicate: (value: T) => boolean): Operator<T> {
   return (source) => {
     return (sink) => {
-      source({
-        start(talkback) {
-          sink.start(talkback);
-        },
+      return source({
         next(value) {
           if (predicate(value)) {
             sink.next(value);

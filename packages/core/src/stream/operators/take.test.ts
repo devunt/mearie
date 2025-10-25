@@ -5,7 +5,7 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Sink, Talkback } from '../types.ts';
+import type { Sink, Subscription } from '../types.ts';
 
 describe('take', () => {
   describe('basic functionality', () => {
@@ -106,23 +106,17 @@ describe('take', () => {
       let cancelled = false;
 
       const customSource = (sink: Sink<number>) => {
-        const originalCancel = () => {
-          cancelled = true;
-        };
-
-        source({
-          start: (tb) => {
-            sink.start({
-              pull: () => tb.pull(),
-              cancel: () => {
-                originalCancel();
-                tb.cancel();
-              },
-            });
-          },
+        const subscription = source({
           next: (value) => sink.next(value),
           complete: () => sink.complete(),
         });
+
+        return {
+          unsubscribe: () => {
+            cancelled = true;
+            subscription.unsubscribe();
+          },
+        };
       };
 
       await pipe(customSource, take(2), collectAll);
@@ -201,9 +195,6 @@ describe('take', () => {
         source,
         take(3),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;
@@ -221,9 +212,6 @@ describe('take', () => {
         source,
         take(10),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;
@@ -236,45 +224,36 @@ describe('take', () => {
     it('should complete immediately when count is 0', () => {
       const source = fromArray([1, 2, 3]);
       let completed = false;
-      let startCalled = false;
 
       pipe(
         source,
         take(0),
       )({
-        start: () => {
-          startCalled = true;
-        },
         next: () => {},
         complete: () => {
           completed = true;
         },
       });
 
-      expect(startCalled).toBe(true);
       expect(completed).toBe(true);
     });
   });
 
-  describe('talkback', () => {
-    it('should forward talkback to sink', () => {
+  describe('subscription', () => {
+    it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let receivedTalkback: Talkback | null = null;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         take(2),
       )({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
   });
 
@@ -378,9 +357,6 @@ describe('take', () => {
         source,
         take(2),
       )({
-        start: (tb) => {
-          tb.pull();
-        },
         next: (value) => {
           nextCalls.push(value);
         },

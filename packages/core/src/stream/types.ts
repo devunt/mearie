@@ -1,28 +1,17 @@
 /**
- * Talkback allows downstream to communicate with upstream.
+ * Subscription allows cancelling a stream and cleaning up resources.
  */
-export type Talkback = {
-  /**
-   * Request the next value (backpressure control).
-   */
-  pull(): void;
-
+export type Subscription = {
   /**
    * Cancel the stream and clean up resources.
    */
-  cancel(): void;
+  unsubscribe(): void;
 };
 
 /**
  * Sink receives values from a Source.
  */
 export type Sink<T> = {
-  /**
-   * Receive talkback for pull/cancel communication.
-   * @param talkback - The talkback to communicate with upstream.
-   */
-  start(talkback: Talkback): void;
-
   /**
    * Receive a data value.
    * @param value - The data value.
@@ -36,10 +25,11 @@ export type Sink<T> = {
 };
 
 /**
- * Source is a function that accepts a Sink.
+ * Source is a function that accepts a Sink and returns a Subscription.
  * When called, it starts pushing values to the sink.
+ * @returns A subscription that can be used to cancel the stream.
  */
-export type Source<T> = (sink: Sink<T>) => void;
+export type Source<T> = (sink: Sink<T>) => Subscription;
 
 /**
  * Operator transforms one Source into another.

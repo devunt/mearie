@@ -4,7 +4,7 @@ import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('fromArray', () => {
   describe('basic functionality', () => {
@@ -210,7 +210,6 @@ describe('fromArray', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -225,7 +224,6 @@ describe('fromArray', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -237,91 +235,75 @@ describe('fromArray', () => {
   });
 
   describe('cancellation', () => {
-    it('should stop emitting when cancelled', () => {
-      const source = fromArray([1, 2, 3, 4, 5]);
-      const emitted: number[] = [];
-      let talkback: Talkback;
-
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
-        next: (value) => {
-          emitted.push(value);
-          if (value === 3) {
-            talkback.cancel();
-          }
-        },
-        complete: () => {},
-      });
-
-      expect(emitted.length).toBeLessThanOrEqual(3);
-      expect(emitted.slice(0, 3)).toEqual([1, 2, 3]);
-    });
-
-    it('should not emit after early cancellation', () => {
+    it('should support unsubscribe after completion', () => {
       const source = fromArray([1, 2, 3, 4, 5]);
       const emitted: number[] = [];
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
 
-      expect(emitted).toEqual([]);
+      expect(emitted).toEqual([1, 2, 3, 4, 5]);
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
 
-    it('should not complete after cancellation', () => {
+    it('should allow cancellation before subscription (no effect on synchronous source)', () => {
+      const source = fromArray([1, 2, 3, 4, 5]);
+      const emitted: number[] = [];
+
+      const subscription = source({
+        next: (value) => {
+          emitted.push(value);
+        },
+        complete: () => {},
+      });
+
+      subscription.unsubscribe();
+
+      expect(emitted).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should not throw when calling unsubscribe multiple times', () => {
       const source = fromArray([1, 2, 3]);
-      let completed = false;
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: () => {},
-        complete: () => {
-          completed = true;
-        },
+        complete: () => {},
       });
 
-      expect(completed).toBe(false);
+      expect(() => {
+        subscription.unsubscribe();
+        subscription.unsubscribe();
+      }).not.toThrow();
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', () => {
+  describe('subscription', () => {
+    it('should return subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let receivedTalkback: Talkback | null = null;
 
-      source({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
 
-    it('should have pull method that does nothing', () => {
+    it('should have unsubscribe method that does not throw', () => {
       const source = fromArray([1, 2, 3]);
 
-      source({
-        start: (tb) => {
-          expect(() => tb.pull()).not.toThrow();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 
@@ -424,7 +406,6 @@ describe('fromArray', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -439,7 +420,6 @@ describe('fromArray', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -454,9 +434,6 @@ describe('fromArray', () => {
       const events: string[] = [];
 
       source({
-        start: () => {
-          events.push('start');
-        },
         next: (value) => {
           events.push(`next:${value}`);
         },
@@ -465,7 +442,7 @@ describe('fromArray', () => {
         },
       });
 
-      expect(events).toEqual(['start', 'next:1', 'next:2', 'next:3', 'complete']);
+      expect(events).toEqual(['next:1', 'next:2', 'next:3', 'complete']);
     });
   });
 

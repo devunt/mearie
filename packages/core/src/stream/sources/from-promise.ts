@@ -4,15 +4,6 @@ export const fromPromise = <T>(promise: Promise<T>): Source<T> => {
   return (sink) => {
     let cancelled = false;
 
-    sink.start({
-      pull: () => {},
-      cancel: () => {
-        cancelled = true;
-      },
-    });
-
-    if (cancelled) return;
-
     void promise.then(
       (value) => {
         if (!cancelled) {
@@ -26,5 +17,11 @@ export const fromPromise = <T>(promise: Promise<T>): Source<T> => {
         }
       },
     );
+
+    return {
+      unsubscribe() {
+        cancelled = true;
+      },
+    };
   };
 };

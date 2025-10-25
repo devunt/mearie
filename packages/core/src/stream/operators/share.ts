@@ -1,4 +1,4 @@
-import type { Operator, Sink, Talkback } from '../types.ts';
+import type { Operator, Subscription, Sink } from '../types.ts';
 
 /**
  * Shares a single source across multiple subscribers (multicast).
@@ -9,85 +9,58 @@ import type { Operator, Sink, Talkback } from '../types.ts';
 export const share = <T>(): Operator<T> => {
   return (source) => {
     const sinks: Sink<T>[] = [];
-    let talkback: Talkback | undefined;
+    let subscription: Subscription | null = null;
     let started = false;
-    let subscriptionPhase = false;
     let completed = false;
-    const buffer: T[] = [];
 
     return (sink) => {
-      sinks.push(sink);
-
       if (completed) {
-        sink.start({ pull() {}, cancel() {} });
         sink.complete();
-        return;
+        return {
+          unsubscribe() {},
+        };
       }
 
-      if (talkback) {
-        sink.start(talkback);
-      }
+      sinks.push(sink);
 
       if (!started) {
         started = true;
-        subscriptionPhase = true;
 
-        source({
-          start(tb) {
-            talkback = tb;
-            for (const s of sinks) {
-              s.start(tb);
-            }
-          },
+        subscription = source({
           next(value) {
-            if (subscriptionPhase) {
-              buffer.push(value);
-            } else {
-              for (const s of sinks) {
-                s.next(value);
-              }
+            // eslint-disable-next-line unicorn/no-useless-spread
+            for (const s of [...sinks]) {
+              if (completed) break;
+              s.next(value);
             }
           },
           complete() {
-            if (subscriptionPhase) {
-              setTimeout(() => {
-                if (completed) return;
-                completed = true;
-                for (const value of buffer) {
-                  for (const s of sinks) {
-                    s.next(value);
-                  }
-                }
-                buffer.length = 0;
-                const ss = [...sinks];
-                sinks.length = 0;
-                for (const s of ss) {
-                  s.complete();
-                }
-              }, 0);
-            } else {
+            if (!completed) {
               completed = true;
-              const ss = [...sinks];
-              sinks.length = 0;
-              for (const s of ss) {
+              // eslint-disable-next-line unicorn/no-useless-spread
+              for (const s of [...sinks]) {
                 s.complete();
               }
+              sinks.length = 0;
             }
           },
         });
-
-        setTimeout(() => {
-          subscriptionPhase = false;
-          if (completed) return;
-
-          for (const value of buffer) {
-            for (const s of sinks) {
-              s.next(value);
-            }
-          }
-          buffer.length = 0;
-        }, 0);
       }
+
+      return {
+        unsubscribe() {
+          const idx = sinks.indexOf(sink);
+          if (idx !== -1) {
+            sinks.splice(idx, 1);
+          }
+
+          if (sinks.length === 0 && subscription) {
+            subscription.unsubscribe();
+            subscription = null;
+            started = false;
+          }
+        },
+      };
     };
   };
 };

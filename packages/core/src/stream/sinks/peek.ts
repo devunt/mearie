@@ -1,7 +1,7 @@
-import type { Source, Talkback } from '../types.ts';
+import type { Source } from '../types.ts';
 
 /**
- * Synchronously pulls the first value from a source and immediately cancels the subscription.
+ * Synchronously reads the first value from a source and immediately unsubscribes.
  * This is useful for reading the current state without maintaining a long-lived subscription.
  * Throws if the source does not emit a value synchronously.
  * @param source - The source to peek from.
@@ -10,24 +10,22 @@ import type { Source, Talkback } from '../types.ts';
 export const peek = <T>(source: Source<T>): T => {
   let value: T | undefined;
   let hasValue = false;
-  let talkback: Talkback | null = null;
 
-  source({
-    start(tb) {
-      talkback = tb;
-      tb.pull();
-    },
+  const subscription = source({
     next(v) {
-      value = v;
-      hasValue = true;
-      talkback?.cancel();
+      if (!hasValue) {
+        value = v;
+        hasValue = true;
+      }
     },
     complete() {},
   });
 
-  if (!hasValue) {
+  subscription.unsubscribe();
+
+  if (hasValue) {
+    return value!;
+  } else {
     throw new Error('Source did not emit a value synchronously');
   }
-
-  return value!;
 };

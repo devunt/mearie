@@ -17,21 +17,19 @@ describe('publish', () => {
     });
 
     it('should pull from source', () => {
-      let pullCalled = false;
+      let sourceExecuted = false;
 
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {
-            pullCalled = true;
-          },
-          cancel: () => {},
-        });
+        sourceExecuted = true;
         sink.complete();
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       publish(source);
 
-      expect(pullCalled).toBe(true);
+      expect(sourceExecuted).toBe(true);
     });
 
     it('should consume single value', () => {
@@ -87,11 +85,10 @@ describe('publish', () => {
 
       const source = (sink: Sink<number>) => {
         sourceExecuted = true;
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         sink.complete();
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       publish(source);
@@ -103,15 +100,14 @@ describe('publish', () => {
       const emittedValues: number[] = [];
 
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         for (let i = 1; i <= 5; i++) {
           emittedValues.push(i);
           sink.next(i);
         }
         sink.complete();
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       publish(source);
@@ -129,11 +125,10 @@ describe('publish', () => {
 
     it('should handle immediate completion', () => {
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         sink.complete();
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       expect(() => publish(source)).not.toThrow();
@@ -287,12 +282,11 @@ describe('publish', () => {
       let executed = false;
 
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         executed = true;
         sink.complete();
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       publish(source);
@@ -304,14 +298,13 @@ describe('publish', () => {
       let completed = false;
 
       const source = (sink: Sink<number>) => {
-        sink.start({
-          pull: () => {},
-          cancel: () => {},
-        });
         sink.next(1);
         sink.next(2);
         sink.complete();
         completed = true;
+        return {
+          unsubscribe: () => {},
+        };
       };
 
       publish(source);

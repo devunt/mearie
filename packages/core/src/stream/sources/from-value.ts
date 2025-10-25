@@ -9,16 +9,15 @@ export const fromValue = <T>(value: T): Source<T> => {
   return (sink) => {
     let cancelled = false;
 
-    sink.start({
-      pull() {},
-      cancel() {
-        cancelled = true;
-      },
-    });
-
     if (!cancelled) {
       sink.next(value);
       sink.complete();
     }
+
+    return {
+      unsubscribe() {
+        cancelled = true;
+      },
+    };
   };
 };

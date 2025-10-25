@@ -3,7 +3,7 @@ import { make } from './make.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('make', () => {
   describe('basic functionality', () => {
@@ -43,7 +43,6 @@ describe('make', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -56,26 +55,21 @@ describe('make', () => {
       expect(completed).toBe(true);
     });
 
-    it('should call teardown function on cancel', () => {
+    it('should call teardown function on unsubscribe', () => {
       const teardown = vi.fn();
       const source = make<number>((observer) => {
         observer.next(1);
         return teardown;
       });
 
-      let talkback: Talkback;
-
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
       expect(teardown).not.toHaveBeenCalled();
 
-      talkback.cancel();
+      subscription.unsubscribe();
 
       expect(teardown).toHaveBeenCalledTimes(1);
     });
@@ -92,7 +86,6 @@ describe('make', () => {
 
       await new Promise<void>((resolve) => {
         source({
-          start: () => {},
           next: () => {},
           complete: () => {
             resolve();
@@ -105,7 +98,7 @@ describe('make', () => {
   });
 
   describe('cancellation', () => {
-    it('should not emit after cancellation', () => {
+    it('should not emit after cancellation', async () => {
       const source = make<number>((observer) => {
         observer.next(1);
         setTimeout(() => {
@@ -115,20 +108,19 @@ describe('make', () => {
       });
 
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
-          if (value === 1) {
-            talkback.cancel();
-          }
         },
         complete: () => {},
       });
+
+      expect(emitted).toEqual([1]);
+
+      subscription.unsubscribe();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(emitted).toEqual([1]);
     });
@@ -143,23 +135,20 @@ describe('make', () => {
       });
 
       let completed = false;
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-          tb.cancel();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {
           completed = true;
         },
       });
 
+      subscription.unsubscribe();
+
       expect(completed).toBe(false);
     });
 
-    it('should not emit if cancelled before subscriber runs', () => {
+    it('should not emit if cancelled immediately', () => {
       const source = make<number>((observer) => {
         observer.next(1);
         return () => {};
@@ -167,36 +156,30 @@ describe('make', () => {
 
       const emitted: number[] = [];
 
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
 
-      expect(emitted).toEqual([]);
+      subscription.unsubscribe();
+
+      expect(emitted).toEqual([1]);
     });
 
-    it('should call teardown only once on multiple cancels', () => {
+    it('should call teardown only once on multiple unsubscribes', () => {
       const teardown = vi.fn();
       const source = make<number>(() => teardown);
 
-      let talkback: Talkback;
-
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      talkback.cancel();
-      talkback.cancel();
-      talkback.cancel();
+      subscription.unsubscribe();
+      subscription.unsubscribe();
+      subscription.unsubscribe();
 
       expect(teardown).toHaveBeenCalledTimes(1);
     });
@@ -358,34 +341,28 @@ describe('make', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', () => {
+  describe('subscription', () => {
+    it('should provide subscription', () => {
       const source = make<number>(() => () => {});
-      let receivedTalkback: Talkback | null = null;
 
-      source({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
 
-    it('should have pull method that does nothing', () => {
+    it('should have unsubscribe method that does not throw', () => {
       const source = make<number>(() => () => {});
 
-      source({
-        start: (tb) => {
-          expect(() => tb.pull()).not.toThrow();
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
+
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 
@@ -415,12 +392,8 @@ describe('make', () => {
       });
 
       const emitted: number[] = [];
-      let talkback: Talkback;
 
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: (value) => {
           emitted.push(value);
         },
@@ -428,7 +401,7 @@ describe('make', () => {
       });
 
       await new Promise((resolve) => setTimeout(resolve, 15));
-      talkback.cancel();
+      subscription.unsubscribe();
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(emitted).toEqual([1]);
@@ -447,7 +420,6 @@ describe('make', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -469,7 +441,6 @@ describe('make', () => {
       let completeCount = 0;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completeCount++;
@@ -487,7 +458,6 @@ describe('make', () => {
       });
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {},
       });
@@ -506,7 +476,6 @@ describe('make', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -555,17 +524,12 @@ describe('make', () => {
         };
       });
 
-      let talkback: Talkback;
-
-      source({
-        start: (tb) => {
-          talkback = tb;
-        },
+      const subscription = source({
         next: () => {},
         complete: () => {},
       });
 
-      expect(() => talkback.cancel()).toThrow('teardown error');
+      expect(() => subscription.unsubscribe()).toThrow('teardown error');
     });
 
     it('should handle subscriber that throws', () => {
@@ -575,26 +539,10 @@ describe('make', () => {
 
       expect(() => {
         source({
-          start: () => {},
           next: () => {},
           complete: () => {},
         });
       }).toThrow('subscriber error');
-    });
-
-    it('should not run subscriber if cancelled before', () => {
-      const subscriber = vi.fn(() => () => {});
-      const source = make(subscriber);
-
-      source({
-        start: (tb) => {
-          tb.cancel();
-        },
-        next: () => {},
-        complete: () => {},
-      });
-
-      expect(subscriber).not.toHaveBeenCalled();
     });
 
     it('should handle NaN values', async () => {

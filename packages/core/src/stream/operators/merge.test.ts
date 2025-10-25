@@ -121,9 +121,6 @@ describe('merge', () => {
       let completed = false;
 
       pipe(merge(source1, source2, source3))({
-        start: (tb) => {
-          tb.pull();
-        },
         next: () => {},
         complete: () => {
           completed = true;
@@ -137,7 +134,6 @@ describe('merge', () => {
       let completed = false;
 
       merge()({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -145,50 +141,6 @@ describe('merge', () => {
       });
 
       expect(completed).toBe(true);
-    });
-  });
-
-  describe('talkback', () => {
-    it('should provide talkback for pull', () => {
-      const source1 = fromArray([1, 2]);
-      const source2 = fromArray([3, 4]);
-
-      let pullCalled = false;
-
-      merge(
-        source1,
-        source2,
-      )({
-        start: (tb) => {
-          tb.pull();
-          pullCalled = true;
-        },
-        next: () => {},
-        complete: () => {},
-      });
-
-      expect(pullCalled).toBe(true);
-    });
-
-    it('should provide talkback for cancel', () => {
-      const source1 = fromArray([1, 2]);
-      const source2 = fromArray([3, 4]);
-
-      let cancelCalled = false;
-
-      merge(
-        source1,
-        source2,
-      )({
-        start: (tb) => {
-          tb.cancel();
-          cancelCalled = true;
-        },
-        next: () => {},
-        complete: () => {},
-      });
-
-      expect(cancelCalled).toBe(true);
     });
   });
 

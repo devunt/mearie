@@ -14,24 +14,9 @@ export const make = <T>(
 ): Source<T> => {
   return (sink) => {
     let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
+    let teardown: (() => void) | null = null;
 
-    sink.start({
-      pull: () => {},
-      cancel: () => {
-        cancelled = true;
-        if (unsubscribe) {
-          unsubscribe();
-          unsubscribe = null;
-        }
-      },
-    });
-
-    if (cancelled) {
-      return;
-    }
-
-    unsubscribe = subscriber({
+    teardown = subscriber({
       next: (value) => {
         if (!cancelled) {
           sink.next(value);
@@ -40,13 +25,23 @@ export const make = <T>(
       complete: () => {
         if (!cancelled) {
           cancelled = true;
-          if (unsubscribe) {
-            unsubscribe();
-            unsubscribe = null;
+          if (teardown) {
+            teardown();
+            teardown = null;
           }
           sink.complete();
         }
       },
     });
+
+    return {
+      unsubscribe() {
+        cancelled = true;
+        if (teardown) {
+          teardown();
+          teardown = null;
+        }
+      },
+    };
   };
 };

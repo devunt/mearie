@@ -9,21 +9,18 @@ export const fromArray = <T>(values: T[]): Source<T> => {
   return (sink) => {
     let cancelled = false;
 
-    sink.start({
-      pull() {},
-      cancel() {
+    for (const value of values) {
+      if (cancelled) break;
+      sink.next(value);
+    }
+    if (!cancelled) {
+      sink.complete();
+    }
+
+    return {
+      unsubscribe() {
         cancelled = true;
       },
-    });
-
-    if (!cancelled) {
-      for (const value of values) {
-        if (cancelled) break;
-        sink.next(value);
-      }
-      if (!cancelled) {
-        sink.complete();
-      }
-    }
+    };
   };
 };

@@ -3,7 +3,7 @@ import { delay } from './delay.ts';
 import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
-import type { Talkback } from '../types.ts';
+import type { Subscription } from '../types.ts';
 
 describe('delay', () => {
   beforeEach(() => {
@@ -168,22 +168,19 @@ describe('delay', () => {
     it('should clear pending timeouts on cancel', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let talkback: Talkback;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
 
-      talkback.cancel();
+      subscription.unsubscribe();
 
       vi.advanceTimersByTime(100);
       expect(emitted).toEqual([]);
@@ -192,15 +189,12 @@ describe('delay', () => {
     it('should not emit values after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let talkback: Talkback;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: (value) => {
           emitted.push(value);
         },
@@ -208,7 +202,7 @@ describe('delay', () => {
       });
 
       vi.advanceTimersByTime(50);
-      talkback.cancel();
+      subscription.unsubscribe();
       vi.advanceTimersByTime(50);
 
       expect(emitted).toEqual([]);
@@ -217,22 +211,19 @@ describe('delay', () => {
     it('should not emit completion after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       let completed = false;
-      let talkback: Talkback;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: () => {},
         complete: () => {
           completed = true;
         },
       });
 
-      talkback.cancel();
+      subscription.unsubscribe();
       vi.advanceTimersByTime(100);
 
       expect(completed).toBe(false);
@@ -240,20 +231,17 @@ describe('delay', () => {
 
     it('should cancel upstream source', () => {
       const source = fromArray([1, 2, 3]);
-      let talkback: Talkback;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          talkback = tb;
-        },
         next: () => {},
         complete: () => {},
       });
 
-      expect(() => talkback.cancel()).not.toThrow();
+      expect(() => subscription.unsubscribe()).not.toThrow();
     });
   });
 
@@ -459,43 +447,21 @@ describe('delay', () => {
     });
   });
 
-  describe('talkback', () => {
-    it('should provide talkback', () => {
+  describe('subscription', () => {
+    it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let receivedTalkback: Talkback | null = null;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          receivedTalkback = tb;
-        },
         next: () => {},
         complete: () => {},
       });
 
-      expect(receivedTalkback).not.toBeNull();
-      expect(receivedTalkback).toHaveProperty('pull');
-      expect(receivedTalkback).toHaveProperty('cancel');
-    });
-
-    it('should forward pull to upstream', () => {
-      const source = fromArray([1, 2, 3]);
-      let talkback: Talkback;
-
-      pipe(
-        source,
-        delay(100),
-      )({
-        start: (tb) => {
-          talkback = tb;
-        },
-        next: () => {},
-        complete: () => {},
-      });
-
-      expect(() => talkback.pull()).not.toThrow();
+      expect(subscription).not.toBeNull();
+      expect(subscription).toHaveProperty('unsubscribe');
     });
   });
 
@@ -503,21 +469,19 @@ describe('delay', () => {
     it('should handle cancellation before first value', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let talkback: Talkback;
+      let subscription: Subscription;
 
-      pipe(
+      subscription = pipe(
         source,
         delay(100),
       )({
-        start: (tb) => {
-          talkback = tb;
-          tb.cancel();
-        },
         next: (value) => {
           emitted.push(value);
         },
         complete: () => {},
       });
+
+      subscription.unsubscribe();
 
       vi.advanceTimersByTime(100);
       expect(emitted).toEqual([]);

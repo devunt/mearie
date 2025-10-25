@@ -9,6 +9,7 @@ import { merge } from '../stream/operators/merge.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromArray } from '../stream/sources/from-array.ts';
 import { subscribe } from '../stream/sinks/subscribe.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
 
 describe('composeExchange', () => {
   describe('basic composition', () => {
@@ -360,8 +361,8 @@ describe('composeExchange', () => {
 
       const results: Operation[][] = [[], [], []];
 
-      const ops$ = fromArray([operation]);
-      const composed$ = composed(forward)(ops$);
+      const subject = makeSubject<Operation>();
+      const composed$ = composed(forward)(subject.source);
 
       pipe(
         composed$,
@@ -390,7 +391,8 @@ describe('composeExchange', () => {
         }),
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      subject.next(operation);
+      subject.complete();
 
       expect(exchange1ExecutionCount).toBe(1);
       expect(results[0]).toHaveLength(1);

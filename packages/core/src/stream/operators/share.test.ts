@@ -7,7 +7,6 @@ import type { Source } from '../types.ts';
 import { initialize } from './initialize.ts';
 import { delay } from './delay.ts';
 import { fromValue } from '../sources/from-value.ts';
-import { lazy } from '../sources/lazy.ts';
 
 describe('share', () => {
   describe('basic multicast behavior', () => {
@@ -497,11 +496,14 @@ describe('share', () => {
     it('should be useful for expensive computations', async () => {
       let computations = 0;
 
-      const source = lazy(() => {
+      const source: Source<number> = (sink) => {
         const result = Array.from({ length: 1000 }, (_, i) => i).reduce((a, b) => a + b, 0);
         computations++;
-        return fromValue(result);
-      });
+        sink.next(result);
+        sink.complete();
+        return { unsubscribe: () => {} };
+      };
+
       const shared = pipe(source, delay(0), share());
 
       const results1: number[] = [];

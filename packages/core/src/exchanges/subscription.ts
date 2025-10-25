@@ -84,7 +84,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
           const source = make<OperationResult>((observer) =>
             client.subscribe(
               {
-                query: op.artifact.source,
+                query: op.artifact.body,
                 variables: op.variables as Record<string, unknown>,
               },
               {

@@ -7,3 +7,5 @@ target/
 
 .mearie/
 **/.vitepress/cache/
+
+.env

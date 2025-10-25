@@ -4,6 +4,7 @@ packages:
   - crates/native/npm/*
   - examples/*
   - packages/*
+  - fixture
 
 catalog:
   tsdown: ^0.15.8

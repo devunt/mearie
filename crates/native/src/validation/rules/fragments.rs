@@ -10,7 +10,6 @@ pub struct FragmentRules<'a, 'b> {
     fragment_names: Vec<&'a str>,
     fragment_definitions: Vec<(&'a str, Vec<&'a str>, Span)>,
     fragment_spreads: Vec<(&'a str, Span)>,
-    used_fragments: Vec<&'a str>,
     current_fragment: Option<&'a str>,
     current_fragment_span: Option<Span>,
     current_spreads: Vec<&'a str>,
@@ -211,7 +210,6 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
         }
 
         self.fragment_spreads.push((fragment_name, fragment_spread.span));
-        self.used_fragments.push(fragment_name);
 
         let fragment_type = ctx
             .document()
@@ -242,12 +240,6 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
         for (spread_name, spread_span) in &self.fragment_spreads {
             if !self.fragment_names.contains(spread_name) && ctx.document().get_fragment(spread_name).is_none() {
                 ctx.add_error("Only known fragments may occur in fragment spreads.", *spread_span);
-            }
-        }
-
-        for (fragment_name, _, fragment_span) in &self.fragment_definitions {
-            if !self.used_fragments.contains(fragment_name) {
-                ctx.add_error("All defined fragments must be used at least once.", *fragment_span);
             }
         }
 

@@ -7,6 +7,7 @@ pub trait ValidationRule<'a, 'b: 'a>: Visitor<'a, ValidationContext<'a, 'b>> + D
 
 #[derive(Default)]
 pub struct Validator<'a, 'b> {
+    document: DocumentRules<'a, 'b>,
     operations: OperationRules<'a, 'b>,
     fields: FieldRules<'a, 'b>,
     fragments: FragmentRules<'a, 'b>,
@@ -16,6 +17,7 @@ pub struct Validator<'a, 'b> {
 
 impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     fn enter_document(&mut self, ctx: &mut ValidationContext<'a, 'b>, document: &Document<'a>) -> Control {
+        self.document.enter_document(ctx, document);
         self.operations.enter_document(ctx, document);
         self.fields.enter_document(ctx, document);
         self.fragments.enter_document(ctx, document);
@@ -25,6 +27,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_document(&mut self, ctx: &mut ValidationContext<'a, 'b>, document: &Document<'a>) -> Control {
+        self.document.leave_document(ctx, document);
         self.operations.leave_document(ctx, document);
         self.fields.leave_document(ctx, document);
         self.fragments.leave_document(ctx, document);
@@ -34,6 +37,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn enter_operation(&mut self, ctx: &mut ValidationContext<'a, 'b>, operation: &OperationDefinition<'a>) -> Control {
+        self.document.enter_operation(ctx, operation);
         self.operations.enter_operation(ctx, operation);
         self.fields.enter_operation(ctx, operation);
         self.fragments.enter_operation(ctx, operation);
@@ -43,6 +47,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_operation(&mut self, ctx: &mut ValidationContext<'a, 'b>, operation: &OperationDefinition<'a>) -> Control {
+        self.document.leave_operation(ctx, operation);
         self.operations.leave_operation(ctx, operation);
         self.fields.leave_operation(ctx, operation);
         self.fragments.leave_operation(ctx, operation);
@@ -52,6 +57,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn enter_fragment(&mut self, ctx: &mut ValidationContext<'a, 'b>, fragment: &FragmentDefinition<'a>) -> Control {
+        self.document.enter_fragment(ctx, fragment);
         self.operations.enter_fragment(ctx, fragment);
         self.fields.enter_fragment(ctx, fragment);
         self.fragments.enter_fragment(ctx, fragment);
@@ -61,6 +67,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_fragment(&mut self, ctx: &mut ValidationContext<'a, 'b>, fragment: &FragmentDefinition<'a>) -> Control {
+        self.document.leave_fragment(ctx, fragment);
         self.operations.leave_fragment(ctx, fragment);
         self.fields.leave_fragment(ctx, fragment);
         self.fragments.leave_fragment(ctx, fragment);
@@ -74,6 +81,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         selection_set: &SelectionSet<'a>,
     ) -> Control {
+        self.document.enter_selection_set(ctx, selection_set);
         self.operations.enter_selection_set(ctx, selection_set);
         self.fields.enter_selection_set(ctx, selection_set);
         self.fragments.enter_selection_set(ctx, selection_set);
@@ -87,6 +95,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         selection_set: &SelectionSet<'a>,
     ) -> Control {
+        self.document.leave_selection_set(ctx, selection_set);
         self.operations.leave_selection_set(ctx, selection_set);
         self.fields.leave_selection_set(ctx, selection_set);
         self.fragments.leave_selection_set(ctx, selection_set);
@@ -96,6 +105,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn enter_field(&mut self, ctx: &mut ValidationContext<'a, 'b>, field: &Field<'a>) -> Control {
+        self.document.enter_field(ctx, field);
         self.operations.enter_field(ctx, field);
         self.fields.enter_field(ctx, field);
         self.fragments.enter_field(ctx, field);
@@ -105,6 +115,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_field(&mut self, ctx: &mut ValidationContext<'a, 'b>, field: &Field<'a>) -> Control {
+        self.document.leave_field(ctx, field);
         self.operations.leave_field(ctx, field);
         self.fields.leave_field(ctx, field);
         self.fragments.leave_field(ctx, field);
@@ -114,6 +125,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn enter_argument(&mut self, ctx: &mut ValidationContext<'a, 'b>, argument: &Argument<'a>) -> Control {
+        self.document.enter_argument(ctx, argument);
         self.operations.enter_argument(ctx, argument);
         self.fields.enter_argument(ctx, argument);
         self.fragments.enter_argument(ctx, argument);
@@ -123,6 +135,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_argument(&mut self, ctx: &mut ValidationContext<'a, 'b>, argument: &Argument<'a>) -> Control {
+        self.document.leave_argument(ctx, argument);
         self.operations.leave_argument(ctx, argument);
         self.fields.leave_argument(ctx, argument);
         self.fragments.leave_argument(ctx, argument);
@@ -136,6 +149,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         fragment_spread: &FragmentSpread<'a>,
     ) -> Control {
+        self.document.enter_fragment_spread(ctx, fragment_spread);
         self.operations.enter_fragment_spread(ctx, fragment_spread);
         self.fields.enter_fragment_spread(ctx, fragment_spread);
         self.fragments.enter_fragment_spread(ctx, fragment_spread);
@@ -149,6 +163,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         fragment_spread: &FragmentSpread<'a>,
     ) -> Control {
+        self.document.leave_fragment_spread(ctx, fragment_spread);
         self.operations.leave_fragment_spread(ctx, fragment_spread);
         self.fields.leave_fragment_spread(ctx, fragment_spread);
         self.fragments.leave_fragment_spread(ctx, fragment_spread);
@@ -162,6 +177,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         inline_fragment: &InlineFragment<'a>,
     ) -> Control {
+        self.document.enter_inline_fragment(ctx, inline_fragment);
         self.operations.enter_inline_fragment(ctx, inline_fragment);
         self.fields.enter_inline_fragment(ctx, inline_fragment);
         self.fragments.enter_inline_fragment(ctx, inline_fragment);
@@ -175,6 +191,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         inline_fragment: &InlineFragment<'a>,
     ) -> Control {
+        self.document.leave_inline_fragment(ctx, inline_fragment);
         self.operations.leave_inline_fragment(ctx, inline_fragment);
         self.fields.leave_inline_fragment(ctx, inline_fragment);
         self.fragments.leave_inline_fragment(ctx, inline_fragment);
@@ -188,6 +205,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         variable_definition: &VariableDefinition<'a>,
     ) -> Control {
+        self.document.enter_variable_definition(ctx, variable_definition);
         self.operations.enter_variable_definition(ctx, variable_definition);
         self.fields.enter_variable_definition(ctx, variable_definition);
         self.fragments.enter_variable_definition(ctx, variable_definition);
@@ -201,6 +219,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
         ctx: &mut ValidationContext<'a, 'b>,
         variable_definition: &VariableDefinition<'a>,
     ) -> Control {
+        self.document.leave_variable_definition(ctx, variable_definition);
         self.operations.leave_variable_definition(ctx, variable_definition);
         self.fields.leave_variable_definition(ctx, variable_definition);
         self.fragments.leave_variable_definition(ctx, variable_definition);
@@ -210,6 +229,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn enter_directive(&mut self, ctx: &mut ValidationContext<'a, 'b>, directive: &Directive<'a>) -> Control {
+        self.document.enter_directive(ctx, directive);
         self.operations.enter_directive(ctx, directive);
         self.fields.enter_directive(ctx, directive);
         self.fragments.enter_directive(ctx, directive);
@@ -219,6 +239,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for Validator<'a, 'b> {
     }
 
     fn leave_directive(&mut self, ctx: &mut ValidationContext<'a, 'b>, directive: &Directive<'a>) -> Control {
+        self.document.leave_directive(ctx, directive);
         self.operations.leave_directive(ctx, directive);
         self.fields.leave_directive(ctx, directive);
         self.fragments.leave_directive(ctx, directive);

@@ -23,10 +23,21 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for OperationRules<'a, 'b> {
                 ctx.add_error(format!("Duplicate operation name '{}'", name_str), operation.span);
                 return Control::Break;
             }
+
+            if ctx.schema().has_type(name_str) {
+                ctx.add_error(
+                    format!("Operation name '{}' conflicts with a schema type name", name_str),
+                    operation.span,
+                );
+                return Control::Break;
+            }
+
             self.operation_names.push(name_str);
         } else {
+            ctx.add_error("Operation must have a name", operation.span);
             self.has_anonymous = true;
             self.anonymous_span = Some(operation.span);
+            return Control::Break;
         }
 
         if operation.operation_type == OperationType::Subscription {
@@ -95,8 +106,8 @@ mod tests {
     }
 
     #[test]
-    fn test_unique_operation_names_anonymous_allowed() {
-        assert_ok!(validate_rules!(OperationRules, r#""#, r#"{ user { id } }"#));
+    fn test_unique_operation_names_anonymous_not_allowed() {
+        assert_err!(validate_rules!(OperationRules, r#""#, r#"{ user { id } }"#));
     }
 
     #[test]
@@ -136,8 +147,8 @@ mod tests {
     }
 
     #[test]
-    fn test_lone_anonymous_operation_valid_single() {
-        assert_ok!(validate_rules!(OperationRules, r#""#, r#"{ field }"#));
+    fn test_lone_anonymous_operation_not_allowed() {
+        assert_err!(validate_rules!(OperationRules, r#""#, r#"{ field }"#));
     }
 
     #[test]
@@ -160,8 +171,8 @@ mod tests {
     }
 
     #[test]
-    fn test_lone_anonymous_operation_with_fragment() {
-        assert_ok!(validate_rules!(
+    fn test_lone_anonymous_operation_with_fragment_not_allowed() {
+        assert_err!(validate_rules!(
             OperationRules,
             r#""#,
             r#"{ field } fragment F on User { id }"#
@@ -246,6 +257,56 @@ mod tests {
             OperationRules,
             r#""#,
             r#"subscription Invalid { messageAdded { id } userUpdated { id } postCreated { id } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_must_have_name() {
+        assert_err!(validate_rules!(OperationRules, r#""#, r#"{ user { id } }"#));
+    }
+
+    #[test]
+    fn test_operation_name_conflicts_with_type() {
+        assert_err!(validate_rules!(
+            OperationRules,
+            r#"type User { id: ID }"#,
+            r#"query User { user { id } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_name_conflicts_with_enum() {
+        assert_err!(validate_rules!(
+            OperationRules,
+            r#"enum Status { ACTIVE INACTIVE }"#,
+            r#"query Status { user { id } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_name_conflicts_with_scalar() {
+        assert_err!(validate_rules!(
+            OperationRules,
+            r#"scalar DateTime"#,
+            r#"query DateTime { user { id } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_name_conflicts_with_input_object() {
+        assert_err!(validate_rules!(
+            OperationRules,
+            r#"input UserInput { name: String }"#,
+            r#"query UserInput { user { id } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_name_no_conflict_valid() {
+        assert_ok!(validate_rules!(
+            OperationRules,
+            r#"type User { id: ID }"#,
+            r#"query GetUser { user { id } }"#
         ));
     }
 }

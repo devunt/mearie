@@ -37,3 +37,5 @@ export {
   type SubscriptionOptions,
   type FragmentOptions,
 } from './client.ts';
+
+export { stringify } from './utils.ts';

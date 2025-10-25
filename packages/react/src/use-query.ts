@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Artifact, DataOf, QueryOptions, VariablesOf } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, stringify } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -41,6 +41,7 @@ export const useQuery = <T extends Artifact<'query'>>(
   const [error, setError] = useState<AggregatedError | undefined>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
+  const stableVariables = useMemo(() => stringify(variables), [variables]);
   const stableOptions = useMemo(() => options, [options?.skip]);
 
   const execute = useCallback(() => {
@@ -69,7 +70,7 @@ export const useQuery = <T extends Artifact<'query'>>(
         },
       }),
     );
-  }, [client, query, variables, stableOptions]);
+  }, [client, query, stableVariables, stableOptions]);
 
   useEffect(() => {
     execute();

@@ -4,11 +4,10 @@ import { pipe } from '../stream/pipe.ts';
 import { filter } from '../stream/operators/filter.ts';
 import { map } from '../stream/operators/map.ts';
 import { merge } from '../stream/operators/merge.ts';
-import type { FragmentRefs } from '@mearie/shared';
 
 declare module '../exchange.ts' {
   interface OperationMetadataMap {
-    fragmentRef?: FragmentRefs<string>;
+    fragmentRef?: unknown;
   }
 }
 

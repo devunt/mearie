@@ -1,6 +1,6 @@
-import type { FieldSelection, Argument } from '@mearie/shared';
+import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
-import { EntityLinkKey } from './constants.ts';
+import { EntityLinkKey, FragmentRefKey } from './constants.ts';
 import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
 
 /**
@@ -77,4 +77,14 @@ export const makeDependencyKey = (storageKey: StorageKey, fieldKey: FieldKey): D
  */
 export const isEntityLink = (value: unknown): value is EntityLink => {
   return typeof value === 'object' && value !== null && EntityLinkKey in value;
+};
+
+/**
+ * Type guard to check if a value is a fragment reference.
+ * @internal
+ * @param value - Value to check.
+ * @returns True if the value is a FragmentRef.
+ */
+export const isFragmentRef = (value: unknown): value is FragmentRefs<string> => {
+  return typeof value === 'object' && value !== null && FragmentRefKey in value;
 };

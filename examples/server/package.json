@@ -1,5 +1,5 @@
 {
-  "name": "@mearie/examples-server",
+  "name": "@mearie-internal/examples-server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "release": "wrangler deploy"
   },
   "dependencies": {
-    "@mearie/fixture": "workspace:*",
+    "@mearie-internal/fixture": "workspace:*",
     "graphql-yoga": "^5.16.0"
   },
   "devDependencies": {

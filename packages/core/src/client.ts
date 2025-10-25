@@ -7,7 +7,9 @@ import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
 import type { Source } from './stream/types.ts';
 import { pipe } from './stream/pipe.ts';
 import { filter } from './stream/operators/filter.ts';
-import { subscribe } from './stream/index.ts';
+import { initialize } from './stream/operators/initialize.ts';
+import { share } from './stream/operators/share.ts';
+import { finalize } from './stream/index.ts';
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 export type QueryOptions = {};
@@ -20,11 +22,7 @@ export type ClientOptions = {
   exchanges: Exchange[];
 };
 
-/**
- *
- */
 export class Client {
-  private unsubscribe: () => void;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
@@ -35,17 +33,14 @@ export class Client {
 
     this.operations$ = makeSubject<Operation>();
     this.results$ = exchange((ops$) => ops$ as unknown as Source<OperationResult>)(this.operations$.source);
-
-    this.unsubscribe = pipe(this.results$, subscribe({}));
   }
 
-  private createOperationKey(artifact: Artifact, variables: unknown): string {
-    const variablesKey = JSON.stringify(variables ?? {});
-    return `${artifact.name}:${variablesKey}`;
+  private createOperationKey(): string {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 
   createOperation(artifact: Artifact, variables?: unknown): Operation {
-    const key = this.createOperationKey(artifact, variables ?? {});
+    const key = this.createOperationKey();
 
     return {
       variant: 'request',
@@ -57,11 +52,12 @@ export class Client {
   }
 
   executeOperation(operation: Operation): Source<OperationResult> {
-    this.operations$.next(operation);
-
     return pipe(
       this.results$,
+      initialize(() => this.operations$.next(operation)),
       filter((result) => result.operation.key === operation.key),
+      finalize(() => this.operations$.next({ variant: 'teardown', key: operation.key, metadata: {} })),
+      share(),
     );
   }
 
@@ -104,7 +100,7 @@ export class Client {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: FragmentOptions,
   ): Source<OperationResult> {
-    const key = this.createOperationKey(artifact, fragmentRef);
+    const key = this.createOperationKey();
 
     const operation: Operation = {
       variant: 'request',
@@ -121,7 +117,6 @@ export class Client {
 
   dispose(): void {
     this.operations$.complete();
-    this.unsubscribe();
   }
 }
 

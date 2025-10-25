@@ -16,6 +16,6 @@
     "react": "^19.2.0",
     "typescript": "catalog:",
     "vitepress": "2.0.0-alpha.12",
-    "vitepress-plugin-group-icons": "^1.6.4"
+    "vitepress-plugin-group-icons": "^1.6.5"
   }
 }

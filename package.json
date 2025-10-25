@@ -54,7 +54,6 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsdoc": "^61.1.4",
     "eslint-plugin-unicorn": "^61.0.2",
     "globals": "^16.4.0",
     "prettier": "^3.6.2",
@@ -62,9 +61,9 @@
     "tinyglobby": "^0.2.15",
     "turbo": "^2.5.8",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.46.1",
-    "vitest": "^3.2.4",
-    "wrangler": "^4.43.0"
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^4.0.3",
+    "wrangler": "^4.45.0"
   },
   "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d",
   "engines": {

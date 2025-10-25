@@ -1,0 +1,717 @@
+"""
+Comprehensive GraphQL schema for Mearie fixture demonstrating all GraphQL specification features.
+
+This schema uses Spotify music data (tracks, albums, artists, genres) from the fixture data files,
+and generates additional data (playlists, reviews) dynamically using faker-js.
+"""
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+# ==============================================================================
+# Custom Scalars
+# ==============================================================================
+
+"""
+ISO 8601 formatted date-time string (e.g., "2024-03-15T10:30:00Z")
+"""
+scalar DateTime
+
+"""
+Valid HTTP or HTTPS URL string
+"""
+scalar URL
+
+# ==============================================================================
+# Enums
+# ==============================================================================
+
+"""
+Sort order for list queries
+"""
+enum SortOrder {
+  """
+  Ascending order (A-Z, 0-9, oldest-newest)
+  """
+  ASC
+
+  """
+  Descending order (Z-A, 9-0, newest-oldest)
+  """
+  DESC
+}
+
+# ==============================================================================
+# Interfaces
+# ==============================================================================
+
+"""
+Global object identification interface following the Relay specification.
+All objects that can be refetched by ID implement this interface.
+"""
+interface Node {
+  """
+  Globally unique identifier
+  """
+  id: ID!
+}
+
+"""
+Common interface for media items (tracks, albums, artists) with shared metadata
+"""
+interface MediaItem {
+  """
+  Display name of the media item
+  """
+  name: String!
+
+  """
+  Direct link to the item in the Spotify API
+  """
+  href: URL!
+
+  """
+  URL of the cover image or artist photo
+  """
+  imageUrl: URL
+}
+
+# ==============================================================================
+# Object Types - Core Entities (from fixture data)
+# ==============================================================================
+
+"""
+A music track with metadata including duration, popularity, and explicit content flag
+"""
+type Track implements Node & MediaItem {
+  """
+  Unique track identifier
+  """
+  id: ID!
+
+  """
+  Track title
+  """
+  name: String!
+
+  """
+  Spotify API URL for this track
+  """
+  href: URL!
+
+  """
+  Album artwork URL (inherited from album)
+  """
+  imageUrl: URL
+
+  """
+  Artists who performed this track
+  """
+  artists: [Artist!]!
+
+  """
+  Album containing this track
+  """
+  album: Album!
+
+  """
+  Track duration in milliseconds
+  """
+  duration: Int!
+
+  """
+  Popularity score from 0-100
+  """
+  popularity: Int!
+
+  """
+  Whether the track contains explicit content
+  """
+  explicit: Boolean!
+
+  """
+  Preview audio URL (30 second clip), may be null if unavailable
+  """
+  previewUrl: URL
+
+  """
+  Reviews submitted for this track
+  """
+  reviews: [Review!]!
+}
+
+"""
+A music album containing tracks with release metadata
+"""
+type Album implements Node & MediaItem {
+  """
+  Unique album identifier
+  """
+  id: ID!
+
+  """
+  Album title
+  """
+  name: String!
+
+  """
+  Spotify API URL for this album
+  """
+  href: URL!
+
+  """
+  Album cover artwork URL
+  """
+  imageUrl: URL
+
+  """
+  Artists who created this album
+  """
+  artists: [Artist!]!
+
+  """
+  Release date of the album
+  """
+  releaseDate: DateTime!
+
+  """
+  Tracks included in this album
+  """
+  tracks: [Track!]!
+}
+
+"""
+A musical artist or band with genre and popularity information
+"""
+type Artist implements Node & MediaItem {
+  """
+  Unique artist identifier
+  """
+  id: ID!
+
+  """
+  Artist or band name
+  """
+  name: String!
+
+  """
+  Spotify API URL for this artist
+  """
+  href: URL!
+
+  """
+  Artist photo or profile image URL
+  """
+  imageUrl: URL
+
+  """
+  Musical genres associated with this artist
+  """
+  genres: [Genre!]!
+
+  """
+  Popularity score from 0-100
+  """
+  popularity: Int!
+
+  """
+  Albums by this artist
+  """
+  albums: [Album!]!
+
+  """
+  Tracks by this artist
+  """
+  tracks: [Track!]!
+}
+
+"""
+A music genre category
+"""
+type Genre implements Node {
+  """
+  Genre identifier (lowercase with hyphens)
+  """
+  id: ID!
+
+  """
+  Human-readable genre name
+  """
+  name: String!
+
+  """
+  Display name for UI (deprecated, use name instead)
+  """
+  displayName: String! @deprecated(reason: "Use 'name' field directly")
+
+  """
+  Artists associated with this genre
+  """
+  artists: [Artist!]!
+}
+
+# ==============================================================================
+# Object Types - Generated Entities (faker-js data)
+# ==============================================================================
+
+"""
+A user-created playlist containing a curated collection of tracks.
+Playlists are generated dynamically and not stored in fixture data.
+"""
+type Playlist implements Node {
+  """
+  Unique playlist identifier
+  """
+  id: ID!
+
+  """
+  Playlist name
+  """
+  name: String!
+
+  """
+  Optional description of the playlist
+  """
+  description: String
+
+  """
+  Tracks in this playlist (ordered)
+  """
+  tracks: [Track!]!
+
+  """
+  Number of tracks in the playlist
+  """
+  trackCount: Int!
+
+  """
+  Timestamp when the playlist was created
+  """
+  createdAt: DateTime!
+
+  """
+  Timestamp of the last modification
+  """
+  updatedAt: DateTime!
+}
+
+"""
+A user review and rating for a track.
+Reviews are generated dynamically and not stored in fixture data.
+"""
+type Review implements Node {
+  """
+  Unique review identifier
+  """
+  id: ID!
+
+  """
+  Track being reviewed
+  """
+  track: Track!
+
+  """
+  Rating from 1.0 to 5.0
+  """
+  rating: Float!
+
+  """
+  Optional review text
+  """
+  text: String
+
+  """
+  Timestamp when the review was created
+  """
+  createdAt: DateTime!
+}
+
+# ==============================================================================
+# Pagination Types - Cursor-based (Relay Connection Pattern)
+# ==============================================================================
+
+"""
+Pagination information for cursor-based connections
+"""
+type PageInfo {
+  """
+  Whether there are more items when paginating forward
+  """
+  hasNextPage: Boolean!
+
+  """
+  Whether there are more items when paginating backward
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  Cursor pointing to the first item in the current page
+  """
+  startCursor: String
+
+  """
+  Cursor pointing to the last item in the current page
+  """
+  endCursor: String
+}
+
+"""
+Edge type wrapping a Track with its cursor
+"""
+type TrackEdge {
+  """
+  Cursor for this edge, used for pagination
+  """
+  cursor: String!
+
+  """
+  The Track at this edge
+  """
+  node: Track!
+}
+
+"""
+Paginated connection of tracks following the Relay cursor specification
+"""
+type TrackConnection {
+  """
+  List of track edges
+  """
+  edges: [TrackEdge!]!
+
+  """
+  Pagination metadata
+  """
+  pageInfo: PageInfo!
+
+  """
+  Total number of tracks available (across all pages)
+  """
+  totalCount: Int!
+}
+
+# ==============================================================================
+# Pagination Types - Offset-based
+# ==============================================================================
+
+"""
+Paginated list of albums using offset-based pagination
+"""
+type PaginatedAlbums {
+  """
+  Albums in the current page
+  """
+  items: [Album!]!
+
+  """
+  Total number of albums available (across all pages)
+  """
+  total: Int!
+
+  """
+  Current offset position
+  """
+  offset: Int!
+
+  """
+  Maximum number of items per page
+  """
+  limit: Int!
+
+  """
+  Whether there are more albums after this page
+  """
+  hasMore: Boolean!
+}
+
+# ==============================================================================
+# Union Types
+# ==============================================================================
+
+"""
+Search results can be tracks, albums, or artists
+"""
+union SearchResult = Track | Album | Artist
+
+# ==============================================================================
+# Input Types
+# ==============================================================================
+
+"""
+Range filter for integer values (demonstrates nested input objects)
+"""
+input IntRangeInput {
+  """
+  Minimum value (inclusive)
+  """
+  min: Int
+
+  """
+  Maximum value (inclusive)
+  """
+  max: Int
+}
+
+"""
+Input for creating a new playlist
+"""
+input CreatePlaylistInput {
+  """
+  Name of the playlist (required)
+  """
+  name: String!
+
+  """
+  Optional description
+  """
+  description: String
+
+  """
+  Initial track IDs to add to the playlist
+  """
+  trackIds: [ID!]
+}
+
+"""
+Filter criteria for querying tracks (demonstrates nested input objects)
+"""
+input TrackFilterInput {
+  """
+  Filter by explicit content flag
+  """
+  explicit: Boolean
+
+  """
+  Filter by popularity score range (0-100)
+  """
+  popularity: IntRangeInput
+}
+
+"""
+Input for creating a track review
+"""
+input CreateReviewInput {
+  """
+  ID of the track to review
+  """
+  trackId: ID!
+
+  """
+  Rating from 1.0 to 5.0
+  """
+  rating: Float!
+
+  """
+  Optional review text
+  """
+  text: String
+}
+
+# ==============================================================================
+# Query Root
+# ==============================================================================
+
+"""
+Root query type providing access to all data
+"""
+type Query {
+  """
+  Fetch any object by its global ID (Relay specification)
+  """
+  node(id: ID!): Node
+
+  # --------------------------------------------------------------------------
+  # Single object lookups
+  # --------------------------------------------------------------------------
+
+  """
+  Get a track by ID
+  """
+  track(id: ID!): Track
+
+  """
+  Get an album by ID
+  """
+  album(id: ID!): Album
+
+  """
+  Get an artist by ID
+  """
+  artist(id: ID!): Artist
+
+  """
+  Get a genre by ID
+  """
+  genre(id: String!): Genre
+
+  """
+  Get a playlist by ID
+  """
+  playlist(id: ID!): Playlist
+
+  # --------------------------------------------------------------------------
+  # List queries with different pagination styles
+  # --------------------------------------------------------------------------
+
+  """
+  List tracks with cursor-based pagination (Relay Connection pattern).
+  Demonstrates forward pagination with cursors.
+  """
+  tracks(
+    """
+    Number of tracks to return (max 100)
+    """
+    first: Int = 20
+
+    """
+    Cursor to paginate after
+    """
+    after: String
+
+    """
+    Sort order for results
+    """
+    sort: SortOrder = DESC
+
+    """
+    Optional filters to apply
+    """
+    filter: TrackFilterInput
+  ): TrackConnection!
+
+  """
+  List albums with offset-based pagination.
+  Demonstrates traditional offset/limit pagination.
+  """
+  albums(
+    """
+    Number of items to skip
+    """
+    offset: Int = 0
+
+    """
+    Maximum number of albums to return
+    """
+    limit: Int = 20
+  ): PaginatedAlbums!
+
+  """
+  Get all artists (no pagination).
+  Simple list query demonstrating non-paginated responses.
+  """
+  artists: [Artist!]!
+
+  """
+  Get all genres (no pagination)
+  """
+  genres: [Genre!]!
+
+  # --------------------------------------------------------------------------
+  # Search
+  # --------------------------------------------------------------------------
+
+  """
+  Search across tracks, albums, and artists.
+  Returns a union type that can be any of the three.
+  """
+  search(
+    """
+    Search query string
+    """
+    query: String!
+
+    """
+    Maximum number of results to return
+    """
+    limit: Int = 10
+  ): [SearchResult!]!
+}
+
+# ==============================================================================
+# Mutation Root
+# ==============================================================================
+
+"""
+Root mutation type for modifying data
+"""
+type Mutation {
+  # --------------------------------------------------------------------------
+  # Playlist mutations
+  # --------------------------------------------------------------------------
+
+  """
+  Create a new playlist with optional initial tracks
+  """
+  createPlaylist(input: CreatePlaylistInput!): Playlist!
+
+  """
+  Delete a playlist by ID. Returns true if successful, false otherwise.
+  Demonstrates boolean return type.
+  """
+  deletePlaylist(id: ID!): Boolean!
+
+  """
+  Add a track to a playlist
+  """
+  addTrackToPlaylist(
+    """
+    ID of the playlist
+    """
+    playlistId: ID!
+
+    """
+    ID of the track to add
+    """
+    trackId: ID!
+  ): Playlist!
+
+  """
+  Remove a track from a playlist
+  """
+  removeTrackFromPlaylist(
+    """
+    ID of the playlist
+    """
+    playlistId: ID!
+
+    """
+    ID of the track to remove
+    """
+    trackId: ID!
+  ): Playlist!
+
+  # --------------------------------------------------------------------------
+  # Review mutations
+  # --------------------------------------------------------------------------
+
+  """
+  Create a review for a track
+  """
+  createReview(input: CreateReviewInput!): Review!
+
+  """
+  Delete a review by ID
+  """
+  deleteReview(id: ID!): Boolean!
+}
+
+# ==============================================================================
+# Subscription Root
+# ==============================================================================
+
+"""
+Root subscription type for real-time updates
+"""
+type Subscription {
+  """
+  Subscribe to playlist update events (creation, modification, etc.)
+  """
+  playlistUpdated: Playlist!
+
+  """
+  Subscribe to new reviews being submitted
+  """
+  reviewAdded: Review!
+}

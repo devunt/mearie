@@ -7,6 +7,6 @@ packages:
   - fixture
 
 catalog:
-  tsdown: ^0.15.8
+  '@types/node': ^24.9.1
+  tsdown: ^0.15.9
   typescript: ^5.9.3
-  '@types/node': '^24.8.1'

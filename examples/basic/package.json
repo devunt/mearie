@@ -13,6 +13,6 @@
     "@mearie/react": "workspace:*",
     "mearie": "workspace:*",
     "typescript": "catalog:",
-    "vite": "^7.1.10"
+    "vite": "^7.1.12"
   }
 }

@@ -5,14 +5,19 @@
   "description": "Spotify music dataset fixture for Mearie examples and tests",
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "fetch-data": "node scripts/fetch-data.ts"
   },
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@graphql-tools/schema": "^10.0.25",
+    "graphql": "^16.11.0"
+  },
   "devDependencies": {
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@types/node": "catalog:",
-    "dotenv": "^16.4.1"
+    "dotenv": "^17.2.3"
   }
 }

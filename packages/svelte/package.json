@@ -19,7 +19,7 @@
     "@mearie/core": "workspace:*"
   },
   "devDependencies": {
-    "svelte": "^5.41.0",
+    "svelte": "^5.41.4",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

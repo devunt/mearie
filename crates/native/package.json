@@ -17,7 +17,7 @@
     "test": "cargo test --no-default-features"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.3.1"
+    "@napi-rs/cli": "^3.4.1"
   },
   "publishConfig": {
     "access": "public"

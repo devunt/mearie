@@ -3,7 +3,6 @@ import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
 import unicornPlugin from 'eslint-plugin-unicorn';
-import jsdocPlugin from 'eslint-plugin-jsdoc';
 import globals from 'globals';
 import { defineConfig } from 'eslint/config';
 
@@ -33,7 +32,6 @@ export default defineConfig(
   eslint.configs.recommended,
   importPlugin.flatConfigs.recommended,
   unicornPlugin.configs.recommended,
-  jsdocPlugin.configs['flat/recommended-typescript-error'],
 
   {
     files: ['**/*.ts'],
@@ -58,19 +56,6 @@ export default defineConfig(
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/no-empty-function': 'off',
       'import/newline-after-import': ['error', { considerComments: true }],
-      'jsdoc/check-indentation': 'error',
-      'jsdoc/convert-to-jsdoc-comments': 'error',
-      'jsdoc/require-description-complete-sentence': 'error',
-      'jsdoc/require-jsdoc': [
-        'error',
-        {
-          require: {
-            FunctionDeclaration: true,
-            ClassDeclaration: true,
-          },
-        },
-      ],
-      'jsdoc/sort-tags': 'error',
       'unicorn/catch-error-name': 'off',
       'unicorn/consistent-function-scoping': 'off',
       'unicorn/no-null': 'off',

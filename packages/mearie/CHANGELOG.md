@@ -1,5 +1,20 @@
 # mearie
 
+## 0.1.0-next.4
+
+### Minor Changes
+
+- b26fa85: Remove `mearie/config` export path in favor of importing `defineConfig` directly from `mearie`
+- e774b55: Implement fragment colocation type system with new Artifact-based architecture supporting FragmentRefs for type-safe fragment composition
+
+### Patch Changes
+
+- f93e485: Add /vite subpath export for convenient access to Vite plugin
+- Updated dependencies [e15914c]
+- Updated dependencies [a739cd0]
+  - @mearie/shared@0.1.0-next.4
+  - @mearie/vite@0.0.1-next.4
+
 ## 0.0.1-next.3
 
 ### Patch Changes

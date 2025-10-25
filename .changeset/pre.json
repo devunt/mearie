@@ -11,11 +11,35 @@
     "@mearie/solid": "0.0.0",
     "@mearie/svelte": "0.0.0",
     "@mearie/vite": "0.0.0",
-    "@mearie/vue": "0.0.0"
+    "@mearie/vue": "0.0.0",
+    "@mearie-internal/docs": "0.0.0",
+    "@mearie-internal/examples-basic": "0.0.0",
+    "@mearie-internal/examples-server": "0.0.0",
+    "@mearie-internal/fixture": "0.0.0",
+    "@mearie/shared": "0.0.1-next.3"
   },
   "changesets": [
+    "brave-elephants-dance",
+    "brave-hats-visit",
+    "brave-rivers-flow",
     "busy-shoes-listen",
+    "calm-trees-dance",
+    "careful-lions-smile",
+    "clever-birds-dance",
+    "clever-lions-smile",
+    "easy-poets-start",
+    "fair-foxes-cheer",
     "full-bats-joke",
-    "strong-games-warn"
+    "light-geese-like",
+    "proud-lions-dance",
+    "purple-birds-swim",
+    "quiet-sheep-jump",
+    "seven-tools-bake",
+    "silent-lions-rest",
+    "silent-years-jump",
+    "smooth-tables-dance",
+    "strong-games-warn",
+    "swift-bats-jump",
+    "true-clubs-sink"
   ]
 }

@@ -1,5 +1,14 @@
 # @mearie/vite
 
+## 0.0.1-next.4
+
+### Patch Changes
+
+- a739cd0: Consolidate extractor package into shared package and move internal utilities to codegen
+- Updated dependencies [e774b55]
+- Updated dependencies [a739cd0]
+  - @mearie/codegen@0.1.0-next.4
+
 ## 0.0.1-next.3
 
 ### Patch Changes

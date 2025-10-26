@@ -1,5 +1,4 @@
-export { default as tracks } from '../data/tracks.json';
-export { default as albums } from '../data/albums.json';
-export { default as artists } from '../data/artists.json';
+export { default as movies } from '../data/movies.json';
+export { default as people } from '../data/people.json';
 export { default as genres } from '../data/genres.json';
 export { schema } from './executable-schema.ts';

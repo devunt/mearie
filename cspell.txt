@@ -2,6 +2,7 @@ bumpalo
 dedup
 devunt
 iface
+imdb
 insta
 itertools
 mearie
@@ -12,4 +13,5 @@ pife
 rfind
 rustc
 shikijs
+tmdb
 vitepress

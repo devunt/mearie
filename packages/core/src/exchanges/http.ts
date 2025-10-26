@@ -5,6 +5,7 @@ import { mergeMap } from '../stream/operators/merge-map.ts';
 import { filter } from '../stream/operators/filter.ts';
 import { fromPromise } from '../stream/sources/from-promise.ts';
 import { merge } from '../stream/operators/merge.ts';
+import { tap } from '../stream/operators/tap.ts';
 
 declare module '../errors.ts' {
   interface ExchangeErrorExtensionsMap {
@@ -32,15 +33,25 @@ export type HttpOptions = {
   credentials?: RequestCredentials;
 };
 
-const executeFetch = async (
-  url: string,
-  op: RequestOperation,
-  fetchOptions: { mode?: RequestMode; credentials?: RequestCredentials; headers?: HeadersInit },
-): Promise<OperationResult> => {
-  const { artifact, variables } = op;
+type ExecuteFetchOptions = {
+  url: string;
+  fetchOptions: { mode?: RequestMode; credentials?: RequestCredentials; headers?: HeadersInit };
+  operation: RequestOperation;
+  signal: AbortSignal;
+};
+
+const executeFetch = async ({
+  url,
+  fetchOptions,
+  operation,
+  signal,
+}: ExecuteFetchOptions): Promise<OperationResult | null> => {
+  const { artifact, variables } = operation;
 
   let response;
   try {
+    await Promise.resolve();
+
     response = await fetch(url, {
       method: 'POST',
       mode: fetchOptions.mode,
@@ -53,10 +64,14 @@ const executeFetch = async (
         query: artifact.body,
         variables,
       }),
+      signal,
     });
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return null;
+    }
     return {
-      operation: op,
+      operation,
       errors: [
         new ExchangeError(error instanceof Error ? error.message : 'Network error', {
           exchangeName: 'http',
@@ -68,7 +83,7 @@ const executeFetch = async (
 
   if (!response.ok) {
     return {
-      operation: op,
+      operation,
       errors: [
         new ExchangeError(`HTTP ${response.status}: ${response.statusText}`, {
           exchangeName: 'http',
@@ -83,7 +98,7 @@ const executeFetch = async (
     json = (await response.json()) as GraphQLResponse;
   } catch (error) {
     return {
-      operation: op,
+      operation,
       errors: [
         new ExchangeError(error instanceof Error ? error.message : 'JSON parse error', {
           exchangeName: 'http',
@@ -94,7 +109,7 @@ const executeFetch = async (
   }
 
   return {
-    operation: op,
+    operation,
     data: json.data,
     errors: json.errors?.map(
       (err) =>
@@ -113,20 +128,48 @@ export const httpExchange = (options: HttpOptions): Exchange => {
 
   return (forward) => {
     return (ops$) => {
+      const inflight = new Map<string, AbortController>();
+
       const fetch$ = pipe(
         ops$,
         filter(
           (op): op is RequestOperation =>
             op.variant === 'request' && (op.artifact.kind === 'query' || op.artifact.kind === 'mutation'),
         ),
-        mergeMap((op) => fromPromise(executeFetch(url, op, { mode, credentials, headers }))),
+        mergeMap((op) => {
+          inflight.get(op.key)?.abort();
+
+          const controller = new AbortController();
+          inflight.set(op.key, controller);
+
+          return fromPromise(
+            executeFetch({
+              url,
+              fetchOptions: { mode, credentials, headers },
+              operation: op,
+              signal: controller.signal,
+            }).then((result) => {
+              inflight.delete(op.key);
+              return result;
+            }),
+          );
+        }),
+        filter((result) => result !== null),
       );
 
       const forward$ = pipe(
         ops$,
         filter(
-          (op) => op.variant === 'teardown' || op.artifact.kind === 'subscription' || op.artifact.kind === 'fragment',
+          (op) =>
+            op.variant === 'teardown' ||
+            (op.variant === 'request' && (op.artifact.kind === 'subscription' || op.artifact.kind === 'fragment')),
         ),
+        tap((op) => {
+          if (op.variant === 'teardown') {
+            inflight.get(op.key)?.abort();
+            inflight.delete(op.key);
+          }
+        }),
         forward,
       );
 

@@ -1,7 +1,7 @@
 use super::super::CodegenContext;
 use crate::error::{MearieError, Result};
 use crate::graphql::ast::*;
-use crate::schema::{DocumentIndex, SchemaIndex};
+use crate::schema::{DocumentIndex, SchemaIndex, TypeInfo};
 use crate::source::SourceBuf;
 use itertools::chain;
 use oxc_allocator::Box as OxcBox;
@@ -31,6 +31,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     pub fn generate(&self) -> Result<SourceBuf> {
         let statements = self.ast.vec_from_iter(chain![
             self.gen_artifacts()?,
+            std::iter::once(self.gen_schema()?),
             std::iter::once(self.stmt_graphql_function()),
         ]);
 
@@ -115,7 +116,9 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let selections = self.flatten_selections(&operation.selection_set, root_type)?;
         let obj_expr = self.expr_artifact(name, &body, kind, &selections);
 
-        Ok(self.stmt_export_const(name, obj_expr))
+        let var_name = format!("${}", name);
+
+        Ok(self.stmt_export_const(&var_name, obj_expr))
     }
 
     fn stmt_fragment_artifact(&self, fragment: &'b FragmentDefinition<'b>) -> Result<Statement<'b>> {
@@ -125,7 +128,9 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let selections = self.flatten_selections(&fragment.selection_set, fragment.type_condition.as_str())?;
         let obj_expr = self.expr_artifact(name, &body, "fragment", &selections);
 
-        Ok(self.stmt_export_const(name, obj_expr))
+        let var_name = format!("${}", name);
+
+        Ok(self.stmt_export_const(&var_name, obj_expr))
     }
 
     fn expr_artifact(
@@ -187,8 +192,11 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
     fn stmt_artifact_map(&self, artifacts: &[(&str, &str)]) -> Statement<'b> {
         let properties = self.ast.vec_from_iter(artifacts.iter().map(|(name, source)| {
-            let var_ref =
-                Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, self.ast.atom(name))));
+            let var_name = format!("${}", name);
+            let var_ref = Expression::Identifier(
+                self.ast
+                    .alloc(self.ast.identifier_reference(SPAN, self.ast.atom(&var_name))),
+            );
 
             let string_literal = self.ast.string_literal(SPAN, self.ast.atom(source), None::<Atom>);
             let property_key = PropertyKey::StringLiteral(self.ast.alloc(string_literal));
@@ -202,7 +210,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
         let obj_expr = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)));
 
-        self.stmt_export_const("$artifactMap", obj_expr)
+        self.stmt_export_const("artifactMap", obj_expr)
     }
 
     fn stmt_graphql_function(&self) -> Statement<'b> {
@@ -223,7 +231,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         );
 
         let artifact_map_expr =
-            Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "$artifactMap")));
+            Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "artifactMap")));
         let artifact_expr = Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "artifact")));
         let member_expr = self
             .ast
@@ -278,6 +286,56 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         );
 
         Statement::ExportNamedDeclaration(self.ast.alloc(export_decl))
+    }
+
+    fn gen_schema(&self) -> Result<Statement<'b>> {
+        let mut entity_properties = self.ast.vec();
+
+        for (type_name, type_info) in self.schema.types() {
+            if !matches!(type_info, TypeInfo::Object(_)) {
+                continue;
+            }
+
+            if Some(type_name) == self.schema.query_type()
+                || Some(type_name) == self.schema.mutation_type()
+                || Some(type_name) == self.schema.subscription_type()
+            {
+                continue;
+            }
+
+            if let Some(key_field) = self.determine_key_field(type_name) {
+                let key_fields_array_elements =
+                    self.ast.vec1(ArrayExpressionElement::from(self.expr_string(key_field)));
+                let key_fields_array = Expression::ArrayExpression(
+                    self.ast.alloc(self.ast.array_expression(SPAN, key_fields_array_elements)),
+                );
+
+                let entity_meta_props = self.ast.vec1(self.prop_object("keyFields", key_fields_array));
+                let entity_meta_obj =
+                    Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_meta_props)));
+
+                let type_name_literal = self.ast.string_literal(SPAN, self.ast.atom(type_name), None::<Atom>);
+                let property_key = PropertyKey::StringLiteral(self.ast.alloc(type_name_literal));
+
+                let property = self.ast.object_property(
+                    SPAN,
+                    PropertyKind::Init,
+                    property_key,
+                    entity_meta_obj,
+                    false,
+                    false,
+                    false,
+                );
+
+                entity_properties.push(ObjectPropertyKind::ObjectProperty(self.ast.alloc(property)));
+            }
+        }
+
+        let entities_obj = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_properties)));
+        let schema_props = self.ast.vec1(self.prop_object("entities", entities_obj));
+        let schema_obj = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, schema_props)));
+
+        Ok(self.stmt_export_const("schema", schema_obj))
     }
 
     fn expr_string(&self, value: &str) -> Expression<'b> {
@@ -599,6 +657,27 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         }
 
         names
+    }
+
+    fn determine_key_field(&self, type_name: &str) -> Option<&'static str> {
+        const KEY_FIELD_NAMES: [&str; 3] = ["id", "_id", "uuid"];
+
+        let fields = self.schema.get_object_fields(type_name)?;
+
+        for &key_name in &KEY_FIELD_NAMES {
+            if let Some(&field_def) = fields.get(key_name) {
+                let is_nullable = field_def.typ.is_nullable();
+                let is_list = field_def.typ.is_list();
+                let innermost_type = field_def.typ.innermost_type().as_str();
+                let is_scalar = self.schema.is_scalar(innermost_type);
+
+                if !is_nullable && !is_list && is_scalar {
+                    return Some(key_name);
+                }
+            }
+        }
+
+        None
     }
 }
 

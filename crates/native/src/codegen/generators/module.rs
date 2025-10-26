@@ -66,6 +66,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
             self.gen_artifact_exports(),
             self.gen_fragment_key_exports(),
             self.gen_overloads(),
+            std::iter::once(self.stmt_schema_declaration()),
         ])
     }
 
@@ -175,6 +176,44 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         let function = self.decl_function("graphql", params, return_annotation, None);
 
         self.stmt_export_value(function)
+    }
+
+    fn stmt_schema_declaration(&self) -> Statement<'b> {
+        let schema_type = self.type_import("$Schema");
+        let type_annotation = self.ast.ts_type_annotation(SPAN, schema_type);
+
+        let id = self.ast.binding_pattern(
+            self.ast.binding_pattern_kind_binding_identifier(SPAN, self.ast.atom("schema")),
+            Some(self.ast.alloc(type_annotation)),
+            false,
+        );
+
+        let declarator = self.ast.variable_declarator(
+            SPAN,
+            VariableDeclarationKind::Const,
+            id,
+            None,
+            false,
+        );
+
+        let declarators = self.ast.vec1(declarator);
+        let var_decl = self.ast.variable_declaration(
+            SPAN,
+            VariableDeclarationKind::Const,
+            declarators,
+            true,
+        );
+
+        let export_decl = self.ast.export_named_declaration(
+            SPAN,
+            Some(Declaration::VariableDeclaration(self.ast.alloc(var_decl))),
+            self.ast.vec(),
+            None,
+            ImportOrExportKind::Value,
+            None::<OxcBox<WithClause>>,
+        );
+
+        Statement::ExportNamedDeclaration(self.ast.alloc(export_decl))
     }
 
     fn stmt_export_type(&self, declaration: Declaration<'b>) -> Statement<'b> {

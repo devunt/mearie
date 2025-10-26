@@ -32,6 +32,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let statements = self.ast.vec_from_iter(chain![
             std::iter::once(self.stmt_import_core()),
             std::iter::once(self.export_scalars()),
+            std::iter::once(self.export_schema()),
             self.gen_enum_exports(),
             self.gen_input_exports(),
             self.gen_fragment_exports()?,
@@ -130,6 +131,11 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let type_literal = self.ast.ts_type_type_literal(SPAN, properties);
 
         self.stmt_export_type("$Scalars", type_literal)
+    }
+
+    fn export_schema(&self) -> Statement<'b> {
+        let schema_meta_type = self.type_ref("$SchemaMeta");
+        self.stmt_export_type("$Schema", schema_meta_type)
     }
 
     fn export_enum(&self, enum_def: &EnumTypeDefinition<'b>) -> Statement<'b> {
@@ -502,7 +508,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     fn stmt_import_core(&self) -> Statement<'b> {
         let mut specifiers = self.ast.vec();
 
-        let type_names = ["Artifact", "Nullable", "List", "FragmentRefs"];
+        let type_names = ["Artifact", "Nullable", "List", "FragmentRefs", "SchemaMeta"];
         for type_name in type_names {
             let local_type_name = format!("${}", type_name);
 

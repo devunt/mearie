@@ -1,1 +1,1 @@
-export type { Artifact, Nullable, List, FragmentRefs } from '@mearie/shared';
+export type { Artifact, Nullable, List, FragmentRefs, SchemaMeta } from '@mearie/shared';

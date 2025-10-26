@@ -7,12 +7,13 @@ import {
   subscriptionExchange,
 } from '@mearie/react';
 import { createClient as createSSEClient } from 'graphql-sse';
+import { schema } from '~graphql';
 
 export const mearieClient = createClient({
   exchanges: [
     dedupExchange(),
     retryExchange(),
-    cacheExchange(),
+    cacheExchange({ schemaMeta: schema }),
     httpExchange({
       url: 'https://api.mearie.dev/graphql',
     }),

@@ -3,7 +3,6 @@ import { make } from './make.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
-import type { Subscription } from '../types.ts';
 
 describe('make', () => {
   describe('basic functionality', () => {
@@ -248,7 +247,7 @@ describe('make', () => {
     it('should emit undefined', async () => {
       const source = make<number | undefined>((observer) => {
         observer.next(1);
-        observer.next(undefined);
+        observer.next();
         observer.next(2);
         observer.complete();
         return () => {};

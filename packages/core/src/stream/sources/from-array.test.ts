@@ -4,7 +4,6 @@ import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Subscription } from '../types.ts';
 
 describe('fromArray', () => {
   describe('basic functionality', () => {

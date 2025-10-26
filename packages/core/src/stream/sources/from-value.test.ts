@@ -4,7 +4,6 @@ import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
 import { filter } from '../operators/filter.ts';
-import type { Subscription } from '../types.ts';
 
 describe('fromValue', () => {
   describe('basic functionality', () => {
@@ -21,7 +20,6 @@ describe('fromValue', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -175,7 +173,6 @@ describe('fromValue', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -304,7 +301,6 @@ describe('fromValue', () => {
       const emitted: number[] = [];
 
       source({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -319,7 +315,6 @@ describe('fromValue', () => {
       let completed = false;
 
       source({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;

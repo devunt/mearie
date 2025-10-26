@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { makeSubject } from '../sources/make-subject.ts';
-import type { Sink } from '../types.ts';
 
 describe('takeUntil', () => {
   describe('basic functionality', () => {
@@ -99,7 +98,7 @@ describe('takeUntil', () => {
       let sourceCancelled = false;
       const { source: notifier, next } = makeSubject<void>();
 
-      const source = (sink: Sink<number>) => {
+      const source = () => {
         return {
           unsubscribe: () => {
             sourceCancelled = true;
@@ -125,7 +124,7 @@ describe('takeUntil', () => {
 
       const source = fromArray([1, 2, 3]);
 
-      const notifier = (sink: Sink<void>) => {
+      const notifier = () => {
         return {
           unsubscribe: () => {
             notifierCancelled = true;

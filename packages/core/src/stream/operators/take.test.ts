@@ -242,7 +242,7 @@ describe('take', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,

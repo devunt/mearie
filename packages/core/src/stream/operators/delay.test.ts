@@ -23,7 +23,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -44,7 +43,6 @@ describe('delay', () => {
         source,
         delay(50),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -65,7 +63,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -86,7 +83,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: () => {},
         complete: () => {
           completed = true;
@@ -109,7 +105,6 @@ describe('delay', () => {
         source,
         delay(250),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -131,7 +126,6 @@ describe('delay', () => {
         source,
         delay(0),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -152,7 +146,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -168,7 +161,7 @@ describe('delay', () => {
     it('should clear pending timeouts on cancel', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -189,7 +182,7 @@ describe('delay', () => {
     it('should not emit values after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -211,7 +204,7 @@ describe('delay', () => {
     it('should not emit completion after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       let completed = false;
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -231,7 +224,7 @@ describe('delay', () => {
 
     it('should cancel upstream source', () => {
       const source = fromArray([1, 2, 3]);
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -254,7 +247,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -273,7 +265,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -294,7 +285,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -313,7 +303,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -335,7 +324,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -359,7 +347,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -378,7 +365,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -397,7 +383,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -416,7 +401,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -435,7 +419,6 @@ describe('delay', () => {
         source,
         delay(100),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },
@@ -450,7 +433,7 @@ describe('delay', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -469,7 +452,7 @@ describe('delay', () => {
     it('should handle cancellation before first value', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      let subscription: Subscription;
+      const subscription: Subscription;
 
       subscription = pipe(
         source,
@@ -493,9 +476,8 @@ describe('delay', () => {
 
       pipe(
         source,
-        delay(10000),
+        delay(10_000),
       )({
-        start: () => {},
         next: (value) => {
           emitted.push(value);
         },

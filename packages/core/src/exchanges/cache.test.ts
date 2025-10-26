@@ -146,7 +146,7 @@ describe('cacheExchange', () => {
         const results = await testExchange(exchange, forward, [operation], client);
 
         expect(results).toHaveLength(1);
-        expect(results[0].data).toEqual({ network: true });
+        expect(results[0]!.data).toEqual({ network: true });
       });
 
       it('should write network response to cache', async () => {
@@ -160,7 +160,7 @@ describe('cacheExchange', () => {
         const results = await testExchange(exchange, forward, [operation], client);
 
         expect(results).toHaveLength(1);
-        expect(results[0].data).toEqual({ test: true });
+        expect(results[0]!.data).toEqual({ test: true });
       });
     });
 
@@ -210,7 +210,7 @@ describe('cacheExchange', () => {
 
         const results = await testExchange(exchange, forward, [operation], client);
 
-        expect(results[0].data).toBeNull();
+        expect(results[0]!.data).toBeNull();
       });
     });
   });
@@ -227,7 +227,7 @@ describe('cacheExchange', () => {
       await testExchange(exchange, forward, [operation], client);
       const results = await testExchange(exchange, forward, [operation], client);
 
-      expect(results[0].data).toBeDefined();
+      expect(results[0]!.data).toBeDefined();
     });
 
     it('should subscribe to query updates', async () => {
@@ -254,7 +254,7 @@ describe('cacheExchange', () => {
       const results = await testExchange(exchange, forward, [operation], client);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toBeDefined();
+      expect(results[0]!.data).toBeDefined();
     });
 
     it('should handle cache misses', async () => {
@@ -307,7 +307,7 @@ describe('cacheExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation], client);
 
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should error if fragmentRef missing', async () => {
@@ -317,8 +317,8 @@ describe('cacheExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation], client);
 
-      expect(results[0].errors).toHaveLength(1);
-      expect(results[0].errors![0].message).toContain('fragmentRef');
+      expect(results[0]!.errors).toHaveLength(1);
+      expect(results[0]!.errors![0]!.message).toContain('fragmentRef');
     });
   });
 
@@ -348,7 +348,7 @@ describe('cacheExchange', () => {
       const results = await testExchange(exchange, forward, [operation], client);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ createUser: { id: '1', name: 'Alice' } });
+      expect(results[0]!.data).toEqual({ createUser: { id: '1', name: 'Alice' } });
     });
 
     it('should not read from cache for mutations', async () => {
@@ -393,7 +393,7 @@ describe('cacheExchange', () => {
       const results = await testExchange(exchange, forward, [operation], client);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ message: 'Hello' });
+      expect(results[0]!.data).toEqual({ message: 'Hello' });
     });
   });
 

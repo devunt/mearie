@@ -18,8 +18,8 @@ describe('fragmentExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual(fragmentRef);
-      expect(results[0].errors).toBeUndefined();
+      expect(results[0]!.data).toEqual(fragmentRef);
+      expect(results[0]!.errors).toBeUndefined();
     });
 
     it('should forward non-fragment operations', async () => {
@@ -35,7 +35,7 @@ describe('fragmentExchange', () => {
 
       expect(forwardedOps).toHaveLength(1);
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ test: true });
+      expect(results[0]!.data).toEqual({ test: true });
     });
 
     it('should forward teardown operations', async () => {
@@ -63,9 +63,9 @@ describe('fragmentExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors).toHaveLength(1);
-      expect(results[0].data).toBeUndefined();
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors).toHaveLength(1);
+      expect(results[0]!.data).toBeUndefined();
     });
 
     it('should include correct error message', async () => {
@@ -75,7 +75,7 @@ describe('fragmentExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      const error = results[0].errors![0];
+      const error = results[0]!.errors![0]!;
       expect(error.message).toBe(
         'Fragment operation missing fragmentRef in metadata. This usually happens when the wrong fragment reference was passed.',
       );
@@ -88,7 +88,7 @@ describe('fragmentExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      const error = results[0].errors![0];
+      const error = results[0]!.errors![0]!;
       expect(isExchangeError(error, 'fragment')).toBe(true);
     });
   });
@@ -107,7 +107,7 @@ describe('fragmentExchange', () => {
       const results = await testExchange(exchange, forward, [fragmentOp, queryOp]);
 
       expect(results).toHaveLength(2);
-      expect(results[0].data).toEqual(fragmentRef);
+      expect(results[0]!.data).toEqual(fragmentRef);
     });
 
     it('should not call forward for fragment operations', async () => {
@@ -140,7 +140,7 @@ describe('fragmentExchange', () => {
       await testExchange(exchange, forward, [operation]);
 
       expect(forwardedOps).toHaveLength(1);
-      expect(forwardedOps[0].variant).toBe('request');
+      expect(forwardedOps[0]!.variant).toBe('request');
     });
 
     it('should call forward for mutations', async () => {
@@ -155,7 +155,7 @@ describe('fragmentExchange', () => {
       await testExchange(exchange, forward, [operation]);
 
       expect(forwardedOps).toHaveLength(1);
-      expect(forwardedOps[0].variant).toBe('request');
+      expect(forwardedOps[0]!.variant).toBe('request');
     });
 
     it('should call forward for subscriptions', async () => {
@@ -170,7 +170,7 @@ describe('fragmentExchange', () => {
       await testExchange(exchange, forward, [operation]);
 
       expect(forwardedOps).toHaveLength(1);
-      expect(forwardedOps[0].variant).toBe('request');
+      expect(forwardedOps[0]!.variant).toBe('request');
     });
   });
 
@@ -190,7 +190,7 @@ describe('fragmentExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].data).toEqual(fragmentRef);
+      expect(results[0]!.data).toEqual(fragmentRef);
     });
 
     it('should handle fragmentRef with null key', async () => {
@@ -204,7 +204,7 @@ describe('fragmentExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].data).toEqual(fragmentRef);
+      expect(results[0]!.data).toEqual(fragmentRef);
     });
   });
 
@@ -220,8 +220,8 @@ describe('fragmentExchange', () => {
       const results = await testExchange(exchange, forward, [op1, op2]);
 
       expect(results).toHaveLength(2);
-      expect(results[0].data).toEqual(ref1);
-      expect(results[1].data).toEqual(ref2);
+      expect(results[0]!.data).toEqual(ref1);
+      expect(results[1]!.data).toEqual(ref2);
     });
 
     it('should handle mixed operations', async () => {
@@ -241,9 +241,9 @@ describe('fragmentExchange', () => {
       const results = await testExchange(exchange, forward, [fragmentOp, queryOp, teardownOp]);
 
       expect(results).toHaveLength(3);
-      expect(results[0].data).toEqual(fragmentRef);
-      expect(results[1].data).toEqual({ forwarded: true });
-      expect(results[2].data).toEqual({ forwarded: true });
+      expect(results[0]!.data).toEqual(fragmentRef);
+      expect(results[1]!.data).toEqual({ forwarded: true });
+      expect(results[2]!.data).toEqual({ forwarded: true });
     });
   });
 });

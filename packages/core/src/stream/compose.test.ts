@@ -10,7 +10,7 @@ describe('compose', () => {
   describe('single operator', () => {
     it('should return the operator itself', async () => {
       const source = fromArray([1, 2, 3]);
-      const op = compose(map((x) => x * 2));
+      const op = compose(map((x: number) => x * 2));
 
       const result = await pipe(source, op, collectAll);
 
@@ -22,8 +22,8 @@ describe('compose', () => {
     it('should compose two operators', async () => {
       const source = fromArray([1, 2, 3]);
       const op = compose(
-        map((x) => x + 1),
-        map((x) => x * 2),
+        map((x: number) => x + 1),
+        map((x: number) => x * 2),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -34,8 +34,8 @@ describe('compose', () => {
     it('should compose map and filter', async () => {
       const source = fromArray([1, 2, 3, 4, 5]);
       const op = compose(
-        map((x) => x * 2),
-        filter((x) => x > 5),
+        map((x: number) => x * 2),
+        filter((x: number) => x > 5),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -48,9 +48,9 @@ describe('compose', () => {
     it('should compose three operators', async () => {
       const source = fromArray([1, 2, 3, 4, 5]);
       const op = compose(
-        filter((x) => x > 2),
-        map((x) => x * 2),
-        filter((x) => x < 10),
+        filter((x: number) => x > 2),
+        map((x: number) => x * 2),
+        filter((x: number) => x < 10),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -63,10 +63,10 @@ describe('compose', () => {
     it('should compose four operators', async () => {
       const source = fromArray([1, 2, 3, 4, 5]);
       const op = compose(
-        map((x) => x + 1),
-        filter((x) => x % 2 === 0),
-        map((x) => x * 2),
-        map((x) => x - 1),
+        map((x: number) => x + 1),
+        filter((x: number) => x % 2 === 0),
+        map((x: number) => x * 2),
+        map((x: number) => x - 1),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -79,7 +79,7 @@ describe('compose', () => {
     it('should allow composed operator to be reused', async () => {
       const op = compose(
         map((x: number) => x * 2),
-        filter((x) => x > 5),
+        filter((x: number) => x > 5),
       );
 
       const result1 = await pipe(fromArray([1, 2, 3, 4]), op, collectAll);
@@ -92,11 +92,11 @@ describe('compose', () => {
     it('should compose composed operators', async () => {
       const op1 = compose(
         map((x: number) => x + 1),
-        map((x) => x * 2),
+        map((x: number) => x * 2),
       );
       const op2 = compose(
         filter((x: number) => x > 5),
-        map((x) => x - 1),
+        map((x: number) => x - 1),
       );
       const combined = compose(op1, op2);
 
@@ -124,7 +124,7 @@ describe('compose', () => {
       const op = compose(
         map((x: number) => x * 2),
         map(String),
-        map((x) => ({ value: x })),
+        map((x: string) => ({ value: x })),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -137,8 +137,8 @@ describe('compose', () => {
     it('should handle empty source', async () => {
       const source = fromArray<number>([]);
       const op = compose(
-        map((x) => x * 2),
-        filter((x) => x > 0),
+        map((x: number) => x * 2),
+        filter((x: number) => x > 0),
       );
 
       const result = await pipe(source, op, collectAll);
@@ -149,8 +149,8 @@ describe('compose', () => {
     it('should handle filtering that removes all values', async () => {
       const source = fromArray([1, 2, 3]);
       const op = compose(
-        map((x) => x * 2),
-        filter((x) => x > 100),
+        map((x: number) => x * 2),
+        filter((x: number) => x > 100),
       );
 
       const result = await pipe(source, op, collectAll);

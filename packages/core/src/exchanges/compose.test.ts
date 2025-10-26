@@ -4,10 +4,8 @@ import { makeTestOperation, makeTestForward, testExchange } from './test-utils.t
 import type { Exchange, Operation } from '../exchange.ts';
 import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
-import { filter } from '../stream/operators/filter.ts';
 import { merge } from '../stream/operators/merge.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
-import { fromArray } from '../stream/sources/from-array.ts';
 import { subscribe } from '../stream/sinks/subscribe.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 
@@ -30,7 +28,7 @@ describe('composeExchange', () => {
       const results = await testExchange(composed, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ value: 1 });
+      expect(results[0]!.data).toEqual({ value: 1 });
     });
 
     it('should compose two exchanges', async () => {
@@ -42,7 +40,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, first: true },
+              data: { ...(result.data as object | undefined), first: true },
             })),
           );
 
@@ -54,7 +52,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, second: true },
+              data: { ...(result.data as object | undefined), second: true },
             })),
           );
 
@@ -65,7 +63,7 @@ describe('composeExchange', () => {
       const results = await testExchange(composed, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ first: true, second: true });
+      expect(results[0]!.data).toEqual({ first: true, second: true });
     });
 
     it('should compose three exchanges', async () => {
@@ -77,7 +75,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, first: true },
+              data: { ...(result.data as object | undefined), first: true },
             })),
           );
 
@@ -89,7 +87,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, second: true },
+              data: { ...(result.data as object | undefined), second: true },
             })),
           );
 
@@ -101,7 +99,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, third: true },
+              data: { ...(result.data as object | undefined), third: true },
             })),
           );
 
@@ -112,7 +110,7 @@ describe('composeExchange', () => {
       const results = await testExchange(composed, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ first: true, second: true, third: true });
+      expect(results[0]!.data).toEqual({ first: true, second: true, third: true });
     });
 
     it('should handle empty exchanges array', async () => {
@@ -126,7 +124,7 @@ describe('composeExchange', () => {
       const results = await testExchange(composed, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].data).toEqual({ empty: true });
+      expect(results[0]!.data).toEqual({ empty: true });
     });
   });
 
@@ -174,7 +172,7 @@ describe('composeExchange', () => {
             ops$,
             map((op) => {
               if (op.variant === 'request') {
-                operationsSeen[0].push(op);
+                operationsSeen[0]!.push(op);
               }
               return op;
             }),
@@ -188,7 +186,7 @@ describe('composeExchange', () => {
             ops$,
             map((op) => {
               if (op.variant === 'request') {
-                operationsSeen[1].push(op);
+                operationsSeen[1]!.push(op);
               }
               return op;
             }),
@@ -202,7 +200,7 @@ describe('composeExchange', () => {
             ops$,
             map((op) => {
               if (op.variant === 'request') {
-                operationsSeen[2].push(op);
+                operationsSeen[2]!.push(op);
               }
               return op;
             }),
@@ -218,9 +216,9 @@ describe('composeExchange', () => {
       expect(operationsSeen[0]).toHaveLength(1);
       expect(operationsSeen[1]).toHaveLength(1);
       expect(operationsSeen[2]).toHaveLength(1);
-      expect(operationsSeen[0][0]).toEqual(operation);
-      expect(operationsSeen[1][0]).toEqual(operation);
-      expect(operationsSeen[2][0]).toEqual(operation);
+      expect(operationsSeen[0]![0]!).toEqual(operation);
+      expect(operationsSeen[1]![0]!).toEqual(operation);
+      expect(operationsSeen[2]![0]!).toEqual(operation);
     });
 
     it('should allow each exchange to transform operations', async () => {
@@ -315,7 +313,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, modified1: true },
+              data: { ...(result.data as object | undefined), modified1: true },
             })),
           );
 
@@ -327,7 +325,7 @@ describe('composeExchange', () => {
             forward,
             map((result) => ({
               ...result,
-              data: { ...result.data, modified2: true },
+              data: { ...(result.data as object | undefined), modified2: true },
             })),
           );
 
@@ -340,7 +338,7 @@ describe('composeExchange', () => {
 
       const results = await testExchange(composed, forward, [operation]);
 
-      expect(results[0].data).toEqual({
+      expect(results[0]!.data).toEqual({
         original: true,
         modified2: true,
         modified1: true,
@@ -386,7 +384,7 @@ describe('composeExchange', () => {
       expect(exchange1ExecutionCount).toBe(1);
     });
 
-    it('should isolate exchanges from multiple result subscribers (output share)', async () => {
+    it('should isolate exchanges from multiple result subscribers (output share)', () => {
       let exchange1ExecutionCount = 0;
 
       const exchange1: Exchange =
@@ -414,7 +412,7 @@ describe('composeExchange', () => {
         composed$,
         subscribe({
           next: (result) => {
-            results[0].push(result.operation);
+            results[0]!.push(result.operation);
           },
         }),
       );
@@ -423,7 +421,7 @@ describe('composeExchange', () => {
         composed$,
         subscribe({
           next: (result) => {
-            results[1].push(result.operation);
+            results[1]!.push(result.operation);
           },
         }),
       );
@@ -432,7 +430,7 @@ describe('composeExchange', () => {
         composed$,
         subscribe({
           next: (result) => {
-            results[2].push(result.operation);
+            results[2]!.push(result.operation);
           },
         }),
       );

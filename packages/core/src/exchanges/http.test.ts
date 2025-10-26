@@ -36,7 +36,7 @@ describe('httpExchange', () => {
     it('should execute mutation operation', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: { createUser: { id: '1' } } }),
+        json: () => Promise.resolve({ data: { createUser: { id: '1' } } }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -83,7 +83,7 @@ describe('httpExchange', () => {
     it('should send POST request with correct body', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -103,7 +103,7 @@ describe('httpExchange', () => {
     it('should include query source in body', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -112,15 +112,15 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1].body);
+      const callArgs = mockFetch.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body) as Record<string, unknown>;
       expect(body).toHaveProperty('query');
     });
 
     it('should include variables in body', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -129,15 +129,15 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1].body);
+      const callArgs = mockFetch.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body) as Record<string, unknown>;
       expect(body.variables).toEqual({ id: 1 });
     });
 
     it('should set Content-Type header to application/json', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -146,14 +146,14 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].headers['Content-Type']).toBe('application/json');
+      const callArgs = mockFetch.mock.calls[0]!;
+      expect((callArgs[1] as { headers: Record<string, string> }).headers['Content-Type']).toBe('application/json');
     });
 
     it('should include custom headers', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({
@@ -165,8 +165,8 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].headers.Authorization).toBe('Bearer token123');
+      const callArgs = mockFetch.mock.calls[0]!;
+      expect((callArgs[1] as { headers: Record<string, string> }).headers.Authorization).toBe('Bearer token123');
     });
   });
 
@@ -174,7 +174,7 @@ describe('httpExchange', () => {
     it('should parse successful response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: { user: { id: '1', name: 'Alice' } } }),
+        json: () => Promise.resolve({ data: { user: { id: '1', name: 'Alice' } } }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -183,13 +183,13 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].data).toEqual({ user: { id: '1', name: 'Alice' } });
+      expect(results[0]!.data).toEqual({ user: { id: '1', name: 'Alice' } });
     });
 
     it('should extract data from response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: { test: true } }),
+        json: () => Promise.resolve({ data: { test: true } }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -198,13 +198,13 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].data).toEqual({ test: true });
+      expect(results[0]!.data).toEqual({ test: true });
     });
 
     it('should extract GraphQL errors from response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: () => Promise.resolve({
           errors: [{ message: 'User not found' }],
         }),
       });
@@ -215,15 +215,15 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors).toHaveLength(1);
-      expect(results[0].errors![0].message).toBe('User not found');
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors).toHaveLength(1);
+      expect(results[0]!.errors![0]!.message).toBe('User not found');
     });
 
     it('should extract extensions from response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: () => Promise.resolve({
           data: {},
           extensions: { tracing: { duration: 123 } },
         }),
@@ -235,7 +235,7 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].extensions).toEqual({ tracing: { duration: 123 } });
+      expect(results[0]!.extensions).toEqual({ tracing: { duration: 123 } });
     });
   });
 
@@ -249,8 +249,8 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors![0].message).toBe('Network error');
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors![0]!.message).toBe('Network error');
     });
 
     it('should handle HTTP error status codes', async () => {
@@ -266,16 +266,14 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors![0].message).toContain('500');
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors![0]!.message).toContain('500');
     });
 
     it('should handle JSON parse errors', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => {
-          throw new Error('Invalid JSON');
-        },
+        json: () => Promise.reject(new Error('Invalid JSON')),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -284,8 +282,8 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors![0].message).toBe('Invalid JSON');
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors![0]!.message).toBe('Invalid JSON');
     });
 
     it('should create ExchangeError with correct properties', async () => {
@@ -297,7 +295,7 @@ describe('httpExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(isExchangeError(results[0].errors![0], 'http')).toBe(true);
+      expect(isExchangeError(results[0]!.errors![0], 'http')).toBe(true);
     });
   });
 
@@ -314,7 +312,7 @@ describe('httpExchange', () => {
       await testExchange(exchange, forward, [operation]);
 
       expect(forwardedOps).toHaveLength(1);
-      expect(forwardedOps[0].variant).toBe('teardown');
+      expect(forwardedOps[0]!.variant).toBe('teardown');
     });
   });
 
@@ -322,7 +320,7 @@ describe('httpExchange', () => {
     it('should use provided URL', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://custom.com/api' });
@@ -337,7 +335,7 @@ describe('httpExchange', () => {
     it('should use provided mode', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql', mode: 'cors' });
@@ -346,14 +344,14 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].mode).toBe('cors');
+      const callArgs = mockFetch.mock.calls[0]!;
+      expect((callArgs[1] as { mode: string }).mode).toBe('cors');
     });
 
     it('should use provided credentials', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: {} }),
+        json: () => Promise.resolve({ data: {} }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql', credentials: 'include' });
@@ -362,8 +360,8 @@ describe('httpExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].credentials).toBe('include');
+      const callArgs = mockFetch.mock.calls[0]!;
+      expect((callArgs[1] as { credentials: string }).credentials).toBe('include');
     });
   });
 });

@@ -180,8 +180,7 @@ describe('pipe', () => {
       const operations: string[] = [];
 
       const op1: Operator<number> = (src) => (sink) => {
-        src({
-          start: (tb) => sink.start(tb),
+        return src({
           next: (v) => {
             operations.push('op1');
             sink.next(v);
@@ -191,8 +190,7 @@ describe('pipe', () => {
       };
 
       const op2: Operator<number> = (src) => (sink) => {
-        src({
-          start: (tb) => sink.start(tb),
+        return src({
           next: (v) => {
             operations.push('op2');
             sink.next(v);
@@ -202,8 +200,7 @@ describe('pipe', () => {
       };
 
       const op3: Operator<number> = (src) => (sink) => {
-        src({
-          start: (tb) => sink.start(tb),
+        return src({
           next: (v) => {
             operations.push('op3');
             sink.next(v);
@@ -223,8 +220,7 @@ describe('pipe', () => {
       const source = fromArray([1, 2, 3, 4, 5]);
 
       const double: Operator<number> = (src) => (sink) => {
-        src({
-          start: (tb) => sink.start(tb),
+        return src({
           next: (v) => sink.next(v * 2),
           complete: () => sink.complete(),
         });
@@ -239,8 +235,7 @@ describe('pipe', () => {
       const source = fromArray([1, 2, 3, 4, 5]);
 
       const addOne: Operator<number> = (src) => (sink) => {
-        src({
-          start: (tb) => sink.start(tb),
+        return src({
           next: (v) => sink.next(v + 1),
           complete: () => sink.complete(),
         });

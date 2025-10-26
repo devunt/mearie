@@ -250,7 +250,7 @@ describe('Type guards', () => {
 
     it('should return false for non-error values', () => {
       expect(isGraphQLError(null)).toBe(false);
-      expect(isGraphQLError(undefined)).toBe(false);
+      expect(isGraphQLError(void 0)).toBe(false);
       expect(isGraphQLError('error')).toBe(false);
       expect(isGraphQLError({})).toBe(false);
     });
@@ -279,7 +279,7 @@ describe('Type guards', () => {
 
     it('should return false for non-error values', () => {
       expect(isExchangeError(null)).toBe(false);
-      expect(isExchangeError(undefined)).toBe(false);
+      expect(isExchangeError(void 0)).toBe(false);
       expect(isExchangeError('error')).toBe(false);
       expect(isExchangeError({})).toBe(false);
     });
@@ -336,7 +336,7 @@ describe('Type guards', () => {
 
     it('should return false for non-error values', () => {
       expect(isAggregatedError(null)).toBe(false);
-      expect(isAggregatedError(undefined)).toBe(false);
+      expect(isAggregatedError(void 0)).toBe(false);
       expect(isAggregatedError('error')).toBe(false);
       expect(isAggregatedError({})).toBe(false);
     });

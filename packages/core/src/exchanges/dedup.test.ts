@@ -20,8 +20,8 @@ describe('dedupExchange', () => {
 
       expect(forwardedOps).toHaveLength(1);
       expect(results).toHaveLength(2);
-      expect(results[0].data).toEqual({ test: true });
-      expect(results[1].data).toEqual({ test: true });
+      expect(results[0]!.data).toEqual({ test: true });
+      expect(results[1]!.data).toEqual({ test: true });
     });
 
     it('should not deduplicate different queries', async () => {
@@ -138,9 +138,9 @@ describe('dedupExchange', () => {
       const results = await testExchange(exchange, forward, [op1, op2, op3]);
 
       expect(results).toHaveLength(3);
-      expect(results[0].data).toEqual({ id: '1', name: 'Alice' });
-      expect(results[1].data).toEqual({ id: '1', name: 'Alice' });
-      expect(results[2].data).toEqual({ id: '1', name: 'Alice' });
+      expect(results[0]!.data).toEqual({ id: '1', name: 'Alice' });
+      expect(results[1]!.data).toEqual({ id: '1', name: 'Alice' });
+      expect(results[2]!.data).toEqual({ id: '1', name: 'Alice' });
     });
 
     it('should preserve original operation keys in results', async () => {
@@ -157,9 +157,9 @@ describe('dedupExchange', () => {
       const results = await testExchange(exchange, forward, [op1, op2, op3]);
 
       expect(results).toHaveLength(3);
-      expect(results[0].operation.key).toBe('op-1');
-      expect(results[1].operation.key).toBe('op-2');
-      expect(results[2].operation.key).toBe('op-3');
+      expect(results[0]!.operation.key).toBe('op-1');
+      expect(results[1]!.operation.key).toBe('op-2');
+      expect(results[2]!.operation.key).toBe('op-3');
     });
   });
 

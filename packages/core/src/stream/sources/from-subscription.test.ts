@@ -1,14 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fromSubscription } from './from-subscription.ts';
-import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from '../operators/map.ts';
-import type { Subscription } from '../types.ts';
 
 describe('fromSubscription', () => {
   describe('basic functionality', () => {
     it('should emit initial value immediately', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const poke = () => () => {};
 
@@ -56,7 +54,7 @@ describe('fromSubscription', () => {
     });
 
     it('should call unsubscribe on cancel', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const unsubscribe = vi.fn();
       const poke = () => unsubscribe;
@@ -164,7 +162,7 @@ describe('fromSubscription', () => {
     });
 
     it('should setup poke even if unsubscribed immediately', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const poke = vi.fn(() => () => {});
 
@@ -185,7 +183,7 @@ describe('fromSubscription', () => {
     });
 
     it('should call unsubscribe only once', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const unsubscribe = vi.fn();
       const poke = () => unsubscribe;
@@ -315,8 +313,8 @@ describe('fromSubscription', () => {
     });
 
     it('should emit undefined values', () => {
-      let state: number | undefined = undefined;
-      const pull = () => state;
+      const stateHolder = { value: undefined as number | undefined };
+      const pull = () => stateHolder.value;
       let signal: (() => void) | null = null;
       const poke = (s: () => void) => {
         signal = s;
@@ -333,7 +331,7 @@ describe('fromSubscription', () => {
         complete: () => {},
       });
 
-      state = 1;
+      stateHolder.value = 1;
       signal!();
 
       expect(emitted).toEqual([undefined, 1]);
@@ -465,7 +463,7 @@ describe('fromSubscription', () => {
 
   describe('subscription', () => {
     it('should return subscription object', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const poke = () => () => {};
 
@@ -482,7 +480,7 @@ describe('fromSubscription', () => {
     });
 
     it('should allow calling unsubscribe', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const poke = () => () => {};
 
@@ -526,7 +524,7 @@ describe('fromSubscription', () => {
     });
 
     it('should handle signal without state change', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       let signal: (() => void) | null = null;
       const poke = (s: () => void) => {
@@ -553,7 +551,7 @@ describe('fromSubscription', () => {
 
   describe('edge cases', () => {
     it('should handle unsubscribe returning undefined', () => {
-      let state = 1;
+      const state = 1;
       const pull = () => state;
       const poke = () => undefined as unknown as () => void;
 

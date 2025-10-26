@@ -13,8 +13,8 @@ describe('terminalExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors).toHaveLength(1);
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[0]!.errors).toHaveLength(1);
     });
 
     it('should return error for query operation', async () => {
@@ -25,7 +25,7 @@ describe('terminalExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should return error for mutation operation', async () => {
@@ -36,7 +36,7 @@ describe('terminalExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should return error for subscription operation', async () => {
@@ -47,7 +47,7 @@ describe('terminalExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
   });
 
@@ -59,7 +59,7 @@ describe('terminalExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      const error = results[0].errors![0];
+      const error = results[0]!.errors![0]!;
       expect(error.message).toBe(
         'No terminal exchange found in exchange chain. Did you forget to add httpExchange to your exchanges array?',
       );
@@ -72,7 +72,7 @@ describe('terminalExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      const error = results[0].errors![0];
+      const error = results[0]!.errors![0]!;
       expect(isExchangeError(error, 'terminal')).toBe(true);
     });
 
@@ -83,7 +83,7 @@ describe('terminalExchange', () => {
 
       const results = await testExchange(exchange, forward, [operation]);
 
-      expect(results[0].operation).toEqual(operation);
+      expect(results[0]!.operation).toEqual(operation);
     });
   });
 
@@ -98,9 +98,9 @@ describe('terminalExchange', () => {
       const results = await testExchange(exchange, forward, [op1, op2, op3]);
 
       expect(results).toHaveLength(3);
-      expect(results[0].errors).toBeDefined();
-      expect(results[1].errors).toBeDefined();
-      expect(results[2].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
+      expect(results[1]!.errors).toBeDefined();
+      expect(results[2]!.errors).toBeDefined();
     });
   });
 

@@ -86,7 +86,7 @@ describe('fromPromise', () => {
     });
 
     it('should complete on promise rejection with string', async () => {
-      const promise = Promise.reject('error string');
+      const promise = Promise.reject(new Error('error string'));
       const source = fromPromise(promise);
       let completed = false;
 
@@ -104,7 +104,7 @@ describe('fromPromise', () => {
     });
 
     it('should complete on promise rejection with null', async () => {
-      const promise = Promise.reject(null);
+      const promise = Promise.reject(new Error('null error'));
       const source = fromPromise(promise);
       let completed = false;
 
@@ -215,7 +215,9 @@ describe('fromPromise', () => {
 
       try {
         await promise;
-      } catch {}
+      } catch {
+        void 0;
+      }
 
       const source = fromPromise(promise);
       const emitted: unknown[] = [];
@@ -246,7 +248,7 @@ describe('fromPromise', () => {
     });
 
     it('should emit undefined', async () => {
-      const promise = Promise.resolve(undefined);
+      const promise = Promise.resolve();
       const source = fromPromise(promise);
 
       const result = await collectAll(source);

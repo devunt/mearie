@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { retryExchange } from './retry.ts';
 import { makeTestOperation, makeTestForward, testExchange } from './test-utils.ts';
 import { ExchangeError } from '../errors.ts';
+import type { Operation } from '../exchange.ts';
 
 describe('retryExchange', () => {
   describe('basic retry', () => {
@@ -28,7 +29,7 @@ describe('retryExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(callCount).toBe(3);
-      expect(results[0].data).toEqual({ success: true });
+      expect(results[0]!.data).toEqual({ success: true });
     });
 
     it('should not retry on non-retryable error', async () => {
@@ -52,7 +53,7 @@ describe('retryExchange', () => {
       const results = await promise;
 
       expect(callCount).toBe(1);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should not retry successful operations', async () => {
@@ -67,7 +68,7 @@ describe('retryExchange', () => {
       const results = await testExchange(exchange, forward, [operation]);
 
       expect(callCount).toBe(1);
-      expect(results[0].data).toEqual({ success: true });
+      expect(results[0]!.data).toEqual({ success: true });
     });
 
     it('should not retry mutations', async () => {
@@ -91,7 +92,7 @@ describe('retryExchange', () => {
       const results = await promise;
 
       expect(callCount).toBe(1);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
   });
 
@@ -117,7 +118,7 @@ describe('retryExchange', () => {
       const results = await promise;
 
       expect(callCount).toBe(2);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should default to 3 attempts', async () => {
@@ -141,7 +142,7 @@ describe('retryExchange', () => {
       const results = await promise;
 
       expect(callCount).toBe(3);
-      expect(results[0].errors).toBeDefined();
+      expect(results[0]!.errors).toBeDefined();
     });
 
     it('should stop after max attempts reached', async () => {
@@ -197,7 +198,6 @@ describe('retryExchange', () => {
     });
 
     it('should use custom backoff function', async () => {
-      let callCount = 0;
       const backoffCalls: number[] = [];
       const exchange = retryExchange({
         maxAttempts: 3,
@@ -428,7 +428,7 @@ describe('retryExchange', () => {
 
   describe('retry metadata', () => {
     it('should add retry metadata to operation', async () => {
-      let retryOp;
+      let retryOp: Operation | undefined;
       const exchange = retryExchange({ maxAttempts: 2 });
       const forward = makeTestForward((op) => {
         if (op.metadata.retry) {
@@ -450,7 +450,7 @@ describe('retryExchange', () => {
       await promise;
 
       expect(retryOp).toBeDefined();
-      expect(retryOp.metadata.retry).toBeDefined();
+      expect((retryOp!.metadata as { retry?: unknown }).retry).toBeDefined();
     });
 
     it('should increment attempt counter', async () => {
@@ -479,7 +479,7 @@ describe('retryExchange', () => {
     });
 
     it('should include delay in metadata', async () => {
-      let retryOp;
+      let retryOp: Operation | undefined;
 
       const exchange = retryExchange({ maxAttempts: 2, backoff: () => 1000 });
       const forward = makeTestForward((op) => {
@@ -500,11 +500,11 @@ describe('retryExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(retryOp.metadata.retry.delay).toBe(1000);
+      expect((retryOp!.metadata as { retry: { delay: number } }).retry.delay).toBe(1000);
     });
 
     it('should set dedup.skip to true for retries', async () => {
-      let retryOp;
+      let retryOp: Operation | undefined;
       const exchange = retryExchange({ maxAttempts: 2 });
       const forward = makeTestForward((op) => {
         if (op.metadata.retry) {
@@ -525,7 +525,7 @@ describe('retryExchange', () => {
       const promise = testExchange(exchange, forward, [operation]);
       await promise;
 
-      expect(retryOp.metadata.dedup?.skip).toBe(true);
+      expect((retryOp!.metadata as { dedup?: { skip: boolean } }).dedup?.skip).toBe(true);
     });
   });
 

@@ -21,7 +21,83 @@ const genreMap = new Map<string, Genre>(genres.map((g) => [g.id, g]));
 
 const reviews = new Map<string, Review>();
 
-const eventTarget = new EventTarget();
+const generateReview = (movie: Movie): Review => {
+  let rating: number;
+  if (movie.rating) {
+    const variance = faker.number.float({ min: -2, max: 2, fractionDigits: 1 });
+    rating = Math.max(1, Math.min(10, movie.rating + variance));
+    rating = Math.round(rating * 2) / 2;
+  } else {
+    rating = faker.number.int({ min: 2, max: 20 }) / 2;
+  }
+
+  const castMembers = movie.credits
+    .filter((c) => c.type === 'cast')
+    .map((c) => personMap.get(c.person_id))
+    .filter(Boolean);
+
+  const movieGenres = movie.genre_ids.map((id) => genreMap.get(id)).filter(Boolean);
+
+  const adjective = faker.word.adjective();
+  const openers = [
+    `${adjective.charAt(0).toUpperCase() + adjective.slice(1)} film!`,
+    `${faker.helpers.arrayElement(['Absolutely', 'Truly', 'Really', 'Genuinely'])} ${faker.word.adjective()}.`,
+    `${faker.helpers.arrayElement(['The', 'This', 'Such a'])} ${faker.word.adjective()} ${faker.helpers.arrayElement(['movie', 'film', 'experience'])}.`,
+  ];
+
+  const aspects = [
+    `The ${faker.helpers.arrayElement(['cinematography', 'direction', 'screenplay', 'acting', 'soundtrack', 'visual effects', 'editing', 'pacing'])} was ${faker.word.adjective()}.`,
+    ...(castMembers.length > 0
+      ? [
+          `${faker.helpers.arrayElement(castMembers)!.name} ${faker.helpers.arrayElement(['delivered', 'gave', 'brought'])} a ${faker.word.adjective()} performance.`,
+        ]
+      : []),
+    `The ${faker.helpers.arrayElement(['story', 'plot', 'narrative', 'character development'])} ${faker.helpers.arrayElement(['kept me', 'had me', 'left me'])} ${faker.word.adjective()}.`,
+    `${faker.helpers.arrayElement(['Loved', 'Enjoyed', 'Appreciated', 'Admired'])} the ${faker.word.adjective()} ${faker.helpers.arrayElement(['atmosphere', 'tone', 'style', 'approach'])}.`,
+  ];
+
+  if (movieGenres.length > 0) {
+    const genre = faker.helpers.arrayElement(movieGenres)!;
+    aspects.push(`Great ${genre.name.toLowerCase()} ${faker.helpers.arrayElement(['film', 'movie', 'experience'])}.`);
+  }
+
+  const conclusions = [
+    `${faker.helpers.arrayElement(['Highly recommend', 'Worth watching', 'Must-see', 'Definitely check it out', 'Give it a watch'])}!`,
+    `${faker.helpers.arrayElement(['Would', 'Will', 'Definitely going to'])} watch again.`,
+    `${rating}/10 ${faker.helpers.arrayElement(['for sure', 'without a doubt', 'easily'])}.`,
+    faker.helpers.arrayElement(['A masterpiece.', 'Perfection.', 'Cinema at its finest.', 'Just wow.', 'Speechless.']),
+  ];
+
+  const parts = [
+    faker.helpers.arrayElement(openers),
+    ...faker.helpers.arrayElements(aspects, faker.number.int({ min: 1, max: 3 })),
+  ];
+
+  if (faker.datatype.boolean()) {
+    parts.push(faker.helpers.arrayElement(conclusions));
+  }
+
+  const text = parts.join(' ');
+
+  return {
+    id: faker.string.uuid(),
+    movieId: movie.id,
+    rating,
+    text,
+    createdAt: faker.date.recent().toISOString(),
+  };
+};
+
+export const seedReviews = () => {
+  for (const movie of movies) {
+    const reviewCount = faker.number.int({ min: 3, max: 4 });
+    for (let i = 0; i < reviewCount; i++) {
+      const review = generateReview(movie);
+      reviews.set(review.id, review);
+    }
+  }
+};
+
 
 const encodeGlobalId = (type: string, id: string): string => {
   return Buffer.from(`${type}:${id}`).toString('base64').replaceAll('=', '');
@@ -36,16 +112,6 @@ const decodeGlobalId = (globalId: string): { type: string; id: string } | null =
   } catch {
     return null;
   }
-};
-
-const generateReview = (movieId: string): Review => {
-  return {
-    id: faker.string.uuid(),
-    movieId,
-    rating: faker.number.float({ min: 1, max: 5, fractionDigits: 1 }),
-    text: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.8 }) ?? null,
-    createdAt: faker.date.recent().toISOString(),
-  };
 };
 
 const encodeCursor = (index: number): string => {
@@ -206,12 +272,15 @@ export const resolvers = {
       const decodedMovie = decodeGlobalId(args.input.movieId);
       if (decodedMovie?.type !== 'Movie') throw new Error('Invalid movie ID');
 
-      const review = generateReview(decodedMovie.id);
-      review.rating = args.input.rating;
-      review.text = args.input.text ?? null;
+      const review: Review = {
+        id: faker.string.uuid(),
+        movieId: decodedMovie.id,
+        rating: args.input.rating,
+        text: args.input.text ?? null,
+        createdAt: new Date().toISOString(),
+      };
 
       reviews.set(review.id, review);
-      eventTarget.dispatchEvent(new CustomEvent('reviewAdded', { detail: review }));
 
       return review;
     },
@@ -225,47 +294,18 @@ export const resolvers = {
 
   Subscription: {
     reviewAdded: {
-      subscribe: () => {
-        const asyncIterator = {
-          [Symbol.asyncIterator]() {
-            const queue: Review[] = [];
-            let resolveNext: ((value: IteratorResult<Review>) => void) | null = null;
+      subscribe: async function* () {
+        while (true) {
+          const delay = faker.number.int({ min: 1000, max: 3000 });
+          await new Promise((resolve) => setTimeout(resolve, delay));
 
-            const handler = (event: Event) => {
-              const review = (event as CustomEvent<Review>).detail;
-              if (resolveNext) {
-                resolveNext({ value: review, done: false });
-                resolveNext = null;
-              } else {
-                queue.push(review);
-              }
-            };
+          const randomMovie = faker.helpers.arrayElement([...movies]);
+          const review = generateReview(randomMovie);
+          review.createdAt = new Date().toISOString();
+          reviews.set(review.id, review);
 
-            eventTarget.addEventListener('reviewAdded', handler);
-
-            return {
-              next() {
-                if (queue.length > 0) {
-                  return Promise.resolve({ value: queue.shift()!, done: false });
-                }
-
-                return new Promise<IteratorResult<Review>>((resolve) => {
-                  resolveNext = resolve;
-                });
-              },
-              return() {
-                eventTarget.removeEventListener('reviewAdded', handler);
-                return Promise.resolve({ value: undefined, done: true });
-              },
-              throw(error: Error) {
-                eventTarget.removeEventListener('reviewAdded', handler);
-                return Promise.reject(error);
-              },
-            };
-          },
-        };
-
-        return asyncIterator;
+          yield review;
+        }
       },
       resolve: (payload: Review) => payload,
     },
@@ -313,18 +353,15 @@ export const resolvers = {
     posterUrl: (movie: Movie) => movie.poster_url,
     backdropUrl: (movie: Movie) => movie.backdrop_url,
     imdbId: (movie: Movie) => movie.imdb_id,
-    releaseDate: (movie: Movie) => movie.release_date,
+    releaseDate: (movie: Movie) => (movie.release_date ? `${movie.release_date}T00:00:00Z` : null),
     runtime: (movie: Movie) => movie.runtime,
     rating: (movie: Movie) => movie.rating,
-    cast: (movie: Movie) =>
-      movie.credits
-        .filter((c) => c.type === 'cast')
-        .map((c) => personMap.get(c.person_id))
-        .filter(Boolean),
     credits: (movie: Movie) => movie.credits,
     genres: (movie: Movie) => movie.genre_ids.map((id) => genreMap.get(id)).filter(Boolean),
     reviews: (movie: Movie) => {
-      return [...reviews.values()].filter((r) => r.movieId === movie.id);
+      return [...reviews.values()]
+        .filter((r) => r.movieId === movie.id)
+        .toSorted((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     },
   },
 
@@ -336,7 +373,6 @@ export const resolvers = {
 
   Genre: {
     id: (genre: Genre) => encodeGlobalId('Genre', genre.id),
-    displayName: (genre: Genre) => genre.name,
     movies: (genre: Genre) => movies.filter((m) => m.genre_ids.includes(genre.id)),
   },
 

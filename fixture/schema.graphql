@@ -24,11 +24,6 @@ Valid HTTP or HTTPS URL string
 """
 scalar URL
 
-"""
-ISO 8601 formatted date string (e.g., "2024-03-15")
-"""
-scalar Date
-
 # ==============================================================================
 # Interfaces
 # ==============================================================================
@@ -146,7 +141,7 @@ type Movie implements Node {
   """
   Full release date
   """
-  releaseDate: Date
+  releaseDate: DateTime
 
   """
   Runtime in minutes
@@ -157,11 +152,6 @@ type Movie implements Node {
   Average rating from 0 to 10
   """
   rating: Float
-
-  """
-  People who appeared in this movie (cast)
-  """
-  cast: [Person!]! @deprecated(reason: "Use 'credits' field instead for full cast and crew information")
 
   """
   Full credits including both cast and crew
@@ -219,11 +209,6 @@ type Genre implements Node {
   name: String!
 
   """
-  Display name for UI (deprecated, use name instead)
-  """
-  displayName: String! @deprecated(reason: "Use 'name' field directly")
-
-  """
   Movies associated with this genre
   """
   movies: [Movie!]!
@@ -249,7 +234,7 @@ type Review implements Node {
   movie: Movie!
 
   """
-  Rating from 1.0 to 5.0
+  Rating from 0.5 to 10.0
   """
   rating: Float!
 

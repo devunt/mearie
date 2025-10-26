@@ -91,7 +91,11 @@ export const dedupExchange = (): Exchange => {
         merge(skip$, deduplicate$, teardown$),
         forward,
         mergeMap((result) => {
-          if (result.operation.variant !== 'request') {
+          if (
+            result.operation.variant !== 'request' ||
+            result.operation.artifact.kind === 'mutation' ||
+            result.operation.artifact.kind === 'fragment'
+          ) {
             return fromValue(result);
           }
 

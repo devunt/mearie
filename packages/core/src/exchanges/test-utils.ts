@@ -4,7 +4,7 @@ import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 import { vi } from 'vitest';
 import { subscribe } from '../stream/sinks/subscribe.ts';
-import type { Source } from '../stream/types.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
 
 let operationCounter = 0;
 
@@ -29,21 +29,20 @@ export const makeTestOperation = (options: TestOperationOptions = {}): Operation
     selections = [],
   } = options;
 
+  if (variant === 'teardown') {
+    return {
+      variant: 'teardown',
+      key,
+      metadata,
+    };
+  }
+
   const artifact: Artifact = {
     kind,
     name,
     body: '',
     selections,
   };
-
-  if (variant === 'teardown') {
-    return {
-      variant: 'teardown',
-      key,
-      artifact,
-      metadata,
-    };
-  }
 
   return {
     variant: 'request',
@@ -77,35 +76,6 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
     );
 };
 
-export const fromArrayMicrotick = <T>(values: T[]): Source<T> => {
-  return (sink) => {
-    let cancelled = false;
-    let index = 0;
-
-    const next = () => {
-      if (cancelled) {
-        return;
-      }
-
-      if (index >= values.length) {
-        sink.complete();
-        return;
-      }
-
-      sink.next(values[index++]!);
-      queueMicrotask(() => next());
-    };
-
-    next();
-
-    return {
-      unsubscribe() {
-        cancelled = true;
-      },
-    };
-  };
-};
-
 export const testExchange = async (
   exchange: Exchange,
   forward: ExchangeIO,
@@ -114,8 +84,10 @@ export const testExchange = async (
   const results: OperationResult[] = [];
   vi.useFakeTimers();
 
+  const subject = makeSubject<Operation>();
+
   const unsubscribe = pipe(
-    fromArrayMicrotick(operations),
+    subject.source,
     exchange(forward),
     subscribe({
       next: (result) => {
@@ -124,8 +96,16 @@ export const testExchange = async (
     }),
   );
 
+  for (const operation of operations) {
+    subject.next(operation);
+    await Promise.resolve();
+  }
+
+  subject.complete();
+
   await vi.runAllTimersAsync();
   vi.useRealTimers();
+
   unsubscribe();
 
   return results;

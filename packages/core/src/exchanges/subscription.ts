@@ -74,47 +74,59 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
             filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
           );
 
-          const source$ = make<OperationResult>((observer) =>
-            client.subscribe(
-              {
-                query: op.artifact.body,
-                variables: op.variables as Record<string, unknown>,
-              },
-              {
-                next: (result) => {
-                  const response = result as GraphQLResponse;
+          const source$ = make<OperationResult>((observer) => {
+            let unsubscribe: (() => void) | undefined;
+            let completed = false;
 
-                  observer.next({
-                    operation: op,
-                    data: response.data,
-                    errors: response.errors?.map(
-                      (err) =>
-                        new GraphQLError(err.message, {
-                          path: err.path,
-                          locations: err.locations,
-                          extensions: err.extensions,
+            void Promise.resolve().then(() => {
+              if (completed) return;
+
+              unsubscribe = client.subscribe(
+                {
+                  query: op.artifact.body,
+                  variables: op.variables as Record<string, unknown>,
+                },
+                {
+                  next: (result) => {
+                    const response = result as GraphQLResponse;
+
+                    observer.next({
+                      operation: op,
+                      data: response.data,
+                      errors: response.errors?.map(
+                        (err) =>
+                          new GraphQLError(err.message, {
+                            path: err.path,
+                            locations: err.locations,
+                            extensions: err.extensions,
+                          }),
+                      ),
+                      extensions: response.extensions,
+                    });
+                  },
+                  error: (error) => {
+                    observer.next({
+                      operation: op,
+                      errors: [
+                        new ExchangeError(error instanceof Error ? error.message : String(error), {
+                          exchangeName: 'subscription',
+                          cause: error,
                         }),
-                    ),
-                    extensions: response.extensions,
-                  });
-                },
-                error: (error) => {
-                  observer.next({
-                    operation: op,
-                    errors: [
-                      new ExchangeError(error instanceof Error ? error.message : String(error), {
-                        exchangeName: 'subscription',
-                        cause: error,
-                      }),
-                    ],
-                  });
+                      ],
+                    });
 
-                  observer.complete();
+                    observer.complete();
+                  },
+                  complete: observer.complete,
                 },
-                complete: observer.complete,
-              },
-            ),
-          );
+              );
+            });
+
+            return () => {
+              completed = true;
+              unsubscribe?.();
+            };
+          });
 
           return pipe(source$, takeUntil(teardown$));
         }),

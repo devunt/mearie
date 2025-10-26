@@ -35,7 +35,7 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
     shouldRetry = defaultShouldRetry,
   } = options;
 
-  return (forward) => {
+  return ({ forward }) => {
     return (ops$) => {
       const { source: retries$, next } = makeSubject<Operation>();
       const tornDown = new Set<string>();

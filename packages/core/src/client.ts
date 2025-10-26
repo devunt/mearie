@@ -1,4 +1,4 @@
-import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs } from '@mearie/shared';
+import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs, SchemaMeta } from '@mearie/shared';
 import type { Exchange, Operation, OperationResult } from './exchange.ts';
 import { composeExchange } from './exchanges/compose.ts';
 import { fragmentExchange } from './exchanges/fragment.ts';
@@ -20,20 +20,28 @@ export type FragmentOptions = {};
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
 export type ClientOptions = {
+  schema: SchemaMeta;
   exchanges: Exchange[];
 };
 
 export class Client {
+  #schema: SchemaMeta;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
   constructor(config: ClientOptions) {
+    this.#schema = config.schema;
+
     const exchange = composeExchange({
       exchanges: [...config.exchanges, fragmentExchange(), terminalExchange()],
     });
 
     this.operations$ = makeSubject<Operation>();
-    this.results$ = exchange(never)(this.operations$.source);
+    this.results$ = exchange({ forward: never, client: this })(this.operations$.source);
+  }
+
+  get schema(): SchemaMeta {
+    return this.#schema;
   }
 
   private createOperationKey(): string {

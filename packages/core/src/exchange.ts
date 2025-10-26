@@ -1,6 +1,7 @@
 import type { Artifact, ArtifactKind, VariablesOf } from '@mearie/shared';
 import type { Source } from './stream/index.ts';
 import type { OperationError } from './errors.ts';
+import type { Client } from './client.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface OperationMetadataMap {}
@@ -30,6 +31,11 @@ export type OperationResult = {
   stale?: boolean;
 };
 
+export type ExchangeInput = {
+  forward: ExchangeIO;
+  client: Client;
+};
+
 export type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 
-export type Exchange = (forward: ExchangeIO) => ExchangeIO;
+export type Exchange = (input: ExchangeInput) => ExchangeIO;

@@ -36,7 +36,7 @@ declare module '../exchange.ts' {
  * @returns An exchange that deduplicates in-flight operations.
  */
 export const dedupExchange = (): Exchange => {
-  return (forward) => {
+  return ({ forward }) => {
     return (ops$) => {
       const operations = new Map<string, Set<string>>();
 

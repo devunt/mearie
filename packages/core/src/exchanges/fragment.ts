@@ -12,7 +12,7 @@ declare module '../exchange.ts' {
 }
 
 export const fragmentExchange = (): Exchange => {
-  return (forward) => {
+  return ({ forward }) => {
     return (ops$) => {
       const fragment$ = pipe(
         ops$,

@@ -10,10 +10,11 @@ import { createClient as createSSEClient } from 'graphql-sse';
 import { schema } from '~graphql';
 
 export const mearieClient = createClient({
+  schema,
   exchanges: [
     dedupExchange(),
     retryExchange(),
-    cacheExchange({ schemaMeta: schema }),
+    cacheExchange(),
     httpExchange({
       url: 'https://api.mearie.dev/graphql',
     }),

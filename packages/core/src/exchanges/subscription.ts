@@ -63,7 +63,7 @@ export type SubscriptionExchangeOptions = {
 export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exchange => {
   const { client } = options;
 
-  return (forward) => {
+  return ({ forward }) => {
     return (ops$) => {
       const subscription$ = pipe(
         ops$,

@@ -19,15 +19,12 @@ export type CacheOptions = {
   fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
 };
 
-export type CacheExchange = {
-  cache: Cache;
-} & Exchange;
+export const cacheExchange = (options: CacheOptions = {}): Exchange => {
+  const { fetchPolicy = 'cache-first' } = options;
 
-export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
-  const { schemaMeta = { entities: {} }, fetchPolicy = 'cache-first' } = options;
-  const cache = new Cache(schemaMeta);
+  return ({ forward, client }) => {
+    const cache = new Cache(client.schema);
 
-  const exchange: Exchange = (forward) => {
     return (ops$) => {
       const teardowns$ = pipe(
         ops$,
@@ -148,6 +145,4 @@ export const cacheExchange = (options: CacheOptions = {}): CacheExchange => {
       return merge(fragment$, cache$, forward$);
     };
   };
-
-  return Object.assign(exchange, { cache });
 };

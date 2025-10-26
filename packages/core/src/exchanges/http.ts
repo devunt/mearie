@@ -126,7 +126,7 @@ const executeFetch = async ({
 export const httpExchange = (options: HttpOptions): Exchange => {
   const { url, headers, mode, credentials } = options;
 
-  return (forward) => {
+  return ({ forward }) => {
     return (ops$) => {
       const inflight = new Map<string, AbortController>();
 

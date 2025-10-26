@@ -9,11 +9,11 @@ export type ComposeExchangeOptions = {
 export const composeExchange = (options: ComposeExchangeOptions): Exchange => {
   const { exchanges } = options;
 
-  return (forward) => {
+  return ({ forward, client }) => {
     // eslint-disable-next-line unicorn/no-array-reduce
     return exchanges.reduceRight<ExchangeIO>((forward, exchange) => {
       return (ops$) => {
-        return pipe(ops$, share(), exchange(forward), share());
+        return pipe(ops$, share(), exchange({ forward, client }), share());
       };
     }, forward);
   };

@@ -56,21 +56,16 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
     }
 
     fn gen_top_level(&self) -> StmtVec<'b> {
-        self.ast.vec_from_iter(chain![
-            self.gen_operation_aliases(),
-            self.gen_fragment_aliases(),
-        ])
+        self.ast
+            .vec_from_iter(chain![self.gen_operation_aliases(), self.gen_fragment_aliases(),])
     }
 
     fn gen_module(&self) -> StmtVec<'b> {
-        let operation_overloads = self.gen_operation_overloads();
-        let fragment_overloads = self.gen_fragment_overloads();
-
         self.ast.vec_from_iter(chain![
             self.gen_enum_exports(),
+            self.gen_artifact_exports(),
             self.gen_fragment_key_exports(),
-            operation_overloads,
-            fragment_overloads,
+            self.gen_overloads(),
         ])
     }
 
@@ -91,43 +86,47 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
     }
 
     fn gen_enum_exports(&self) -> StmtVec<'b> {
-        self.gen_type_exports(self.schema.enums(), |enum_def| enum_def.name.to_string())
+        self.gen_type_exports(self.schema.enums().map(|enum_def| enum_def.name.to_string()))
+    }
+
+    fn gen_artifact_exports(&self) -> StmtVec<'b> {
+        let operations = self.gen_type_exports(
+            self.document
+                .operations()
+                .filter_map(|operation| operation.name.map(|name| name.to_string())),
+        );
+
+        let fragments = self.gen_type_exports(self.document.fragments().map(|fragment| fragment.name.to_string()));
+
+        self.ast.vec_from_iter(chain![operations, fragments])
     }
 
     fn gen_fragment_key_exports(&self) -> StmtVec<'b> {
-        self.gen_type_exports(self.document.fragments(), |fragment| {
-            format!("{}$key", fragment.name.as_str())
-        })
+        self.gen_type_exports(
+            self.document
+                .fragments()
+                .map(|fragment| format!("{}$key", fragment.name.as_str())),
+        )
     }
 
-    fn gen_operation_overloads(&self) -> StmtVec<'b> {
-        let stmts: Vec<_> = self
+    fn gen_overloads(&self) -> StmtVec<'b> {
+        let operations = self
             .document
             .operations()
-            .filter_map(|operation| self.stmt_operation_overload(operation))
-            .collect();
+            .filter_map(|operation| self.stmt_operation_overload(operation));
 
-        self.ast.vec_from_iter(stmts)
-    }
-
-    fn gen_fragment_overloads(&self) -> StmtVec<'b> {
-        let stmts: Vec<_> = self
+        let fragments = self
             .document
             .fragments()
-            .filter_map(|fragment| self.stmt_fragment_overload(fragment))
-            .collect();
+            .filter_map(|fragment| self.stmt_fragment_overload(fragment));
 
-        self.ast.vec_from_iter(stmts)
+        self.ast.vec_from_iter(chain![operations, fragments])
     }
 
-    fn gen_type_exports<T, F>(&self, items: impl Iterator<Item = T>, name_mapper: F) -> StmtVec<'b>
-    where
-        F: Fn(T) -> String,
-    {
+    fn gen_type_exports(&self, items: impl Iterator<Item = String>) -> StmtVec<'b> {
         self.ast.vec_from_iter(items.map(|item| {
-            let name = name_mapper(item);
-            let import_type = self.type_import(&name);
-            let type_alias = self.decl_type_alias(&name, import_type);
+            let import_type = self.type_import(&item);
+            let type_alias = self.decl_type_alias(&item, import_type);
             self.stmt_export_type(type_alias)
         }))
     }

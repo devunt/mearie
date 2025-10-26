@@ -1,42 +1,30 @@
 import { faker } from '@faker-js/faker';
-import tracks from '../data/tracks.json' with { type: 'json' };
-import albums from '../data/albums.json' with { type: 'json' };
-import artists from '../data/artists.json' with { type: 'json' };
+import movies from '../data/movies.json' with { type: 'json' };
+import people from '../data/people.json' with { type: 'json' };
 import genres from '../data/genres.json' with { type: 'json' };
 
-type Track = (typeof tracks)[number];
-type Album = (typeof albums)[number];
-type Artist = (typeof artists)[number];
+type Movie = (typeof movies)[number];
+type Person = (typeof people)[number];
 type Genre = (typeof genres)[number];
-
-interface Playlist {
-  id: string;
-  name: string;
-  description: string | null;
-  trackIds: string[];
-  createdAt: string;
-}
 
 interface Review {
   id: string;
-  trackId: string;
+  movieId: string;
   rating: number;
   text: string | null;
   createdAt: string;
 }
 
-const trackMap = new Map<string, Track>(tracks.map((t) => [t.id, t]));
-const albumMap = new Map<string, Album>(albums.map((a) => [a.id, a]));
-const artistMap = new Map<string, Artist>(artists.map((a) => [a.id, a]));
+const movieMap = new Map<string, Movie>(movies.map((m) => [m.id, m]));
+const personMap = new Map<string, Person>(people.map((p) => [p.id, p]));
 const genreMap = new Map<string, Genre>(genres.map((g) => [g.id, g]));
 
-const playlists = new Map<string, Playlist>();
 const reviews = new Map<string, Review>();
 
 const eventTarget = new EventTarget();
 
 const encodeGlobalId = (type: string, id: string): string => {
-  return Buffer.from(`${type}:${id}`).toString('base64').replace(/=/g, '');
+  return Buffer.from(`${type}:${id}`).toString('base64').replaceAll('=', '');
 };
 
 const decodeGlobalId = (globalId: string): { type: string; id: string } | null => {
@@ -50,28 +38,10 @@ const decodeGlobalId = (globalId: string): { type: string; id: string } | null =
   }
 };
 
-const generatePlaylist = (trackIds?: string[]): Playlist => {
-  const id = faker.string.uuid();
-  const selectedTrackIds =
-    trackIds ??
-    faker.helpers.arrayElements(
-      tracks.map((t) => t.id),
-      faker.number.int({ min: 5, max: 20 }),
-    );
-
-  return {
-    id,
-    name: `${faker.music.genre()} ${faker.word.adjective()} Mix`,
-    description: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.7 }) ?? null,
-    trackIds: selectedTrackIds,
-    createdAt: faker.date.recent().toISOString(),
-  };
-};
-
-const generateReview = (trackId: string): Review => {
+const generateReview = (movieId: string): Review => {
   return {
     id: faker.string.uuid(),
-    trackId,
+    movieId,
     rating: faker.number.float({ min: 1, max: 5, fractionDigits: 1 }),
     text: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.8 }) ?? null,
     createdAt: faker.date.recent().toISOString(),
@@ -79,7 +49,7 @@ const generateReview = (trackId: string): Review => {
 };
 
 const encodeCursor = (index: number): string => {
-  return Buffer.from(String(index)).toString('base64').replace(/=/g, '');
+  return Buffer.from(String(index)).toString('base64').replaceAll('=', '');
 };
 
 const decodeCursor = (cursor: string): number => {
@@ -91,24 +61,21 @@ const decodeCursor = (cursor: string): number => {
   }
 };
 
-const filterTracks = (
-  trackList: Track[],
+const filterMovies = (
+  movieList: Movie[],
   filter?: {
-    explicit?: boolean | null;
-    popularity?: { min?: number | null; max?: number | null } | null;
+    genreIds?: string[] | null;
   },
-): Track[] => {
-  if (!filter) return trackList;
+): Movie[] => {
+  if (!filter) return movieList;
 
-  return trackList.filter((track) => {
-    if (filter.explicit !== null && filter.explicit !== undefined && track.explicit !== filter.explicit) {
-      return false;
-    }
-
-    if (filter.popularity) {
-      const { min, max } = filter.popularity;
-      if (min !== null && min !== undefined && track.popularity < min) return false;
-      if (max !== null && max !== undefined && track.popularity > max) return false;
+  return movieList.filter((movie) => {
+    if (filter.genreIds && filter.genreIds.length > 0) {
+      const hasMatchingGenre = filter.genreIds.some((genreId) => {
+        const decoded = decodeGlobalId(genreId);
+        return decoded?.type === 'Genre' && movie.genre_ids.includes(decoded.id);
+      });
+      if (!hasMatchingGenre) return false;
     }
 
     return true;
@@ -124,20 +91,14 @@ export const resolvers = {
       const { type, id } = decoded;
 
       switch (type) {
-        case 'Track': {
-          return trackMap.get(id);
+        case 'Movie': {
+          return movieMap.get(id);
         }
-        case 'Album': {
-          return albumMap.get(id);
-        }
-        case 'Artist': {
-          return artistMap.get(id);
+        case 'Person': {
+          return personMap.get(id);
         }
         case 'Genre': {
           return genreMap.get(id);
-        }
-        case 'Playlist': {
-          return playlists.get(id);
         }
         case 'Review': {
           return reviews.get(id);
@@ -148,117 +109,89 @@ export const resolvers = {
       }
     },
 
-    track: (_parent: unknown, args: { id: string }) => {
+    movie: (_parent: unknown, args: { id: string }) => {
       const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Track') return null;
-      return trackMap.get(decoded.id) ?? null;
+      if (decoded?.type !== 'Movie') return null;
+      return movieMap.get(decoded.id) ?? null;
     },
-    album: (_parent: unknown, args: { id: string }) => {
+    person: (_parent: unknown, args: { id: string }) => {
       const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Album') return null;
-      return albumMap.get(decoded.id) ?? null;
-    },
-    artist: (_parent: unknown, args: { id: string }) => {
-      const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Artist') return null;
-      return artistMap.get(decoded.id) ?? null;
+      if (decoded?.type !== 'Person') return null;
+      return personMap.get(decoded.id) ?? null;
     },
     genre: (_parent: unknown, args: { id: string }) => {
       const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Genre') return null;
+      if (decoded?.type !== 'Genre') return null;
       return genreMap.get(decoded.id) ?? null;
     },
-    playlist: (_parent: unknown, args: { id: string }) => {
-      const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Playlist') return null;
-      return playlists.get(decoded.id) ?? null;
-    },
 
-    tracks: (
+    movies: (
       _parent: unknown,
       args: {
         first?: number;
         after?: string;
-        sort?: 'ASC' | 'DESC';
         filter?: {
-          explicit?: boolean | null;
-          popularity?: { min?: number | null; max?: number | null } | null;
+          genreIds?: string[] | null;
         };
       },
     ) => {
       const limit = Math.min(args.first ?? 20, 100);
       const afterIndex = args.after ? decodeCursor(args.after) : -1;
 
-      const filteredTracks = filterTracks([...tracks], args.filter);
-
-      if (args.sort === 'ASC') {
-        filteredTracks.sort((a, b) => a.popularity - b.popularity);
-      } else {
-        filteredTracks.sort((a, b) => b.popularity - a.popularity);
-      }
+      const filteredMovies = filterMovies([...movies], args.filter);
 
       const startIndex = afterIndex + 1;
       const endIndex = startIndex + limit;
-      const pageItems = filteredTracks.slice(startIndex, endIndex);
+      const pageItems = filteredMovies.slice(startIndex, endIndex);
 
       return {
-        edges: pageItems.map((track, i) => ({
+        edges: pageItems.map((movie, i) => ({
           cursor: encodeCursor(startIndex + i),
-          node: track,
+          node: movie,
         })),
         pageInfo: {
-          hasNextPage: endIndex < filteredTracks.length,
+          hasNextPage: endIndex < filteredMovies.length,
           hasPreviousPage: startIndex > 0,
           startCursor: pageItems.length > 0 ? encodeCursor(startIndex) : null,
           endCursor: pageItems.length > 0 ? encodeCursor(endIndex - 1) : null,
         },
-        totalCount: filteredTracks.length,
+        totalCount: filteredMovies.length,
       };
     },
 
-    albums: (_parent: unknown, args: { offset?: number; limit?: number }) => {
+    people: (_parent: unknown, args: { offset?: number; limit?: number }) => {
       const offset = args.offset ?? 0;
       const limit = Math.min(args.limit ?? 20, 100);
 
-      const items = albums.slice(offset, offset + limit);
+      const items = people.slice(offset, offset + limit);
 
       return {
         items,
-        total: albums.length,
+        total: people.length,
         offset,
         limit,
-        hasMore: offset + limit < albums.length,
+        hasMore: offset + limit < people.length,
       };
     },
 
-    artists: () => artists,
     genres: () => genres,
 
     search: (_parent: unknown, args: { query: string; limit?: number }) => {
       const query = args.query.toLowerCase();
       const limit = args.limit ?? 10;
-      const results: (Track | Album | Artist)[] = [];
+      const results: (Movie | Person)[] = [];
 
-      for (const track of tracks) {
-        if (track.name.toLowerCase().includes(query)) {
-          results.push(track);
+      for (const movie of movies) {
+        if (movie.title.toLowerCase().includes(query)) {
+          results.push(movie);
           if (results.length >= limit) break;
         }
       }
 
       if (results.length < limit) {
-        for (const album of albums) {
-          if (album.name.toLowerCase().includes(query)) {
-            results.push(album);
-            if (results.length >= limit) break;
-          }
-        }
-      }
-
-      if (results.length < limit) {
-        for (const artist of artists) {
-          if (artist.name.toLowerCase().includes(query)) {
-            results.push(artist);
+        for (const person of people) {
+          if (person.name.toLowerCase().includes(query)) {
+            results.push(person);
             if (results.length >= limit) break;
           }
         }
@@ -269,72 +202,11 @@ export const resolvers = {
   },
 
   Mutation: {
-    createPlaylist: (
-      _parent: unknown,
-      args: { input: { name: string; description?: string; trackIds?: string[] } },
-    ) => {
-      const decodedTrackIds = args.input.trackIds?.map((globalId) => {
-        const decoded = decodeGlobalId(globalId);
-        if (!decoded || decoded.type !== 'Track') return null;
-        return decoded.id;
-      }).filter((id): id is string => id !== null);
+    createReview: (_parent: unknown, args: { input: { movieId: string; rating: number; text?: string } }) => {
+      const decodedMovie = decodeGlobalId(args.input.movieId);
+      if (decodedMovie?.type !== 'Movie') throw new Error('Invalid movie ID');
 
-      const playlist = generatePlaylist(decodedTrackIds);
-      playlist.name = args.input.name;
-      playlist.description = args.input.description ?? null;
-
-      playlists.set(playlist.id, playlist);
-      eventTarget.dispatchEvent(new CustomEvent('playlistUpdated', { detail: playlist }));
-
-      return playlist;
-    },
-
-    deletePlaylist: (_parent: unknown, args: { id: string }) => {
-      const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Playlist') return false;
-      const deleted = playlists.delete(decoded.id);
-      return deleted;
-    },
-
-    addTrackToPlaylist: (_parent: unknown, args: { playlistId: string; trackId: string }) => {
-      const decodedPlaylist = decodeGlobalId(args.playlistId);
-      if (!decodedPlaylist || decodedPlaylist.type !== 'Playlist') throw new Error('Invalid playlist ID');
-
-      const decodedTrack = decodeGlobalId(args.trackId);
-      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
-
-      const playlist = playlists.get(decodedPlaylist.id);
-      if (!playlist) throw new Error('Playlist not found');
-
-      if (!playlist.trackIds.includes(decodedTrack.id)) {
-        playlist.trackIds.push(decodedTrack.id);
-        eventTarget.dispatchEvent(new CustomEvent('playlistUpdated', { detail: playlist }));
-      }
-
-      return playlist;
-    },
-
-    removeTrackFromPlaylist: (_parent: unknown, args: { playlistId: string; trackId: string }) => {
-      const decodedPlaylist = decodeGlobalId(args.playlistId);
-      if (!decodedPlaylist || decodedPlaylist.type !== 'Playlist') throw new Error('Invalid playlist ID');
-
-      const decodedTrack = decodeGlobalId(args.trackId);
-      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
-
-      const playlist = playlists.get(decodedPlaylist.id);
-      if (!playlist) throw new Error('Playlist not found');
-
-      playlist.trackIds = playlist.trackIds.filter((id) => id !== decodedTrack.id);
-      eventTarget.dispatchEvent(new CustomEvent('playlistUpdated', { detail: playlist }));
-
-      return playlist;
-    },
-
-    createReview: (_parent: unknown, args: { input: { trackId: string; rating: number; text?: string } }) => {
-      const decodedTrack = decodeGlobalId(args.input.trackId);
-      if (!decodedTrack || decodedTrack.type !== 'Track') throw new Error('Invalid track ID');
-
-      const review = generateReview(decodedTrack.id);
+      const review = generateReview(decodedMovie.id);
       review.rating = args.input.rating;
       review.text = args.input.text ?? null;
 
@@ -346,58 +218,12 @@ export const resolvers = {
 
     deleteReview: (_parent: unknown, args: { id: string }) => {
       const decoded = decodeGlobalId(args.id);
-      if (!decoded || decoded.type !== 'Review') return false;
+      if (decoded?.type !== 'Review') return false;
       return reviews.delete(decoded.id);
     },
   },
 
   Subscription: {
-    playlistUpdated: {
-      subscribe: () => {
-        const asyncIterator = {
-          [Symbol.asyncIterator]() {
-            const queue: Playlist[] = [];
-            let resolveNext: ((value: IteratorResult<Playlist>) => void) | null = null;
-
-            const handler = (event: Event) => {
-              const playlist = (event as CustomEvent<Playlist>).detail;
-              if (resolveNext) {
-                resolveNext({ value: playlist, done: false });
-                resolveNext = null;
-              } else {
-                queue.push(playlist);
-              }
-            };
-
-            eventTarget.addEventListener('playlistUpdated', handler);
-
-            return {
-              next() {
-                if (queue.length > 0) {
-                  return Promise.resolve({ value: queue.shift()!, done: false });
-                }
-
-                return new Promise<IteratorResult<Playlist>>((resolve) => {
-                  resolveNext = resolve;
-                });
-              },
-              return() {
-                eventTarget.removeEventListener('playlistUpdated', handler);
-                return Promise.resolve({ value: undefined, done: true });
-              },
-              throw(error: Error) {
-                eventTarget.removeEventListener('playlistUpdated', handler);
-                return Promise.reject(error);
-              },
-            };
-          },
-        };
-
-        return asyncIterator;
-      },
-      resolve: (payload: Playlist) => payload,
-    },
-
     reviewAdded: {
       subscribe: () => {
         const asyncIterator = {
@@ -446,78 +272,76 @@ export const resolvers = {
   },
 
   Node: {
-    __resolveType(obj: Track | Album | Artist | Genre | Playlist | Review) {
-      if ('duration' in obj && 'explicit' in obj) return 'Track';
-      if ('release_date' in obj || 'releaseDate' in obj) return 'Album';
-      if ('genres' in obj && Array.isArray(obj.genres) && obj.genres.length >= 0 && !('explicit' in obj))
-        return 'Artist';
-      if ('trackIds' in obj) return 'Playlist';
-      if ('trackId' in obj && 'rating' in obj) return 'Review';
-      if ('displayName' in obj) return 'Genre';
-      if ('name' in obj && !('href' in obj)) return 'Genre';
-      return null;
-    },
-  },
-
-  MediaItem: {
-    __resolveType(obj: Track | Album | Artist) {
-      if ('duration' in obj && 'explicit' in obj) return 'Track';
-      if ('release_date' in obj || 'releaseDate' in obj) return 'Album';
-      if ('genres' in obj && Array.isArray(obj.genres)) return 'Artist';
+    __resolveType(obj: Movie | Person | Genre | Review) {
+      if ('title' in obj && 'plot' in obj) return 'Movie';
+      if ('name' in obj && 'image_url' in obj && !('displayName' in obj)) return 'Person';
+      if ('movieId' in obj && 'rating' in obj) return 'Review';
+      if ('displayName' in obj || ('name' in obj && !('image_url' in obj))) return 'Genre';
       return null;
     },
   },
 
   SearchResult: {
-    __resolveType(obj: Track | Album | Artist) {
-      if ('duration' in obj && 'explicit' in obj) return 'Track';
-      if ('release_date' in obj || 'releaseDate' in obj) return 'Album';
-      if ('genres' in obj && Array.isArray(obj.genres)) return 'Artist';
+    __resolveType(obj: Movie | Person) {
+      if ('title' in obj) return 'Movie';
+      if ('name' in obj) return 'Person';
       return null;
     },
   },
 
-  Track: {
-    id: (track: Track) => encodeGlobalId('Track', track.id),
-    imageUrl: (track: Track) => albumMap.get(track.album_id)?.image_url ?? null,
-    artists: (track: Track) => track.artist_ids.map((id) => artistMap.get(id)).filter(Boolean),
-    album: (track: Track) => albumMap.get(track.album_id),
-    previewUrl: (track: Track) => track.preview_url,
-    reviews: (track: Track) => {
-      return [...reviews.values()].filter((r) => r.trackId === track.id);
+  Credit: {
+    __resolveType(obj: { type: string }) {
+      return obj.type === 'cast' ? 'Cast' : 'Crew';
     },
   },
 
-  Album: {
-    id: (album: Album) => encodeGlobalId('Album', album.id),
-    imageUrl: (album: Album) => album.image_url,
-    artists: (album: Album) => album.artist_ids.map((id) => artistMap.get(id)).filter(Boolean),
-    releaseDate: (album: Album) => new Date(album.release_date).toISOString(),
-    tracks: (album: Album) => tracks.filter((t) => t.album_id === album.id),
+  Cast: {
+    id: (credit: { person_id: string }) => encodeGlobalId('Cast', credit.person_id),
+    person: (credit: { person_id: string }) => personMap.get(credit.person_id),
+    character: (credit: { character?: string | null }) => credit.character,
   },
 
-  Artist: {
-    id: (artist: Artist) => encodeGlobalId('Artist', artist.id),
-    imageUrl: (artist: Artist) => artist.image_url,
-    genres: (artist: Artist) => artist.genres.map((g) => genreMap.get(g)).filter(Boolean),
-    albums: (artist: Artist) => albums.filter((a) => a.artist_ids.includes(artist.id)),
-    tracks: (artist: Artist) => tracks.filter((t) => t.artist_ids.includes(artist.id)),
+  Crew: {
+    id: (credit: { person_id: string }) => encodeGlobalId('Crew', credit.person_id),
+    person: (credit: { person_id: string }) => personMap.get(credit.person_id),
+    department: (credit: { department?: string | null }) => credit.department,
+    job: (credit: { job?: string | null }) => credit.job,
+  },
+
+  Movie: {
+    id: (movie: Movie) => encodeGlobalId('Movie', movie.id),
+    posterUrl: (movie: Movie) => movie.poster_url,
+    backdropUrl: (movie: Movie) => movie.backdrop_url,
+    imdbId: (movie: Movie) => movie.imdb_id,
+    releaseDate: (movie: Movie) => movie.release_date,
+    runtime: (movie: Movie) => movie.runtime,
+    rating: (movie: Movie) => movie.rating,
+    cast: (movie: Movie) =>
+      movie.credits
+        .filter((c) => c.type === 'cast')
+        .map((c) => personMap.get(c.person_id))
+        .filter(Boolean),
+    credits: (movie: Movie) => movie.credits,
+    genres: (movie: Movie) => movie.genre_ids.map((id) => genreMap.get(id)).filter(Boolean),
+    reviews: (movie: Movie) => {
+      return [...reviews.values()].filter((r) => r.movieId === movie.id);
+    },
+  },
+
+  Person: {
+    id: (person: Person) => encodeGlobalId('Person', person.id),
+    imageUrl: (person: Person) => person.image_url,
+    movies: (person: Person) => movies.filter((m) => m.credits.some((c) => c.person_id === person.id)),
   },
 
   Genre: {
     id: (genre: Genre) => encodeGlobalId('Genre', genre.id),
     displayName: (genre: Genre) => genre.name,
-    artists: (genre: Genre) => artists.filter((a) => a.genres.includes(genre.id)),
-  },
-
-  Playlist: {
-    id: (playlist: Playlist) => encodeGlobalId('Playlist', playlist.id),
-    tracks: (playlist: Playlist) => playlist.trackIds.map((id) => trackMap.get(id)).filter(Boolean),
-    trackCount: (playlist: Playlist) => playlist.trackIds.length,
+    movies: (genre: Genre) => movies.filter((m) => m.genre_ids.includes(genre.id)),
   },
 
   Review: {
     id: (review: Review) => encodeGlobalId('Review', review.id),
-    track: (review: Review) => trackMap.get(review.trackId),
+    movie: (review: Review) => movieMap.get(review.movieId),
   },
 };

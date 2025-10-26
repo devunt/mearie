@@ -2,7 +2,7 @@
   "name": "@mearie-internal/fixture",
   "version": "0.0.0",
   "private": true,
-  "description": "Spotify music dataset fixture for Mearie examples and tests",
+  "description": "TMDB movie dataset fixture for Mearie examples and tests",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

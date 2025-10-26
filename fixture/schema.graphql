@@ -1,8 +1,8 @@
 """
 Comprehensive GraphQL schema for Mearie fixture demonstrating all GraphQL specification features.
 
-This schema uses Spotify music data (tracks, albums, artists, genres) from the fixture data files,
-and generates additional data (playlists, reviews) dynamically using faker-js.
+This schema uses Wikipedia movie data (movies, people, genres) from the fixture data files,
+and generates review data dynamically using faker-js.
 """
 schema {
   query: Query
@@ -24,24 +24,10 @@ Valid HTTP or HTTPS URL string
 """
 scalar URL
 
-# ==============================================================================
-# Enums
-# ==============================================================================
-
 """
-Sort order for list queries
+ISO 8601 formatted date string (e.g., "2024-03-15")
 """
-enum SortOrder {
-  """
-  Ascending order (A-Z, 0-9, oldest-newest)
-  """
-  ASC
-
-  """
-  Descending order (Z-A, 9-0, newest-oldest)
-  """
-  DESC
-}
+scalar Date
 
 # ==============================================================================
 # Interfaces
@@ -59,23 +45,19 @@ interface Node {
 }
 
 """
-Common interface for media items (tracks, albums, artists) with shared metadata
+Movie credit interface for both cast and crew members.
+Implemented by Cast and Crew types.
 """
-interface MediaItem {
+interface Credit {
   """
-  Display name of the media item
+  Unique credit identifier
   """
-  name: String!
+  id: ID!
 
   """
-  Direct link to the item in the Spotify API
+  Person who received this credit
   """
-  href: URL!
-
-  """
-  URL of the cover image or artist photo
-  """
-  imageUrl: URL
+  person: Person!
 }
 
 # ==============================================================================
@@ -83,152 +65,147 @@ interface MediaItem {
 # ==============================================================================
 
 """
-A music track with metadata including duration, popularity, and explicit content flag
+A cast member (actor) credit for a movie with character information
 """
-type Track implements Node & MediaItem {
+type Cast implements Credit {
   """
-  Unique track identifier
+  Unique credit identifier
   """
   id: ID!
 
   """
-  Track title
+  Person who received this credit
   """
-  name: String!
+  person: Person!
 
   """
-  Spotify API URL for this track
+  Character name portrayed by the actor
   """
-  href: URL!
+  character: String
+}
+
+"""
+A crew member credit for a movie with job information
+"""
+type Crew implements Credit {
+  """
+  Unique credit identifier
+  """
+  id: ID!
 
   """
-  Album artwork URL (inherited from album)
+  Person who received this credit
   """
-  imageUrl: URL
+  person: Person!
 
   """
-  Artists who performed this track
+  Department (e.g., "Directing", "Writing", "Production")
   """
-  artists: [Artist!]!
+  department: String
 
   """
-  Album containing this track
+  Specific job title (e.g., "Director", "Screenplay", "Producer")
   """
-  album: Album!
+  job: String
+}
+
+"""
+A movie with metadata including plot and cast information
+"""
+type Movie implements Node {
+  """
+  Unique movie identifier
+  """
+  id: ID!
 
   """
-  Track duration in milliseconds
+  Movie title
   """
-  duration: Int!
+  title: String!
 
   """
-  Popularity score from 0-100
+  Plot summary
   """
-  popularity: Int!
+  plot: String!
 
   """
-  Whether the track contains explicit content
+  Movie poster image URL
   """
-  explicit: Boolean!
+  posterUrl: URL
 
   """
-  Preview audio URL (30 second clip), may be null if unavailable
+  Movie backdrop/banner image URL
   """
-  previewUrl: URL
+  backdropUrl: URL
 
   """
-  Reviews submitted for this track
+  IMDB identifier (e.g., "tt0137523")
+  """
+  imdbId: String
+
+  """
+  Full release date
+  """
+  releaseDate: Date
+
+  """
+  Runtime in minutes
+  """
+  runtime: Int
+
+  """
+  Average rating from 0 to 10
+  """
+  rating: Float
+
+  """
+  People who appeared in this movie (cast)
+  """
+  cast: [Person!]! @deprecated(reason: "Use 'credits' field instead for full cast and crew information")
+
+  """
+  Full credits including both cast and crew
+  """
+  credits: [Credit!]!
+
+  """
+  Genres associated with this movie
+  """
+  genres: [Genre!]!
+
+  """
+  Reviews submitted for this movie
   """
   reviews: [Review!]!
 }
 
 """
-A music album containing tracks with release metadata
+A person (actor) who appeared in movies
 """
-type Album implements Node & MediaItem {
+type Person implements Node {
   """
-  Unique album identifier
+  Unique person identifier
   """
   id: ID!
 
   """
-  Album title
+  Person's name
   """
   name: String!
 
   """
-  Spotify API URL for this album
-  """
-  href: URL!
-
-  """
-  Album cover artwork URL
+  Person's photo or profile image URL
   """
   imageUrl: URL
 
   """
-  Artists who created this album
+  Movies this person appeared in
   """
-  artists: [Artist!]!
-
-  """
-  Release date of the album
-  """
-  releaseDate: DateTime!
-
-  """
-  Tracks included in this album
-  """
-  tracks: [Track!]!
+  movies: [Movie!]!
 }
 
 """
-A musical artist or band with genre and popularity information
-"""
-type Artist implements Node & MediaItem {
-  """
-  Unique artist identifier
-  """
-  id: ID!
-
-  """
-  Artist or band name
-  """
-  name: String!
-
-  """
-  Spotify API URL for this artist
-  """
-  href: URL!
-
-  """
-  Artist photo or profile image URL
-  """
-  imageUrl: URL
-
-  """
-  Musical genres associated with this artist
-  """
-  genres: [Genre!]!
-
-  """
-  Popularity score from 0-100
-  """
-  popularity: Int!
-
-  """
-  Albums by this artist
-  """
-  albums: [Album!]!
-
-  """
-  Tracks by this artist
-  """
-  tracks: [Track!]!
-}
-
-"""
-A music genre category
+A movie genre category
 """
 type Genre implements Node {
   """
@@ -247,9 +224,9 @@ type Genre implements Node {
   displayName: String! @deprecated(reason: "Use 'name' field directly")
 
   """
-  Artists associated with this genre
+  Movies associated with this genre
   """
-  artists: [Artist!]!
+  movies: [Movie!]!
 }
 
 # ==============================================================================
@@ -257,48 +234,7 @@ type Genre implements Node {
 # ==============================================================================
 
 """
-A user-created playlist containing a curated collection of tracks.
-Playlists are generated dynamically and not stored in fixture data.
-"""
-type Playlist implements Node {
-  """
-  Unique playlist identifier
-  """
-  id: ID!
-
-  """
-  Playlist name
-  """
-  name: String!
-
-  """
-  Optional description of the playlist
-  """
-  description: String
-
-  """
-  Tracks in this playlist (ordered)
-  """
-  tracks: [Track!]!
-
-  """
-  Number of tracks in the playlist
-  """
-  trackCount: Int!
-
-  """
-  Timestamp when the playlist was created
-  """
-  createdAt: DateTime!
-
-  """
-  Timestamp of the last modification
-  """
-  updatedAt: DateTime!
-}
-
-"""
-A user review and rating for a track.
+A user review and rating for a movie.
 Reviews are generated dynamically and not stored in fixture data.
 """
 type Review implements Node {
@@ -308,9 +244,9 @@ type Review implements Node {
   id: ID!
 
   """
-  Track being reviewed
+  Movie being reviewed
   """
-  track: Track!
+  movie: Movie!
 
   """
   Rating from 1.0 to 5.0
@@ -358,28 +294,28 @@ type PageInfo {
 }
 
 """
-Edge type wrapping a Track with its cursor
+Edge type wrapping a Movie with its cursor
 """
-type TrackEdge {
+type MovieEdge {
   """
   Cursor for this edge, used for pagination
   """
   cursor: String!
 
   """
-  The Track at this edge
+  The Movie at this edge
   """
-  node: Track!
+  node: Movie!
 }
 
 """
-Paginated connection of tracks following the Relay cursor specification
+Paginated connection of movies following the Relay cursor specification
 """
-type TrackConnection {
+type MovieConnection {
   """
-  List of track edges
+  List of movie edges
   """
-  edges: [TrackEdge!]!
+  edges: [MovieEdge!]!
 
   """
   Pagination metadata
@@ -387,7 +323,7 @@ type TrackConnection {
   pageInfo: PageInfo!
 
   """
-  Total number of tracks available (across all pages)
+  Total number of movies available (across all pages)
   """
   totalCount: Int!
 }
@@ -397,16 +333,16 @@ type TrackConnection {
 # ==============================================================================
 
 """
-Paginated list of albums using offset-based pagination
+Paginated list of people using offset-based pagination
 """
-type PaginatedAlbums {
+type PaginatedPeople {
   """
-  Albums in the current page
+  People in the current page
   """
-  items: [Album!]!
+  items: [Person!]!
 
   """
-  Total number of albums available (across all pages)
+  Total number of people available (across all pages)
   """
   total: Int!
 
@@ -421,7 +357,7 @@ type PaginatedAlbums {
   limit: Int!
 
   """
-  Whether there are more albums after this page
+  Whether there are more people after this page
   """
   hasMore: Boolean!
 }
@@ -431,72 +367,32 @@ type PaginatedAlbums {
 # ==============================================================================
 
 """
-Search results can be tracks, albums, or artists
+Search results can be movies or people
 """
-union SearchResult = Track | Album | Artist
+union SearchResult = Movie | Person
 
 # ==============================================================================
 # Input Types
 # ==============================================================================
 
 """
-Range filter for integer values (demonstrates nested input objects)
+Filter criteria for querying movies
 """
-input IntRangeInput {
+input MovieFilterInput {
   """
-  Minimum value (inclusive)
+  Filter by genre IDs
   """
-  min: Int
-
-  """
-  Maximum value (inclusive)
-  """
-  max: Int
+  genreIds: [ID!]
 }
 
 """
-Input for creating a new playlist
-"""
-input CreatePlaylistInput {
-  """
-  Name of the playlist (required)
-  """
-  name: String!
-
-  """
-  Optional description
-  """
-  description: String
-
-  """
-  Initial track IDs to add to the playlist
-  """
-  trackIds: [ID!]
-}
-
-"""
-Filter criteria for querying tracks (demonstrates nested input objects)
-"""
-input TrackFilterInput {
-  """
-  Filter by explicit content flag
-  """
-  explicit: Boolean
-
-  """
-  Filter by popularity score range (0-100)
-  """
-  popularity: IntRangeInput
-}
-
-"""
-Input for creating a track review
+Input for creating a movie review
 """
 input CreateReviewInput {
   """
-  ID of the track to review
+  ID of the movie to review
   """
-  trackId: ID!
+  movieId: ID!
 
   """
   Rating from 1.0 to 5.0
@@ -527,41 +423,31 @@ type Query {
   # --------------------------------------------------------------------------
 
   """
-  Get a track by ID
+  Get a movie by ID
   """
-  track(id: ID!): Track
+  movie(id: ID!): Movie
 
   """
-  Get an album by ID
+  Get a person by ID
   """
-  album(id: ID!): Album
-
-  """
-  Get an artist by ID
-  """
-  artist(id: ID!): Artist
+  person(id: ID!): Person
 
   """
   Get a genre by ID
   """
   genre(id: String!): Genre
 
-  """
-  Get a playlist by ID
-  """
-  playlist(id: ID!): Playlist
-
   # --------------------------------------------------------------------------
   # List queries with different pagination styles
   # --------------------------------------------------------------------------
 
   """
-  List tracks with cursor-based pagination (Relay Connection pattern).
+  List movies with cursor-based pagination (Relay Connection pattern).
   Demonstrates forward pagination with cursors.
   """
-  tracks(
+  movies(
     """
-    Number of tracks to return (max 100)
+    Number of movies to return (max 100)
     """
     first: Int = 20
 
@@ -571,37 +457,26 @@ type Query {
     after: String
 
     """
-    Sort order for results
-    """
-    sort: SortOrder = DESC
-
-    """
     Optional filters to apply
     """
-    filter: TrackFilterInput
-  ): TrackConnection!
+    filter: MovieFilterInput
+  ): MovieConnection!
 
   """
-  List albums with offset-based pagination.
+  List people with offset-based pagination.
   Demonstrates traditional offset/limit pagination.
   """
-  albums(
+  people(
     """
     Number of items to skip
     """
     offset: Int = 0
 
     """
-    Maximum number of albums to return
+    Maximum number of people to return
     """
     limit: Int = 20
-  ): PaginatedAlbums!
-
-  """
-  Get all artists (no pagination).
-  Simple list query demonstrating non-paginated responses.
-  """
-  artists: [Artist!]!
+  ): PaginatedPeople!
 
   """
   Get all genres (no pagination)
@@ -613,8 +488,8 @@ type Query {
   # --------------------------------------------------------------------------
 
   """
-  Search across tracks, albums, and artists.
-  Returns a union type that can be any of the three.
+  Search across movies and people.
+  Returns a union type that can be either.
   """
   search(
     """
@@ -638,56 +513,11 @@ Root mutation type for modifying data
 """
 type Mutation {
   # --------------------------------------------------------------------------
-  # Playlist mutations
-  # --------------------------------------------------------------------------
-
-  """
-  Create a new playlist with optional initial tracks
-  """
-  createPlaylist(input: CreatePlaylistInput!): Playlist!
-
-  """
-  Delete a playlist by ID. Returns true if successful, false otherwise.
-  Demonstrates boolean return type.
-  """
-  deletePlaylist(id: ID!): Boolean!
-
-  """
-  Add a track to a playlist
-  """
-  addTrackToPlaylist(
-    """
-    ID of the playlist
-    """
-    playlistId: ID!
-
-    """
-    ID of the track to add
-    """
-    trackId: ID!
-  ): Playlist!
-
-  """
-  Remove a track from a playlist
-  """
-  removeTrackFromPlaylist(
-    """
-    ID of the playlist
-    """
-    playlistId: ID!
-
-    """
-    ID of the track to remove
-    """
-    trackId: ID!
-  ): Playlist!
-
-  # --------------------------------------------------------------------------
   # Review mutations
   # --------------------------------------------------------------------------
 
   """
-  Create a review for a track
+  Create a review for a movie
   """
   createReview(input: CreateReviewInput!): Review!
 
@@ -705,11 +535,6 @@ type Mutation {
 Root subscription type for real-time updates
 """
 type Subscription {
-  """
-  Subscribe to playlist update events (creation, modification, etc.)
-  """
-  playlistUpdated: Playlist!
-
   """
   Subscribe to new reviews being submitted
   """

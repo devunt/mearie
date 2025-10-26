@@ -1,54 +1,100 @@
-import { SpotifyApi } from '@spotify/web-api-ts-sdk';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { config } from 'dotenv';
 
 config();
 
-const OUTPUT_DIR = path.join(import.meta.dirname, '../data');
+const dataDir = path.join(import.meta.dirname, '../data');
 
-const SEARCH_QUERIES = [
-  { query: 'genre:pop', name: 'Pop Music' },
-  { query: 'genre:hip-hop', name: 'Hip-Hop' },
-  { query: 'genre:rock', name: 'Rock' },
-  { query: 'genre:electronic', name: 'Electronic' },
-  { query: 'genre:r-n-b', name: 'R&B' },
-  { query: 'genre:country', name: 'Country' },
-  { query: 'genre:jazz', name: 'Jazz' },
-  { query: 'genre:latin', name: 'Latin' },
-  { query: 'genre:indie', name: 'Indie' },
-  { query: 'genre:alternative', name: 'Alternative' },
-  { query: 'genre:k-pop', name: 'K-Pop' },
-  { query: 'genre:j-pop', name: 'J-Pop' },
-];
+const SAMPLE_SIZE = 2000;
+const BATCH_SIZE = 20;
 
-interface Track {
-  id: string;
-  href: string;
-  name: string;
-  artist_ids: string[];
-  album_id: string;
-  duration: number;
-  popularity: number;
-  explicit: boolean;
-  preview_url: string | null;
+const years = Array.from({ length: 50 }, (_, i) => 2025 - i);
+const MOVIES_PER_YEAR = Math.ceil(SAMPLE_SIZE / years.length);
+
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
+
+if (!TMDB_API_KEY) {
+  throw new Error(
+    'TMDB_API_KEY environment variable is not set. Get your API key from: https://www.themoviedb.org/settings/api',
+  );
 }
 
-interface Album {
-  id: string;
-  href: string;
+interface TMDBGenre {
+  id: number;
   name: string;
-  artist_ids: string[];
+}
+
+interface TMDBMovie {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
   release_date: string;
-  image_url: string | null;
+  imdb_id: string | null;
+  runtime: number | null;
+  vote_average: number | null;
+  genres: TMDBGenre[];
+  credits?: TMDBCreditsResponse;
 }
 
-interface Artist {
-  id: string;
-  href: string;
+interface TMDBCastMember {
+  id: number;
   name: string;
-  genres: string[];
-  popularity: number;
+  character: string;
+  order: number;
+  profile_path: string | null;
+}
+
+interface TMDBCrewMember {
+  id: number;
+  name: string;
+  job: string;
+  department: string;
+  profile_path: string | null;
+}
+
+interface TMDBCreditsResponse {
+  cast: TMDBCastMember[];
+  crew: TMDBCrewMember[];
+}
+
+interface TMDBDiscoverMovie {
+  id: number;
+  title: string;
+  genre_ids: number[];
+}
+
+interface TMDBDiscoverResponse {
+  results: TMDBDiscoverMovie[];
+}
+
+interface Credit {
+  person_id: string;
+  type: 'cast' | 'crew';
+  character?: string | null;
+  department?: string | null;
+  job?: string | null;
+}
+
+interface Movie {
+  id: string;
+  title: string;
+  release_date: string;
+  plot: string;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  imdb_id: string | null;
+  runtime: number | null;
+  rating: number | null;
+  credits: Credit[];
+  genre_ids: string[];
+}
+
+interface Person {
+  id: string;
+  name: string;
   image_url: string | null;
 }
 
@@ -57,155 +103,190 @@ interface Genre {
   name: string;
 }
 
-const clientId = process.env.SPOTIFY_CLIENT_ID;
-const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+const processBatch = async <T, R>(items: T[], batchSize: number, processor: (item: T) => Promise<R>): Promise<R[]> => {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map((item) => processor(item)));
+    results.push(...batchResults);
+  }
+  return results;
+};
 
-if (!clientId || !clientSecret) {
-  throw new Error('Missing Spotify credentials. Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env file.');
+const tmdbFetch = async <T>(endpoint: string, params: Record<string, string> = {}): Promise<T> => {
+  const url = new URL(`https://api.themoviedb.org/3${endpoint}`);
+  url.searchParams.set('api_key', TMDB_API_KEY);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`TMDB API error: ${response.statusText}`);
+  }
+  return response.json() as Promise<T>;
+};
+
+console.log('Fetching movies from TMDB...\n');
+
+const allMovies: Movie[] = [];
+const peopleMap = new Map<string, Person>();
+const genreMap = new Map<string, Genre>();
+
+const moviesToFetch = new Set<number>();
+
+for (const year of years) {
+  console.log(`Discovering movies from ${year}...`);
+
+  let movieCount = 0;
+  let page = 1;
+
+  while (movieCount < MOVIES_PER_YEAR) {
+    const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
+      primary_release_year: year.toString(),
+      sort_by: 'popularity.desc',
+      page: page.toString(),
+      'vote_count.gte': '100',
+    });
+
+    if (!data.results || data.results.length === 0) break;
+
+    for (const movie of data.results) {
+      if (movieCount >= MOVIES_PER_YEAR) break;
+
+      moviesToFetch.add(movie.id);
+
+      movieCount++;
+    }
+
+    page++;
+  }
+
+  console.log(`  Found ${movieCount} movies from ${year}`);
 }
 
-console.log('🔐 Authenticating with Spotify...');
-const spotify = SpotifyApi.withClientCredentials(clientId, clientSecret);
+console.log(`\nFetching details for ${moviesToFetch.size} movies in batches of ${BATCH_SIZE}...`);
 
-const tracks: Track[] = [];
-const albumIds = new Set<string>();
-const artistIds = new Set<string>();
+let processedCount = 0;
+const movieIds = [...moviesToFetch];
 
-console.log('📀 Searching for tracks...\n');
-
-for (const search of SEARCH_QUERIES) {
-  console.log(`🔍 Searching: ${search.name}`);
-
-  let offset = 0;
-  let trackCount = 0;
-  const limit = 50;
-  const maxResults = 500;
-
+await processBatch(movieIds, BATCH_SIZE, async (tmdbId) => {
   try {
-    while (offset < maxResults) {
-      const response = await spotify.search(search.query, ['track'], undefined, limit, offset);
+    const movieDetails = await tmdbFetch<TMDBMovie>(`/movie/${tmdbId}`, {
+      append_to_response: 'credits',
+    });
 
-      if (response.tracks.items?.length === 0) break;
+    const creditsData = movieDetails.credits;
+    if (!creditsData) return;
 
-      for (const track of response.tracks.items) {
-        if (track?.type !== 'track') continue;
+    const posterUrl = movieDetails.poster_path ? `https://image.tmdb.org/t/p/w500${movieDetails.poster_path}` : null;
+    const backdropUrl = movieDetails.backdrop_path
+      ? `https://image.tmdb.org/t/p/w1280${movieDetails.backdrop_path}`
+      : null;
 
-        if (tracks.some((t) => t.id === track.id)) continue;
+    const genreIds: string[] = [];
+    for (const genre of movieDetails.genres) {
+      const genreId = genre.id.toString();
+      genreIds.push(genreId);
 
-        tracks.push({
-          id: track.id,
-          href: track.href,
-          name: track.name,
-          artist_ids: track.artists.map((a) => a.id),
-          album_id: track.album.id,
-          duration: track.duration_ms,
-          popularity: track.popularity,
-          explicit: track.explicit,
-          preview_url: track.preview_url ?? null,
+      if (!genreMap.has(genreId)) {
+        genreMap.set(genreId, {
+          id: genreId,
+          name: genre.name,
         });
+      }
+    }
 
-        trackCount++;
+    const credits: Credit[] = [];
 
-        albumIds.add(track.album.id);
-        for (const artist of track.artists) {
-          artistIds.add(artist.id);
-        }
+    for (const cast of creditsData.cast.slice(0, 3)) {
+      const personId = cast.id.toString();
+
+      if (!peopleMap.has(personId)) {
+        peopleMap.set(personId, {
+          id: personId,
+          name: cast.name,
+          image_url: cast.profile_path ? `https://image.tmdb.org/t/p/w185${cast.profile_path}` : null,
+        });
       }
 
-      offset += limit;
+      credits.push({
+        person_id: personId,
+        type: 'cast',
+        character: cast.character || null,
+      });
+    }
 
-      if (response.tracks.items.length < limit) break;
+    for (const crew of creditsData.crew.slice(0, 2)) {
+      const personId = crew.id.toString();
+
+      if (!peopleMap.has(personId)) {
+        peopleMap.set(personId, {
+          id: personId,
+          name: crew.name,
+          image_url: crew.profile_path ? `https://image.tmdb.org/t/p/w185${crew.profile_path}` : null,
+        });
+      }
+
+      credits.push({
+        person_id: personId,
+        type: 'crew',
+        department: crew.department || null,
+        job: crew.job || null,
+      });
+    }
+
+    allMovies.push({
+      id: tmdbId.toString(),
+      title: movieDetails.title,
+      release_date: movieDetails.release_date ?? '',
+      plot: movieDetails.overview ?? '',
+      poster_url: posterUrl,
+      backdrop_url: backdropUrl,
+      imdb_id: movieDetails.imdb_id ?? null,
+      runtime: movieDetails.runtime ?? null,
+      rating: movieDetails.vote_average ?? null,
+      credits,
+      genre_ids: genreIds,
+    });
+
+    processedCount++;
+    if (processedCount % 100 === 0) {
+      console.log(`  Processed ${processedCount}/${movieIds.length} movies...`);
     }
   } catch (error) {
-    console.error(`   ❌ Error searching ${search.name}:`, error);
+    console.error(`Error fetching movie ID ${tmdbId}:`, error);
   }
+});
 
-  console.log(`   ✓ Added ${trackCount} new tracks\n`);
-}
+console.log(`  Completed: ${allMovies.length}/${movieIds.length} movies fetched successfully`);
 
-console.log('\n💿 Fetching album details in batches...');
-const albums = new Map<string, Album>();
-const albumIdsArray = [...albumIds];
-const albumBatchSize = 20;
+console.log(`\nTotal fetched: ${allMovies.length} movies, ${peopleMap.size} people, ${genreMap.size} genres`);
 
-for (let i = 0; i < albumIdsArray.length; i += albumBatchSize) {
-  const batch = albumIdsArray.slice(i, i + albumBatchSize);
-  try {
-    const albumsResponse = await spotify.albums.get(batch);
-    for (const album of albumsResponse) {
-      albums.set(album.id, {
-        id: album.id,
-        href: album.href,
-        name: album.name,
-        artist_ids: album.artists.map((a) => a.id),
-        release_date: album.release_date,
-        image_url: album.images[0]?.url ?? null,
-      });
-    }
-    console.log(`   ✓ Fetched ${i + batch.length}/${albumIdsArray.length} albums`);
-  } catch {
-    console.warn(`   ⚠️  Failed to fetch album batch at offset ${i}`);
-  }
-}
+const people = [...peopleMap.values()];
+const genres = [...genreMap.values()];
 
-console.log('\n👥 Fetching artist details in batches...');
-const artists = new Map<string, Artist>();
-const genres = new Set<string>();
-const artistIdsArray = [...artistIds];
-const artistBatchSize = 50;
+const moviesJson = JSON.stringify(allMovies, null, 2);
+const peopleJson = JSON.stringify(people, null, 2);
+const genresJson = JSON.stringify(genres, null, 2);
 
-for (let i = 0; i < artistIdsArray.length; i += artistBatchSize) {
-  const batch = artistIdsArray.slice(i, i + artistBatchSize);
-  try {
-    const artistsResponse = await spotify.artists.get(batch);
-    for (const artist of artistsResponse) {
-      artists.set(artist.id, {
-        id: artist.id,
-        href: artist.href,
-        name: artist.name,
-        genres: artist.genres,
-        popularity: artist.popularity,
-        image_url: artist.images[0]?.url ?? null,
-      });
+writeFileSync(path.join(dataDir, 'movies.json'), moviesJson);
+writeFileSync(path.join(dataDir, 'people.json'), peopleJson);
+writeFileSync(path.join(dataDir, 'genres.json'), genresJson);
 
-      for (const g of artist.genres) genres.add(g);
-    }
-    console.log(`   ✓ Fetched ${i + batch.length}/${artistIdsArray.length} artists`);
-  } catch {
-    console.warn(`   ⚠️  Failed to fetch artist batch at offset ${i}`);
-  }
-}
+console.log('\n✅ Data files created successfully!');
 
-console.log('\n📊 Collection Summary:');
-console.log(`   • ${tracks.length.toLocaleString()} tracks`);
-console.log(`   • ${albums.size.toLocaleString()} albums`);
-console.log(`   • ${artists.size.toLocaleString()} artists`);
-console.log(`   • ${genres.size.toLocaleString()} genres\n`);
+const moviesSize = (moviesJson.length / 1024).toFixed(2);
+const peopleSize = (peopleJson.length / 1024).toFixed(2);
+const genresSize = (genresJson.length / 1024).toFixed(2);
+const totalSize = (
+  Number.parseFloat(moviesSize) +
+  Number.parseFloat(peopleSize) +
+  Number.parseFloat(genresSize)
+).toFixed(2);
 
-console.log('💾 Saving data to JSON files...');
-
-await mkdir(OUTPUT_DIR, { recursive: true });
-
-await writeFile(path.join(OUTPUT_DIR, 'tracks.json'), JSON.stringify(tracks, null, 2));
-console.log(`   ✓ tracks.json (${(JSON.stringify(tracks).length / 1024 / 1024).toFixed(2)} MB)`);
-
-const albumsArray = [...albums.values()];
-await writeFile(path.join(OUTPUT_DIR, 'albums.json'), JSON.stringify(albumsArray, null, 2));
-console.log(`   ✓ albums.json (${(JSON.stringify(albumsArray).length / 1024 / 1024).toFixed(2)} MB)`);
-
-const artistsArray = [...artists.values()];
-await writeFile(path.join(OUTPUT_DIR, 'artists.json'), JSON.stringify(artistsArray, null, 2));
-console.log(`   ✓ artists.json (${(JSON.stringify(artistsArray).length / 1024 / 1024).toFixed(2)} MB)`);
-
-const genresArray: Genre[] = [...genres].toSorted().map((g) => ({
-  id: g,
-  name: g
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' '),
-}));
-await writeFile(path.join(OUTPUT_DIR, 'genres.json'), JSON.stringify(genresArray, null, 2));
-console.log(`   ✓ genres.json (${(JSON.stringify(genresArray).length / 1024 / 1024).toFixed(2)} MB)`);
-
-console.log('\n✅ Data collection complete!');
-console.log(`📁 Files saved to: ${OUTPUT_DIR}\n`);
+console.log(`\nFile sizes:`);
+console.log(`  movies.json: ${moviesSize} KB`);
+console.log(`  people.json: ${peopleSize} KB`);
+console.log(`  genres.json: ${genresSize} KB`);
+console.log(`  Total: ${totalSize} KB`);

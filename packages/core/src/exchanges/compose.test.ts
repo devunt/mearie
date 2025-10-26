@@ -14,12 +14,14 @@ import { makeSubject } from '../stream/sources/make-subject.ts';
 describe('composeExchange', () => {
   describe('basic composition', () => {
     it('should compose single exchange', async () => {
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({ ...result, data: { value: 1 } })),
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({ ...result, data: { value: 1 } })),
+          );
 
       const composed = composeExchange({ exchanges: [exchange1] });
       const forward = makeTestForward();
@@ -32,25 +34,29 @@ describe('composeExchange', () => {
     });
 
     it('should compose two exchanges', async () => {
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, first: true },
-          })),
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, first: true },
+            })),
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, second: true },
-          })),
-        );
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, second: true },
+            })),
+          );
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2] });
       const forward = makeTestForward();
@@ -63,35 +69,41 @@ describe('composeExchange', () => {
     });
 
     it('should compose three exchanges', async () => {
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, first: true },
-          })),
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, first: true },
+            })),
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, second: true },
-          })),
-        );
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, second: true },
+            })),
+          );
 
-      const exchange3: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, third: true },
-          })),
-        );
+      const exchange3: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, third: true },
+            })),
+          );
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2, exchange3] });
       const forward = makeTestForward();
@@ -122,20 +134,26 @@ describe('composeExchange', () => {
     it('should apply exchanges in correct order', async () => {
       const order: number[] = [];
 
-      const exchange1: Exchange = (forward) => (ops$) => {
-        order.push(1);
-        return pipe(ops$, forward);
-      };
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) => {
+          order.push(1);
+          return pipe(ops$, forward);
+        };
 
-      const exchange2: Exchange = (forward) => (ops$) => {
-        order.push(2);
-        return pipe(ops$, forward);
-      };
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) => {
+          order.push(2);
+          return pipe(ops$, forward);
+        };
 
-      const exchange3: Exchange = (forward) => (ops$) => {
-        order.push(3);
-        return pipe(ops$, forward);
-      };
+      const exchange3: Exchange =
+        ({ forward }) =>
+        (ops$) => {
+          order.push(3);
+          return pipe(ops$, forward);
+        };
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2, exchange3] });
       const forward = makeTestForward();
@@ -149,41 +167,47 @@ describe('composeExchange', () => {
     it('should pass operations through exchange chain', async () => {
       const operationsSeen: Operation[][] = [[], [], []];
 
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => {
-            if (op.variant === 'request') {
-              operationsSeen[0].push(op);
-            }
-            return op;
-          }),
-          forward,
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => {
+              if (op.variant === 'request') {
+                operationsSeen[0].push(op);
+              }
+              return op;
+            }),
+            forward,
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => {
-            if (op.variant === 'request') {
-              operationsSeen[1].push(op);
-            }
-            return op;
-          }),
-          forward,
-        );
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => {
+              if (op.variant === 'request') {
+                operationsSeen[1].push(op);
+              }
+              return op;
+            }),
+            forward,
+          );
 
-      const exchange3: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => {
-            if (op.variant === 'request') {
-              operationsSeen[2].push(op);
-            }
-            return op;
-          }),
-          forward,
-        );
+      const exchange3: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => {
+              if (op.variant === 'request') {
+                operationsSeen[2].push(op);
+              }
+              return op;
+            }),
+            forward,
+          );
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2, exchange3] });
       const forward = makeTestForward();
@@ -200,19 +224,23 @@ describe('composeExchange', () => {
     });
 
     it('should allow each exchange to transform operations', async () => {
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => ({ ...op, metadata: { ...op.metadata, ex1: true } })),
-          forward,
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => ({ ...op, metadata: { ...op.metadata, ex1: true } })),
+            forward,
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => ({ ...op, metadata: { ...op.metadata, ex2: true } })),
-          forward,
-        );
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => ({ ...op, metadata: { ...op.metadata, ex2: true } })),
+            forward,
+          );
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2] });
 
@@ -235,10 +263,12 @@ describe('composeExchange', () => {
     it('should pass forward to innermost exchange', async () => {
       let forwardCallCount = 0;
 
-      const exchange1: Exchange = (forward) => (ops$) => {
-        forwardCallCount++;
-        return pipe(ops$, forward);
-      };
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) => {
+          forwardCallCount++;
+          return pipe(ops$, forward);
+        };
 
       const composed = composeExchange({ exchanges: [exchange1] });
       const forward = makeTestForward();
@@ -252,9 +282,15 @@ describe('composeExchange', () => {
     it('should call forward from last exchange in chain', async () => {
       let lastForwardCalled = false;
 
-      const exchange1: Exchange = (forward) => (ops$) => pipe(ops$, forward);
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(ops$, forward);
 
-      const exchange2: Exchange = (forward) => (ops$) => pipe(ops$, forward);
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(ops$, forward);
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2] });
       const forward = makeTestForward(() => {
@@ -271,25 +307,29 @@ describe('composeExchange', () => {
 
   describe('result flow', () => {
     it('should allow exchanges to modify results on the way back', async () => {
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, modified1: true },
-          })),
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, modified1: true },
+            })),
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          forward,
-          map((result) => ({
-            ...result,
-            data: { ...result.data, modified2: true },
-          })),
-        );
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            forward,
+            map((result) => ({
+              ...result,
+              data: { ...result.data, modified2: true },
+            })),
+          );
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2] });
       const forward = makeTestForward((op) => ({
@@ -312,26 +352,30 @@ describe('composeExchange', () => {
     it('should isolate upstream exchanges from downstream multiple subscriptions (input share)', async () => {
       let exchange1ExecutionCount = 0;
 
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => {
-            exchange1ExecutionCount++;
-            return op;
-          }),
-          forward,
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => {
+              exchange1ExecutionCount++;
+              return op;
+            }),
+            forward,
+          );
 
-      const exchange2: Exchange = (forward) => (ops$) => {
-        const stream1$ = pipe(ops$, forward);
-        const stream2$ = pipe(ops$, forward);
-        const stream3$ = pipe(ops$, forward);
+      const exchange2: Exchange =
+        ({ forward }) =>
+        (ops$) => {
+          const stream1$ = pipe(ops$, forward);
+          const stream2$ = pipe(ops$, forward);
+          const stream3$ = pipe(ops$, forward);
 
-        return pipe(
-          ops$,
-          mergeMap(() => merge(stream1$, stream2$, stream3$)),
-        );
-      };
+          return pipe(
+            ops$,
+            mergeMap(() => merge(stream1$, stream2$, stream3$)),
+          );
+        };
 
       const composed = composeExchange({ exchanges: [exchange1, exchange2] });
       const forward = makeTestForward();
@@ -345,15 +389,17 @@ describe('composeExchange', () => {
     it('should isolate exchanges from multiple result subscribers (output share)', async () => {
       let exchange1ExecutionCount = 0;
 
-      const exchange1: Exchange = (forward) => (ops$) =>
-        pipe(
-          ops$,
-          map((op) => {
-            exchange1ExecutionCount++;
-            return op;
-          }),
-          forward,
-        );
+      const exchange1: Exchange =
+        ({ forward }) =>
+        (ops$) =>
+          pipe(
+            ops$,
+            map((op) => {
+              exchange1ExecutionCount++;
+              return op;
+            }),
+            forward,
+          );
 
       const composed = composeExchange({ exchanges: [exchange1] });
       const forward = makeTestForward();
@@ -362,7 +408,7 @@ describe('composeExchange', () => {
       const results: Operation[][] = [[], [], []];
 
       const subject = makeSubject<Operation>();
-      const composed$ = composed(forward)(subject.source);
+      const composed$ = composed({ forward, client: null as never })(subject.source);
 
       pipe(
         composed$,

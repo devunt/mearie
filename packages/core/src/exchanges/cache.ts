@@ -1,6 +1,5 @@
 import type { Exchange, RequestOperation } from '../exchange.ts';
 import { Cache } from '../cache/cache.ts';
-import type { SchemaMeta } from '@mearie/shared';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromValue } from '../stream/sources/from-value.ts';
@@ -15,7 +14,6 @@ import { takeUntil } from '../stream/operators/take-until.ts';
 import { isFragmentRef } from '../cache/utils.ts';
 
 export type CacheOptions = {
-  schemaMeta?: SchemaMeta;
   fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
 };
 

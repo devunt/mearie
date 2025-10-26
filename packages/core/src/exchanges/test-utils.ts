@@ -1,5 +1,6 @@
 import type { Operation, OperationResult, ExchangeIO, Exchange, RequestOperation } from '../exchange.ts';
-import type { ArtifactKind, Artifact, Selection } from '@mearie/shared';
+import type { ArtifactKind, Artifact, Selection, SchemaMeta } from '@mearie/shared';
+import type { Client } from '../client.ts';
 import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 import { vi } from 'vitest';
@@ -76,10 +77,17 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
     );
 };
 
+export const makeTestClient = (schema: SchemaMeta): Pick<Client, 'schema'> => {
+  return {
+    schema,
+  };
+};
+
 export const testExchange = async (
   exchange: Exchange,
   forward: ExchangeIO,
   operations: Operation[],
+  client?: Pick<Client, 'schema'>,
 ): Promise<OperationResult[]> => {
   const results: OperationResult[] = [];
   vi.useFakeTimers();
@@ -88,7 +96,7 @@ export const testExchange = async (
 
   const unsubscribe = pipe(
     subject.source,
-    exchange(forward),
+    exchange({ forward, client: (client ?? null) as never }),
     subscribe({
       next: (result) => {
         results.push(result);

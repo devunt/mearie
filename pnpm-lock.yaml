@@ -102,21 +102,6 @@ importers:
         specifier: ^1.6.5
         version: 1.6.5(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6))
 
-  examples/basic:
-    devDependencies:
-      '@mearie/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      mearie:
-        specifier: workspace:*
-        version: link:../../packages/mearie
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vite:
-        specifier: ^7.1.12
-        version: 7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)
-
   examples/react:
     dependencies:
       '@mearie/react':

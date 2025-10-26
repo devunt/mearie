@@ -29,20 +29,21 @@ export const makeTestOperation = (options: TestOperationOptions = {}): Operation
     selections = [],
   } = options;
 
-  if (variant === 'teardown') {
-    return {
-      variant: 'teardown',
-      key,
-      metadata,
-    };
-  }
-
   const artifact: Artifact = {
     kind,
     name,
     body: '',
     selections,
   };
+
+  if (variant === 'teardown') {
+    return {
+      variant: 'teardown',
+      key,
+      artifact,
+      metadata,
+    };
+  }
 
   return {
     variant: 'request',

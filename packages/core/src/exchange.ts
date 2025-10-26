@@ -33,22 +33,3 @@ export type OperationResult = {
 export type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 
 export type Exchange = (forward: ExchangeIO) => ExchangeIO;
-
-/**
- * Creates a new operation with updated metadata, keeping the operation immutable.
- * @param operation - The original operation.
- * @param metadata - Additional metadata to merge into the new operation.
- * @returns A new operation with the merged metadata.
- */
-export const makeOperation = (
-  operation: Operation,
-  metadata?: Partial<OperationMetadataMap> & Record<string, unknown>,
-): Operation => {
-  return {
-    ...operation,
-    metadata: {
-      ...operation.metadata,
-      ...metadata,
-    },
-  };
-};

@@ -45,7 +45,6 @@ export const dedupExchange = (): Exchange => {
         filter(
           (op) => op.variant === 'request' && (op.artifact.kind === 'mutation' || op.artifact.kind === 'fragment'),
         ),
-        forward,
       );
 
       const deduplicate$ = pipe(
@@ -67,17 +66,6 @@ export const dedupExchange = (): Exchange => {
           return (op.metadata.dedup?.skip ?? false) || !isInflight;
         }),
         delay(0),
-        forward,
-        mergeMap((result) => {
-          if (result.operation.variant !== 'request') {
-            return fromValue(result);
-          }
-
-          const dedupKey = makeDedupKey(result.operation);
-          const subs = operations.get(dedupKey) ?? new Set<string>();
-
-          return fromArray([...subs].map((key) => ({ ...result, operation: { ...result.operation, key } })));
-        }),
       );
 
       const teardown$ = pipe(
@@ -97,10 +85,22 @@ export const dedupExchange = (): Exchange => {
 
           return true;
         }),
-        forward,
       );
 
-      return merge(skip$, deduplicate$, teardown$);
+      return pipe(
+        merge(skip$, deduplicate$, teardown$),
+        forward,
+        mergeMap((result) => {
+          if (result.operation.variant !== 'request') {
+            return fromValue(result);
+          }
+
+          const dedupKey = makeDedupKey(result.operation);
+          const subs = operations.get(dedupKey) ?? new Set<string>();
+
+          return fromArray([...subs].map((key) => ({ ...result, operation: { ...result.operation, key } })));
+        }),
+      );
     };
   };
 };

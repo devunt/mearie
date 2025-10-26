@@ -534,7 +534,10 @@ describe('retryExchange', () => {
       let callCount = 0;
       const exchange = retryExchange({ maxAttempts: 3, backoff: () => 0 });
       const forward = makeTestForward((op) => {
-        callCount++;
+        if (op.variant === 'request') {
+          callCount++;
+        }
+
         return {
           operation: op,
           errors: [
@@ -558,7 +561,10 @@ describe('retryExchange', () => {
       let callCount = 0;
       const exchange = retryExchange({ maxAttempts: 3, backoff: () => 0 });
       const forward = makeTestForward((op) => {
-        callCount++;
+        if (op.variant === 'request') {
+          callCount++;
+        }
+
         return {
           operation: op,
           errors: [

@@ -5,7 +5,6 @@
 export type { Artifact, ArtifactKind, DataOf, FragmentRefs, VariablesOf } from '@mearie/shared';
 
 export type { Exchange, ExchangeIO, Operation, OperationResult, OperationMetadataMap } from './exchange.ts';
-export { makeOperation } from './exchange.ts';
 export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';
 export {
   GraphQLError,

@@ -28,7 +28,7 @@
     "@types/node": "catalog:",
     "@types/picomatch": "^4.0.2",
     "@vue/compiler-sfc": "^3.5.22",
-    "svelte": "^5.41.4",
+    "svelte": "^5.42.2",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

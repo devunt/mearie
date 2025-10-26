@@ -91,8 +91,6 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn export_scalars(&self) -> Statement<'b> {
-        let ident = self.ast.binding_identifier(SPAN, "$Scalars");
-
         let built_in_scalars = [
             ("ID", self.ast.ts_type_string_keyword(SPAN)),
             ("String", self.ast.ts_type_string_keyword(SPAN)),
@@ -131,15 +129,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
 
         let type_literal = self.ast.ts_type_type_literal(SPAN, properties);
 
-        let decl = self.ast.ts_type_alias_declaration(
-            SPAN,
-            ident,
-            None::<OxcBox<TSTypeParameterDeclaration>>,
-            type_literal,
-            false,
-        );
-
-        Statement::TSTypeAliasDeclaration(self.ast.alloc(decl))
+        self.stmt_export_type("$Scalars", type_literal)
     }
 
     fn export_enum(&self, enum_def: &EnumTypeDefinition<'b>) -> Statement<'b> {

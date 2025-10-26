@@ -1,5 +1,6 @@
 export type { Subscription, Sink, Source, Operator } from './types.ts';
 export { pipe } from './pipe.ts';
+export { compose } from './compose.ts';
 
 export { subscribe } from './sinks/subscribe.ts';
 export type { Observer } from './sinks/subscribe.ts';

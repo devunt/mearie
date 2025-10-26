@@ -1,5 +1,4 @@
 import type { Exchange, Operation } from '../exchange.ts';
-import { makeOperation } from '../exchange.ts';
 import { type OperationError, isExchangeError } from '../errors.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
@@ -9,7 +8,6 @@ import { delay } from '../stream/operators/delay.ts';
 import { fromValue } from '../stream/sources/from-value.ts';
 import { merge } from '../stream/operators/merge.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
-import { share } from '../stream/operators/share.ts';
 import { tap } from '../stream/operators/tap.ts';
 
 declare module '../exchange.ts' {
@@ -42,13 +40,12 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
       const { source: retries$, next } = makeSubject<Operation>();
       const tornDown = new Set<string>();
 
-      const teardowns$ = pipe(
+      const teardown$ = pipe(
         ops$,
         filter((op) => op.variant === 'teardown'),
         tap((op) => {
           tornDown.add(op.key);
         }),
-        share(),
       );
 
       const requests$ = pipe(
@@ -61,16 +58,16 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
         filter((op) => !tornDown.has(op.key)),
         mergeMap((op) => {
           const teardown$ = pipe(
-            teardowns$,
-            filter((teardown) => teardown.variant === 'teardown' && teardown.key === op.key),
+            ops$,
+            filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
           );
 
           return pipe(fromValue(op), delay(op.metadata.retry!.delay), takeUntil(teardown$));
         }),
       );
 
-      const forward$ = pipe(
-        merge(requests$, retriesDelayed$),
+      return pipe(
+        merge(requests$, retriesDelayed$, teardown$),
         forward,
         filter((result) => {
           if (!result.errors || result.errors.length === 0) {
@@ -91,23 +88,23 @@ export const retryExchange = (options: RetryOptions = {}): Exchange => {
             return true;
           }
 
-          const operation = makeOperation(result.operation, {
-            dedup: {
-              skip: true,
-            },
-            retry: {
-              attempt: attempt + 1,
-              delay: backoff(attempt),
+          next({
+            ...result.operation,
+            metadata: {
+              ...result.operation.metadata,
+              dedup: {
+                skip: true,
+              },
+              retry: {
+                attempt: attempt + 1,
+                delay: backoff(attempt),
+              },
             },
           });
-
-          next(operation);
 
           return false;
         }),
       );
-
-      return merge(forward$, teardowns$);
     };
   };
 };

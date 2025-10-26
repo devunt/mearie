@@ -9,7 +9,8 @@ import { pipe } from './stream/pipe.ts';
 import { filter } from './stream/operators/filter.ts';
 import { initialize } from './stream/operators/initialize.ts';
 import { share } from './stream/operators/share.ts';
-import { finalize } from './stream/index.ts';
+import { finalize } from './stream/operators/finalize.ts';
+import { never } from './stream/sources/never.ts';
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 export type QueryOptions = {};
@@ -32,7 +33,7 @@ export class Client {
     });
 
     this.operations$ = makeSubject<Operation>();
-    this.results$ = exchange((ops$) => ops$ as unknown as Source<OperationResult>)(this.operations$.source);
+    this.results$ = exchange(never)(this.operations$.source);
   }
 
   private createOperationKey(): string {

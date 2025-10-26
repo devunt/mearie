@@ -4,7 +4,6 @@ import { pipe } from '../stream/pipe.ts';
 import { filter } from '../stream/operators/filter.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
 import { merge } from '../stream/operators/merge.ts';
-import { share } from '../stream/operators/share.ts';
 import { takeUntil } from '../stream/operators/take-until.ts';
 import { make } from '../stream/sources/make.ts';
 
@@ -66,22 +65,16 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
 
   return (forward) => {
     return (ops$) => {
-      const teardowns$ = pipe(
-        ops$,
-        filter((op) => op.variant === 'teardown'),
-        share(),
-      );
-
       const subscription$ = pipe(
         ops$,
         filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind === 'subscription'),
         mergeMap((op) => {
           const teardown$ = pipe(
-            teardowns$,
-            filter((operation) => operation.key === op.key),
+            ops$,
+            filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
           );
 
-          const source = make<OperationResult>((observer) =>
+          const source$ = make<OperationResult>((observer) =>
             client.subscribe(
               {
                 query: op.artifact.body,
@@ -123,7 +116,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
             ),
           );
 
-          return pipe(source, takeUntil(teardown$));
+          return pipe(source$, takeUntil(teardown$));
         }),
       );
 

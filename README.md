@@ -1,4 +1,4 @@
-<img src="docs/assets/logo.svg" width="64" height="64" align="right">
+<img src="docs/public/logo.svg" width="64" height="64" align="right">
 
 # Mearie
 

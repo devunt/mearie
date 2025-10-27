@@ -52,7 +52,7 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png', sizes: '32x32' }],
     ['meta', { property: 'og:image', content: 'https://mearie.dev/opengraph.png' }],
-    ['meta ', { property: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { property: 'twitter:card', content: 'summary_large_image' }],
   ],
 
   themeConfig: {

@@ -10,7 +10,7 @@ Automatically retry failed requests with exponential backoff.
 
 ```typescript
 import { createClient, retryExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

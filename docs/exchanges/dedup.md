@@ -10,7 +10,7 @@ Prevent duplicate concurrent requests, reducing unnecessary network traffic.
 
 ```typescript
 import { createClient, dedupExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

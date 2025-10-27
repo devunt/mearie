@@ -80,7 +80,7 @@ Create a GraphQL client with your API endpoint. Import `createClient` and exchan
 ```typescript
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/react';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -117,7 +117,7 @@ import { client } from './lib/graphql-client';
 Fetch data with automatic caching and updates:
 
 ```tsx
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/react';
 
 export const UserProfile = ({ userId }: { userId: string }) => {
@@ -161,7 +161,7 @@ Modify data with automatic cache updates:
 
 ```tsx
 import { useState } from 'react';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useMutation } from '@mearie/react';
 
 export const EditUserForm = ({ userId }: { userId: string }) => {
@@ -198,9 +198,9 @@ export const EditUserForm = ({ userId }: { userId: string }) => {
 Co-locate data requirements with components:
 
 ```tsx
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useFragment } from '@mearie/react';
-import type { UserCard_user$key } from '~graphql';
+import type { UserCard_user$key } from '$mearie';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
   const data = useFragment(
@@ -230,7 +230,7 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 Real-time updates via subscriptions:
 
 ```tsx
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useSubscription } from '@mearie/react';
 
 interface ChatMessagesProps {
@@ -275,7 +275,7 @@ Use with React Suspense for simpler loading states:
 
 ```tsx
 import { Suspense } from 'react';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/react';
 
 const UserProfile = ({ userId }: { userId: string }) => {

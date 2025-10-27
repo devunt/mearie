@@ -61,7 +61,7 @@ Log operations and results as they flow through:
 ```typescript
 import { pipe, tap } from '@mearie/core/stream';
 import { type Exchange } from '@mearie/react';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 const loggingExchange = (): Exchange => {
   return ({ forward }) => {

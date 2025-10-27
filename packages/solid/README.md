@@ -38,7 +38,7 @@ Then use it in your components:
 ```tsx
 // src/components/UserProfile.tsx
 import { type Component } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {

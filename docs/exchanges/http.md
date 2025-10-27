@@ -10,7 +10,7 @@ Send GraphQL operations to a server over HTTP.
 
 ```typescript
 import { createClient, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -29,7 +29,7 @@ HTTP Exchange is a terminating exchange - it must be the last exchange in your c
 Specify the GraphQL endpoint:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -42,7 +42,7 @@ export const client = createClient({
 Add custom headers to all requests:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -63,7 +63,7 @@ export const client = createClient({
 Control cookie/credential behavior:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -96,7 +96,7 @@ controller.abort();
 Place httpExchange at the end of your chain:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

@@ -10,7 +10,7 @@ Learn how to modify data with mutations.
 
 ```tsx
 import { useState } from 'react';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useMutation } from '@mearie/react';
 
 export const EditUserForm = ({ userId }: { userId: string }) => {

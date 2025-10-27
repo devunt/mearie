@@ -16,7 +16,7 @@ Mearie consists of two parts:
 Here's a quick example:
 
 ```tsx
-import { graphql, schema } from '~graphql';
+import { graphql, schema } from '$mearie';
 import { createClient, httpExchange, cacheExchange, ClientProvider, useQuery } from '@mearie/react';
 
 const client = createClient({

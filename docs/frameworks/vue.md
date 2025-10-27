@@ -67,7 +67,7 @@ Create a GraphQL client with your API endpoint. Import `createClient` and exchan
 ```typescript
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/vue';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -103,7 +103,7 @@ Fetch data with automatic caching:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -146,7 +146,7 @@ Modify data with automatic cache updates:
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useMutation } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();
@@ -182,9 +182,9 @@ Co-locate data requirements with components:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useFragment } from '@mearie/vue';
-import type { UserCard_user$key } from '~graphql';
+import type { UserCard_user$key } from '$mearie';
 
 const props = defineProps<{ user: UserCard_user$key }>();
 
@@ -216,7 +216,7 @@ Real-time updates via subscriptions:
 
 ```vue
 <script setup lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useSubscription } from '@mearie/vue';
 
 const props = defineProps<{ chatId: string }>();
@@ -255,7 +255,7 @@ Variables automatically track Vue reactivity:
 ```vue
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/vue';
 
 const userId = ref('123');

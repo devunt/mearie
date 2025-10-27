@@ -69,7 +69,7 @@ Create a GraphQL client with your API endpoint. Import `createClient` and exchan
 ```typescript [React]
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/react';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -86,7 +86,7 @@ export const client = createClient({
 ```typescript [Vue]
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/vue';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -103,7 +103,7 @@ export const client = createClient({
 ```typescript [Svelte]
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/svelte';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -120,7 +120,7 @@ export const client = createClient({
 ```typescript [Solid]
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/solid';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

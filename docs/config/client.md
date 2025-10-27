@@ -13,7 +13,7 @@ Create a client with at least one terminating exchange (like `httpExchange`):
 ```typescript
 // src/lib/graphql-client.ts
 import { createClient, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -31,7 +31,7 @@ Add caching and deduplication for production use:
 
 ```typescript
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

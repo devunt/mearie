@@ -7,7 +7,7 @@ import {
   subscriptionExchange,
 } from '@mearie/react';
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const mearieClient = createClient({
   schema,

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useSubscription, type DataOf } from '@mearie/react';
-import { graphql } from '~graphql';
-import type { ReviewUpdates } from '~graphql';
+import { graphql } from '$mearie';
+import type { ReviewUpdates } from '$mearie';
 import { useState, useCallback, useEffect } from 'react';
 import { MovieCard } from '~/components/movie-card.tsx';
 import { Card } from '~/components/ui/card.tsx';

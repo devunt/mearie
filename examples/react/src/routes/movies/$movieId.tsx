@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@mearie/react';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { Card } from '~/components/ui/card.tsx';
 import { Star, Calendar, Users, MessageSquare } from 'lucide-react';
 

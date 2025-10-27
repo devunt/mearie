@@ -14,7 +14,7 @@ Exchanges are composable middleware that process your GraphQL operations. Each e
 
 ```typescript
 import { createClient, httpExchange, cacheExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -94,7 +94,7 @@ This means:
 Sends GraphQL requests over HTTP (terminating exchange):
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -109,7 +109,7 @@ export const client = createClient({
 Normalized caching with automatic updates:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -124,7 +124,7 @@ export const client = createClient({
 Automatic retry with exponential backoff:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -139,7 +139,7 @@ export const client = createClient({
 Deduplicates identical concurrent requests:
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -155,7 +155,7 @@ Handles real-time subscriptions via Server-Sent Events or WebSocket:
 
 ```typescript
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -178,7 +178,7 @@ export const client = createClient({
 
 ```typescript
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -199,7 +199,7 @@ export const client = createClient({
 ### Retry on Network Errors
 
 ```typescript
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -220,7 +220,7 @@ Exchanges transform operation streams. Here's a simple logging exchange:
 ```typescript
 import { pipe, tap } from '@mearie/core/stream';
 import { type Exchange } from '@mearie/react';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 const loggingExchange = (): Exchange => {
   return ({ forward }) => {

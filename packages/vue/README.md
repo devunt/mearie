@@ -39,7 +39,7 @@ Then use it in your components:
 ```vue
 <!-- src/components/UserProfile.vue -->
 <script setup lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/vue';
 
 const props = defineProps<{ userId: string }>();

@@ -40,7 +40,7 @@ Configure runtime transformations when creating your client:
 
 ```typescript
 import { createClient, httpExchange, cacheExchange } from '@mearie/react';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

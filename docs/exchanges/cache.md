@@ -10,7 +10,7 @@ Normalized caching with automatic dependency tracking and fine-grained updates.
 
 ```typescript
 import { createClient, cacheExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

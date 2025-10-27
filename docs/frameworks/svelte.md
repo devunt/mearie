@@ -67,7 +67,7 @@ Create a GraphQL client with your API endpoint. Import `createClient` and exchan
 ```typescript
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/svelte';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -105,7 +105,7 @@ Fetch data with automatic caching:
 
 ```svelte
 <script lang="ts">
-import { graphql } from '~graphql'
+import { graphql } from '$mearie'
 import { createQuery } from '@mearie/svelte'
 
 interface Props {
@@ -155,7 +155,7 @@ Modify data with automatic cache updates:
 
 ```svelte
 <script lang="ts">
-import { graphql } from '~graphql'
+import { graphql } from '$mearie'
 import { createMutation } from '@mearie/svelte'
 
 interface Props {
@@ -196,9 +196,9 @@ Co-locate data requirements with components:
 
 ```svelte
 <script lang="ts">
-import { graphql } from '~graphql'
+import { graphql } from '$mearie'
 import { createFragment } from '@mearie/svelte'
-import type { UserCard_user$key } from '~graphql'
+import type { UserCard_user$key } from '$mearie'
 
 interface Props {
   user: UserCard_user$key;
@@ -232,7 +232,7 @@ Real-time updates via subscriptions:
 
 ```svelte
 <script lang="ts">
-import { graphql } from '~graphql'
+import { graphql } from '$mearie'
 import { createSubscription } from '@mearie/svelte'
 
 interface Props {
@@ -274,7 +274,7 @@ Svelte's fine-grained reactivity with runes works seamlessly with Mearie:
 
 ```svelte
 <script lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createQuery } from '@mearie/svelte';
 
 let userId = $state('123');

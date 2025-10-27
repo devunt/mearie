@@ -37,7 +37,7 @@ Then use it in your components:
 ```svelte
 <!-- src/components/UserProfile.svelte -->
 <script lang="ts">
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createQuery } from '@mearie/svelte';
 
 interface Props {

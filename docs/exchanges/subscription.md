@@ -15,7 +15,7 @@ Simple HTTP-based protocol recommended for most use cases:
 ```typescript
 import { createClient, httpExchange, subscriptionExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -43,7 +43,7 @@ Alternative protocol with lower latency:
 ```typescript
 import { createClient, httpExchange, subscriptionExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
 import { createClient as createWSClient } from 'graphql-ws';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -76,7 +76,7 @@ Configure the SSE client with additional options:
 
 ```typescript
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -101,7 +101,7 @@ Configure the WebSocket client:
 
 ```typescript
 import { createClient as createWSClient } from 'graphql-ws';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -127,7 +127,7 @@ Place subscriptionExchange as a terminating exchange:
 
 ```typescript
 import { createClient as createSSEClient } from 'graphql-sse';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,

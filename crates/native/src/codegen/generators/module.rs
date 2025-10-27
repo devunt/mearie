@@ -29,7 +29,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
     pub fn generate(&self) -> Result<SourceBuf> {
         let module_statements = self.gen_module();
-        let module_declaration_statement = self.stmt_module_decl("~graphql", module_statements);
+        let module_declaration_statement = self.stmt_module_decl("$mearie", module_statements);
 
         let all_statements = self.ast.vec_from_iter(chain![
             self.gen_top_level(),

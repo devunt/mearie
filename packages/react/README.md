@@ -36,7 +36,7 @@ Then use it in your components:
 
 ```tsx
 // src/components/UserProfile.tsx
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/react';
 
 interface UserProfileProps {

@@ -67,7 +67,7 @@ Create a GraphQL client with your API endpoint. Import `createClient` and exchan
 ```typescript
 // src/lib/graphql-client.ts
 import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/solid';
-import { schema } from '~graphql';
+import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
@@ -105,7 +105,7 @@ Fetch data with fine-grained reactivity:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {
@@ -153,7 +153,7 @@ Modify data with automatic cache updates:
 
 ```tsx
 import { type Component, createSignal } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createMutation } from '@mearie/solid';
 
 interface EditUserFormProps {
@@ -195,9 +195,9 @@ Co-locate data requirements with components:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createFragment } from '@mearie/solid';
-import type { UserCard_user$key } from '~graphql';
+import type { UserCard_user$key } from '$mearie';
 
 interface UserCardProps {
   user: UserCard_user$key;
@@ -232,7 +232,7 @@ Real-time updates via subscriptions:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createSubscription } from '@mearie/solid';
 
 interface ChatMessagesProps {
@@ -275,7 +275,7 @@ Solid's fine-grained reactivity works seamlessly with Mearie:
 
 ```tsx
 import { type Component } from 'solid-js';
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { createQuery } from '@mearie/solid';
 
 interface UserProfileProps {

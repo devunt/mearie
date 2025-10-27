@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useFragment } from '@mearie/react';
-import { graphql } from '~graphql';
-import type { MovieCard$key } from '~graphql';
+import { graphql } from '$mearie';
+import type { MovieCard$key } from '$mearie';
 import { Star } from 'lucide-react';
 
 interface MovieCardProps {

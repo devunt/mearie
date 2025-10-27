@@ -102,9 +102,9 @@ See [Vue](/frameworks/vue), [Svelte](/frameworks/svelte), or [Solid](/frameworks
 Define a fragment with your component:
 
 ```typescript
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useFragment } from '@mearie/react';
-import type { UserCard_user$key } from '~graphql';
+import type { UserCard_user$key } from '$mearie';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
   const data = useFragment(
@@ -132,7 +132,7 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 Spread the fragment in your query:
 
 ```typescript
-import { graphql } from '~graphql';
+import { graphql } from '$mearie';
 import { useQuery } from '@mearie/react';
 import { UserCard } from './UserCard';
 

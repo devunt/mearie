@@ -30,37 +30,44 @@ function MovieDetailPage() {
         movie(id: $id) {
           id
           title
-          posterUrl
-          rating
-          releaseDate
           plot
+          releaseDate
           runtime
+          rating
+          posterUrl
           backdropUrl
+
           credits {
             __typename
+
             ... on Cast {
               id
+              character
+
               person {
                 id
                 name
                 imageUrl
               }
-              character
             }
+
             ... on Crew {
               id
+              job
+
               person {
                 id
                 name
                 imageUrl
               }
-              job
             }
           }
+
           genres {
             id
             name
           }
+
           reviews {
             id
             rating

@@ -45,17 +45,20 @@ function HomePage() {
         movies(first: $first, after: $after, filter: $filter) {
           edges {
             cursor
+
             node {
               id
               ...MovieCard
             }
           }
+
           pageInfo {
             hasNextPage
             hasPreviousPage
             startCursor
             endCursor
           }
+
           totalCount
         }
       }
@@ -70,15 +73,16 @@ function HomePage() {
     graphql(`
       query Search($query: String!, $limit: Int) {
         search(query: $query, limit: $limit) {
+          __typename
+
           ... on Movie {
-            __typename
             id
             title
             releaseDate
             posterUrl
           }
+
           ... on Person {
-            __typename
             id
             name
             imageUrl
@@ -113,11 +117,12 @@ function HomePage() {
           id
           rating
           text
+          createdAt
+
           movie {
             id
             title
           }
-          createdAt
         }
       }
     `),

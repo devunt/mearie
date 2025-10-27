@@ -597,7 +597,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     fn get_operation_body(&self, operation: &OperationDefinition<'b>) -> Result<String> {
         let source = self
             .document
-            .get_operation_source(operation)
+            .get_transformed_operation_source(operation)
             .ok_or_else(|| MearieError::codegen("Operation source not found"))?
             .trim();
 
@@ -607,7 +607,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     fn get_fragment_body(&self, fragment: &FragmentDefinition<'b>) -> Result<String> {
         let source = self
             .document
-            .get_fragment_source(fragment)
+            .get_transformed_fragment_source(fragment)
             .ok_or_else(|| MearieError::codegen("Fragment source not found"))?
             .trim();
 

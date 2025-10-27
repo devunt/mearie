@@ -210,10 +210,10 @@ impl<'a> DocumentIndex<'a> {
         self.document_transforms.insert(original as *const _, transformed);
     }
 
-    /// Gets the source code for an operation definition.
+    /// Gets the original source code for an operation definition.
     ///
     /// Returns the GraphQL source string for the document containing this operation.
-    /// If the document has been transformed, returns the transformed source.
+    /// Always returns the original source, not the transformed version.
     ///
     /// # Time Complexity
     ///
@@ -231,20 +231,33 @@ impl<'a> DocumentIndex<'a> {
     /// ```
     pub fn get_operation_source(&self, operation: &OperationDefinition<'a>) -> Option<&'a str> {
         let doc_ptr = self.operation_to_document.get(&(operation as *const _))?;
-
         let original_doc = unsafe { &**doc_ptr };
+        Some(original_doc.source.code)
+    }
+
+    /// Gets the transformed source code for an operation definition.
+    ///
+    /// Returns the transformed GraphQL source string if the document has been transformed,
+    /// otherwise returns the original source.
+    ///
+    /// # Time Complexity
+    ///
+    /// O(1) - uses hash map lookups with pointer equality
+    pub fn get_transformed_operation_source(&self, operation: &OperationDefinition<'a>) -> Option<&'a str> {
+        let doc_ptr = self.operation_to_document.get(&(operation as *const _))?;
 
         if let Some(&transformed_doc) = self.document_transforms.get(doc_ptr) {
             return Some(transformed_doc.source.code);
         }
 
+        let original_doc = unsafe { &**doc_ptr };
         Some(original_doc.source.code)
     }
 
-    /// Gets the source code for a fragment definition.
+    /// Gets the original source code for a fragment definition.
     ///
     /// Returns the GraphQL source string for the document containing this fragment.
-    /// If the document has been transformed, returns the transformed source.
+    /// Always returns the original source, not the transformed version.
     ///
     /// # Time Complexity
     ///
@@ -262,13 +275,26 @@ impl<'a> DocumentIndex<'a> {
     /// ```
     pub fn get_fragment_source(&self, fragment: &FragmentDefinition<'a>) -> Option<&'a str> {
         let doc_ptr = self.fragment_to_document.get(&(fragment as *const _))?;
-
         let original_doc = unsafe { &**doc_ptr };
+        Some(original_doc.source.code)
+    }
+
+    /// Gets the transformed source code for a fragment definition.
+    ///
+    /// Returns the transformed GraphQL source string if the document has been transformed,
+    /// otherwise returns the original source.
+    ///
+    /// # Time Complexity
+    ///
+    /// O(1) - uses hash map lookups with pointer equality
+    pub fn get_transformed_fragment_source(&self, fragment: &FragmentDefinition<'a>) -> Option<&'a str> {
+        let doc_ptr = self.fragment_to_document.get(&(fragment as *const _))?;
 
         if let Some(&transformed_doc) = self.document_transforms.get(doc_ptr) {
             return Some(transformed_doc.source.code);
         }
 
+        let original_doc = unsafe { &**doc_ptr };
         Some(original_doc.source.code)
     }
 }

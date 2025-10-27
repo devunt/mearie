@@ -20,6 +20,9 @@
 
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(120deg, #22c55e 30%, #10b981);
+
+  --vp-home-hero-image-background-image: linear-gradient(45deg, #3fb87b40, #65df9340);
+  --vp-home-hero-image-filter: blur(96px);
 }
 
 .dark {
@@ -31,11 +34,4 @@
   --vp-c-accent-1: #34d399;
   --vp-c-accent-2: #10b981;
   --vp-c-accent-3: #059669;
-}
-
-.VPHero .name {
-  background: var(--vp-home-hero-name-background);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }

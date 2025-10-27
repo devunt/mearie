@@ -48,8 +48,13 @@ export default defineConfig({
     plugins: [groupIconVitePlugin(), mearie()],
   },
 
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/assets/favicon.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/assets/favicon.png', sizes: '32x32' }],
+  ],
+
   themeConfig: {
-    // logo: '/logo.svg',
+    logo: '/assets/logo.svg',
 
     nav: [
       { text: 'Why Mearie?', link: '/why-mearie' },

@@ -11,7 +11,7 @@ hero:
   text: The GraphQL client that feels like magic
   tagline: Hassle-free GraphQL client for modern frameworks
   image:
-    src: /assets/logo.svg
+    src: /logo.svg
     alt: Mearie Logo
   actions:
     - theme: brand

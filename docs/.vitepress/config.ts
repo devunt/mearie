@@ -49,12 +49,14 @@ export default defineConfig({
   },
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/assets/favicon.svg' }],
-    ['link', { rel: 'icon', type: 'image/png', href: '/assets/favicon.png', sizes: '32x32' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png', sizes: '32x32' }],
+    ['meta', { property: 'og:image', content: 'https://mearie.dev/opengraph.png' }],
+    ['meta ', { property: 'twitter:card', content: 'summary_large_image' }],
   ],
 
   themeConfig: {
-    logo: '/assets/logo.svg',
+    logo: '/logo.svg',
 
     nav: [
       { text: 'Why Mearie?', link: '/why-mearie' },

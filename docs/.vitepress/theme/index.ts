@@ -1,6 +1,6 @@
 import type { EnhanceAppContext } from 'vitepress';
 import TwoslashFloatingVue from '@shikijs/vitepress-twoslash/client';
-import Theme from 'vitepress/theme';
+import Theme from 'vitepress/theme-without-fonts';
 
 // eslint-disable-next-line import/no-unresolved
 import 'virtual:group-icons.css';

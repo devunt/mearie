@@ -388,24 +388,24 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type GetUser$vars = {");
-        assert_contains!(code, "id: Scalars[\"ID\"]");
+        assert_contains!(code, "id: $Scalars[\"ID\"]");
 
         assert_contains!(code, "export type GetUser$data = {");
-        assert_contains!(code, "user?: Nullable<{");
-        assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "id: Scalars[\"ID\"]");
+        assert_contains!(code, "user?: $Nullable<{");
+        assert_contains!(code, "email?: $Nullable<$Scalars[\"String\"]>");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "id: $Scalars[\"ID\"]");
 
         assert_contains!(code, "export type GetAllUsers$data = {");
-        assert_contains!(code, "users: List<{");
+        assert_contains!(code, "users: $List<{");
 
         assert_contains!(code, "export type CreateUser$vars = {");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "email?: $Nullable<$Scalars[\"String\"]>");
 
         assert_contains!(code, "export type CreateUser$data = {");
         assert_contains!(code, "createUser: {");
-        assert_contains!(code, "id: Scalars[\"ID\"]");
+        assert_contains!(code, "id: $Scalars[\"ID\"]");
     }
 
     #[test]
@@ -461,16 +461,16 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type CreateUserInput = {");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
-        assert_contains!(code, "age?: Nullable<Scalars[\"Int\"]>");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "email?: $Nullable<$Scalars[\"String\"]>");
+        assert_contains!(code, "age?: $Nullable<$Scalars[\"Int\"]>");
 
         assert_contains!(code, "export type CreateUser$vars = {");
         assert_contains!(code, "input: CreateUserInput");
 
         assert_contains!(code, "export type CreateUser$data = {");
         assert_contains!(code, "createUser: {");
-        assert_contains!(code, "email?: Nullable<Scalars[\"String\"]>");
+        assert_contains!(code, "email?: $Nullable<$Scalars[\"String\"]>");
     }
 
     #[test]
@@ -531,12 +531,12 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type CreateUserInput = {");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "email: Scalars[\"String\"]");
-        assert_contains!(code, "createdAt: Scalars[\"DateTime\"]");
-        assert_contains!(code, "updatedAt?: Nullable<Scalars[\"DateTime\"]>");
-        assert_contains!(code, "metadata?: Nullable<Scalars[\"JSON\"]>");
-        assert_contains!(code, "website?: Nullable<Scalars[\"URL\"]>");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "email: $Scalars[\"String\"]");
+        assert_contains!(code, "createdAt: $Scalars[\"DateTime\"]");
+        assert_contains!(code, "updatedAt?: $Nullable<$Scalars[\"DateTime\"]>");
+        assert_contains!(code, "metadata?: $Nullable<$Scalars[\"JSON\"]>");
+        assert_contains!(code, "website?: $Nullable<$Scalars[\"URL\"]>");
 
         assert_contains!(code, "export type CreateUser$vars = {");
         assert_contains!(code, "input: CreateUserInput");
@@ -590,15 +590,15 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type GetPosts$vars = {");
-        assert_contains!(code, "publishedAfter: Scalars[\"DateTime\"]");
-        assert_contains!(code, "metadata?: Nullable<Scalars[\"JSON\"]>");
+        assert_contains!(code, "publishedAfter: $Scalars[\"DateTime\"]");
+        assert_contains!(code, "metadata?: $Nullable<$Scalars[\"JSON\"]>");
 
         assert!(
             !code.contains("publishedAfter: DateTime"),
             "Should not contain bare 'DateTime' type in variables"
         );
         assert!(
-            !code.contains("metadata?: Nullable<JSON>"),
+            !code.contains("metadata?: $Nullable<JSON>"),
             "Should not contain bare 'JSON' type in variables"
         );
     }
@@ -658,15 +658,15 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type AddressInput = {");
-        assert_contains!(code, "street: Scalars[\"String\"]");
-        assert_contains!(code, "city: Scalars[\"String\"]");
-        assert_contains!(code, "country?: Nullable<Scalars[\"String\"]>");
+        assert_contains!(code, "street: $Scalars[\"String\"]");
+        assert_contains!(code, "city: $Scalars[\"String\"]");
+        assert_contains!(code, "country?: $Nullable<$Scalars[\"String\"]>");
 
         assert_contains!(code, "export type CreateUserInput = {");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "email: Scalars[\"String\"]");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "email: $Scalars[\"String\"]");
         assert_contains!(code, "address: AddressInput");
-        assert_contains!(code, "secondaryAddress?: Nullable<AddressInput>");
+        assert_contains!(code, "secondaryAddress?: $Nullable<AddressInput>");
 
         assert_contains!(code, "export type CreateUser$vars = {");
         assert_contains!(code, "input: CreateUserInput");
@@ -730,10 +730,10 @@ mod tests {
         let code = &files[0].code;
 
         assert_contains!(code, "export type UserFields$data");
-        assert_contains!(code, "id: Scalars[\"ID\"]");
-        assert_contains!(code, "name: Scalars[\"String\"]");
-        assert_contains!(code, "createdAt: Scalars[\"DateTime\"]");
-        assert_contains!(code, "updatedAt?: Nullable<Scalars[\"DateTime\"]>");
-        assert_contains!(code, "metadata?: Nullable<Scalars[\"JSON\"]>");
+        assert_contains!(code, "id: $Scalars[\"ID\"]");
+        assert_contains!(code, "name: $Scalars[\"String\"]");
+        assert_contains!(code, "createdAt: $Scalars[\"DateTime\"]");
+        assert_contains!(code, "updatedAt?: $Nullable<$Scalars[\"DateTime\"]>");
+        assert_contains!(code, "metadata?: $Nullable<$Scalars[\"JSON\"]>");
     }
 }

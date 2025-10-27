@@ -402,4 +402,72 @@ mod tests {
         assert!(fragment.selection_set.fields().any(|f| f.name.as_str() == "__typename"));
         assert!(fragment.selection_set.fields().any(|f| f.name.as_str() == "id"));
     }
+
+    #[test]
+    fn test_no_selection_set_on_scalars() {
+        let schema = r#"
+            type Query { user: User }
+            type User {
+                id: ID!
+                name: String!
+                age: Int
+                active: Boolean
+            }
+        "#;
+        let query = r#"query { user { name age active } }"#;
+
+        transform_test!(_arena, _document, transformed, _schema_index, _doc_index, {
+            schema_source: schema,
+            document_source: query
+        });
+
+        let op = transformed.operations().next().unwrap();
+        let user_field = op.selection_set.fields().next().unwrap();
+
+        for field in user_field.selection_set.fields() {
+            let field_name = field.name.as_str();
+            if field_name == "name" || field_name == "age" || field_name == "active" {
+                assert!(
+                    field.selection_set.selections.is_empty(),
+                    "Scalar field '{}' should not have a selection set, but has {} selections",
+                    field_name,
+                    field.selection_set.selections.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_no_selection_set_on_enums() {
+        let schema = r#"
+            type Query { user: User }
+            enum Role { ADMIN USER GUEST }
+            type User {
+                id: ID!
+                name: String!
+                role: Role!
+            }
+        "#;
+        let query = r#"query { user { name role } }"#;
+
+        transform_test!(_arena, _document, transformed, _schema_index, _doc_index, {
+            schema_source: schema,
+            document_source: query
+        });
+
+        let op = transformed.operations().next().unwrap();
+        let user_field = op.selection_set.fields().next().unwrap();
+
+        let role_field = user_field
+            .selection_set
+            .fields()
+            .find(|f| f.name.as_str() == "role")
+            .expect("Expected role field");
+
+        assert!(
+            role_field.selection_set.selections.is_empty(),
+            "Enum field 'role' should not have a selection set, but has {} selections",
+            role_field.selection_set.selections.len()
+        );
+    }
 }

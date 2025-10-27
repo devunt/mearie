@@ -256,5 +256,12 @@ fn get_field_type(ctx: &TransformContext<'_>, parent_type: &str, field_name: &st
     }
     ctx.schema()
         .get_field(parent_type, field_name)
-        .map(|f| f.typ.innermost_type().to_string())
+        .and_then(|f| {
+            let type_name = f.typ.innermost_type().to_string();
+            if ctx.schema().is_composite(&type_name) {
+                Some(type_name)
+            } else {
+                None
+            }
+        })
 }

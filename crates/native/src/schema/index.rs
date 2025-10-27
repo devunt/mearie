@@ -133,6 +133,13 @@ impl<'a> SchemaIndex<'a> {
         matches!(self.get_type(name), Some(TypeInfo::Union(_)))
     }
 
+    pub fn is_composite(&self, name: &str) -> bool {
+        matches!(
+            self.get_type(name),
+            Some(TypeInfo::Object(_) | TypeInfo::Interface(_) | TypeInfo::Union(_))
+        )
+    }
+
     pub fn is_enum(&self, name: &str) -> bool {
         matches!(self.get_type(name), Some(TypeInfo::Enum(_)))
     }

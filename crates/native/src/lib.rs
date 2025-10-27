@@ -6,6 +6,7 @@ pub mod graphql;
 pub mod pipeline;
 pub mod schema;
 pub mod source;
+pub mod transformation;
 pub mod validation;
 
 #[cfg(feature = "napi")]

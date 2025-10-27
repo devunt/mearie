@@ -23,6 +23,6 @@ macro_rules! transform_test {
         let mut $doc_index = DocumentIndex::new();
         $doc_index.add_document(&$document).unwrap();
 
-        let $transformed = transform_document(&$arena, &$document, &$schema_index, &$doc_index);
+        let $transformed = transform_document(&$arena, &$document, &$schema_index);
     };
 }

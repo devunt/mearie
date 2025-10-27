@@ -3,7 +3,7 @@ use super::rules::{DirectiveRules, SelectionRules};
 use super::transformer::Transformer;
 use crate::arena::Arena;
 use crate::graphql::ast::Document;
-use crate::schema::{DocumentIndex, SchemaIndex};
+use crate::schema::SchemaIndex;
 
 /// Transforms a document by applying all transformation rules.
 ///
@@ -16,9 +16,8 @@ pub fn transform_document<'a>(
     arena: &'a Arena,
     document: &'a Document<'a>,
     schema: &'a SchemaIndex<'a>,
-    document_index: &'a DocumentIndex<'a>,
 ) -> &'a Document<'a> {
-    let mut ctx = TransformContext::new(arena, schema, document_index);
+    let mut ctx = TransformContext::new(arena, schema);
 
     let mut directive_rules = DirectiveRules::new();
     let doc = directive_rules

@@ -1,6 +1,8 @@
 use super::clone::*;
 use super::context::TransformContext;
+use super::printer::print_definitions;
 use crate::graphql::ast::*;
+use crate::source::Source;
 
 /// Transformer trait for AST transformations.
 ///
@@ -23,8 +25,17 @@ pub trait Transformer<'a> {
             }
         }
 
+        let printed = print_definitions(&definitions);
+        let code = arena.allocator().alloc_str(&printed);
+
+        let new_source = arena.alloc(Source {
+            code,
+            file_path: doc.source.file_path,
+            start_line: 1,
+        });
+
         Some(arena.alloc(Document {
-            source: doc.source,
+            source: new_source,
             definitions,
         }))
     }

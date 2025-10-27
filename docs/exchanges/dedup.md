@@ -121,4 +121,4 @@ This ensures deduplication happens before cache lookups.
 
 - [Cache Exchange](/exchanges/cache) - Add normalized caching
 - [Retry Exchange](/exchanges/retry) - Automatically retry failed requests
-- [Exchanges](/guides/links) - Learn about the exchange system
+- [Exchanges](/guides/exchanges) - Learn about the exchange system

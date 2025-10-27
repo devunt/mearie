@@ -152,4 +152,4 @@ This ensures cache is checked before making network requests.
 
 - [Retry Exchange](/exchanges/retry) - Automatically retry failed requests
 - [Deduplication Exchange](/exchanges/dedup) - Prevent duplicate requests
-- [Exchanges](/guides/links) - Learn about the exchange system
+- [Exchanges](/guides/exchanges) - Learn about the exchange system

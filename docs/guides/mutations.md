@@ -115,4 +115,4 @@ return (
 
 - [Queries](/guides/queries) - Learn how to fetch data
 - [Fragments](/guides/fragments) - Co-locate data requirements with components
-- [Links](/guides/links) - Customize request/response handling
+- [Exchanges](/guides/exchanges) - Customize request/response handling

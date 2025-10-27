@@ -291,4 +291,4 @@ export const SearchResultItem = ({ result }: { result: SearchResultItem_result$k
 
 - [Queries](/guides/queries) - Use fragments in queries
 - [Mutations](/guides/mutations) - Use fragments in mutations
-- [Links](/guides/links) - Customize request/response handling
+- [Exchanges](/guides/exchanges) - Customize request/response handling

@@ -176,7 +176,7 @@ const [createUser] = useMutation(
 
 ## Subscription Reconnection
 
-**Subscriptions automatically reconnect** when the connection is lost, independent of retryExchange. See [SSE Exchange](/exchanges/sse) or [WebSocket Exchange](/exchanges/ws) for more information.
+**Subscriptions automatically reconnect** when the connection is lost, independent of retryExchange. See [Subscription Exchange](/exchanges/subscription) for more information.
 
 ## Request Cancellation
 
@@ -213,4 +213,4 @@ This ensures retries trigger the entire cache + HTTP flow.
 
 - [Deduplication Exchange](/exchanges/dedup) - Prevent duplicate requests
 - [Cache Exchange](/exchanges/cache) - Add normalized caching
-- [Exchanges](/guides/links) - Learn about the exchange system
+- [Exchanges](/guides/exchanges) - Learn about the exchange system

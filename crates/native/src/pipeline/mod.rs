@@ -10,6 +10,7 @@ use crate::error::MearieError;
 use crate::graphql::parser::Parser;
 use crate::schema::{DocumentIndex, SchemaBuilder};
 use crate::source::{Source, SourceBuf};
+use crate::transformation::transform_document;
 use crate::validation::{ValidationContext, Validator, visitor::VisitNode};
 
 pub struct Pipeline<'a> {
@@ -51,7 +52,7 @@ impl<'a> Pipeline<'a> {
         }
     }
 
-    /// Process the pipeline: parse, validate, and generate code.
+    /// Process the pipeline: parse, validate, transform, and generate code.
     ///
     /// The pipeline performs the following steps:
     /// 1. Parse all schema documents
@@ -59,7 +60,8 @@ impl<'a> Pipeline<'a> {
     /// 3. Parse all executable documents
     /// 4. Build DocumentIndex
     /// 5. Validate all documents
-    /// 6. Generate TypeScript code
+    /// 6. Transform documents (add __typename and id fields)
+    /// 7. Generate TypeScript code
     ///
     /// # Returns
     ///
@@ -91,6 +93,11 @@ impl<'a> Pipeline<'a> {
             let mut ctx = ValidationContext::new(&schema_index, &document_index, document);
             document.visit(&mut ctx, &mut validator);
             errors.extend(ctx.errors().iter().cloned());
+        }
+
+        for document in document_index.documents().collect::<Vec<_>>() {
+            let transformed = transform_document(self.arena, document, &schema_index);
+            document_index.set_transformed_document(document, transformed);
         }
 
         let ctx = CodegenContext::new();

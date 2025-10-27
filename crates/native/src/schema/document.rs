@@ -41,8 +41,9 @@ pub struct DocumentIndex<'a> {
     operations: Vec<&'a OperationDefinition<'a>>,
     operations_by_name: FxHashMap<Option<&'a str>, &'a OperationDefinition<'a>>,
     fragments: FxHashMap<&'a str, &'a FragmentDefinition<'a>>,
-    operation_sources: FxHashMap<*const OperationDefinition<'a>, &'a str>,
-    fragment_sources: FxHashMap<*const FragmentDefinition<'a>, &'a str>,
+    operation_to_document: FxHashMap<*const OperationDefinition<'a>, *const Document<'a>>,
+    fragment_to_document: FxHashMap<*const FragmentDefinition<'a>, *const Document<'a>>,
+    document_transforms: FxHashMap<*const Document<'a>, &'a Document<'a>>,
 }
 
 impl<'a> DocumentIndex<'a> {
@@ -53,8 +54,9 @@ impl<'a> DocumentIndex<'a> {
             operations: Vec::new(),
             operations_by_name: FxHashMap::default(),
             fragments: FxHashMap::default(),
-            operation_sources: FxHashMap::default(),
-            fragment_sources: FxHashMap::default(),
+            operation_to_document: FxHashMap::default(),
+            fragment_to_document: FxHashMap::default(),
+            document_transforms: FxHashMap::default(),
         }
     }
 
@@ -65,11 +67,11 @@ impl<'a> DocumentIndex<'a> {
             match definition {
                 Definition::Executable(ExecutableDefinition::Fragment(fragment)) => {
                     self.register_fragment(fragment)?;
-                    self.fragment_sources.insert(fragment as *const _, doc.source.code);
+                    self.fragment_to_document.insert(fragment as *const _, doc as *const _);
                 }
                 Definition::Executable(ExecutableDefinition::Operation(operation)) => {
                     self.register_operation(operation);
-                    self.operation_sources.insert(operation as *const _, doc.source.code);
+                    self.operation_to_document.insert(operation as *const _, doc as *const _);
                 }
                 Definition::TypeSystem(_) | Definition::TypeSystemExtension(_) => {}
             }
@@ -200,13 +202,22 @@ impl<'a> DocumentIndex<'a> {
         self.documents.iter().copied()
     }
 
+    /// Stores a mapping from an original document to its transformed version.
+    ///
+    /// When source code is requested for operations or fragments in the original document,
+    /// the transformed document's source will be returned instead.
+    pub fn set_transformed_document(&mut self, original: &'a Document<'a>, transformed: &'a Document<'a>) {
+        self.document_transforms.insert(original as *const _, transformed);
+    }
+
     /// Gets the source code for an operation definition.
     ///
-    /// Returns the original GraphQL source string for the document containing this operation.
+    /// Returns the GraphQL source string for the document containing this operation.
+    /// If the document has been transformed, returns the transformed source.
     ///
     /// # Time Complexity
     ///
-    /// O(1) - uses hash map lookup with pointer equality
+    /// O(1) - uses hash map lookups with pointer equality
     ///
     /// # Example
     ///
@@ -219,16 +230,25 @@ impl<'a> DocumentIndex<'a> {
     /// }
     /// ```
     pub fn get_operation_source(&self, operation: &OperationDefinition<'a>) -> Option<&'a str> {
-        self.operation_sources.get(&(operation as *const _)).copied()
+        let doc_ptr = self.operation_to_document.get(&(operation as *const _))?;
+
+        let original_doc = unsafe { &**doc_ptr };
+
+        if let Some(&transformed_doc) = self.document_transforms.get(doc_ptr) {
+            return Some(transformed_doc.source.code);
+        }
+
+        Some(original_doc.source.code)
     }
 
     /// Gets the source code for a fragment definition.
     ///
-    /// Returns the original GraphQL source string for the document containing this fragment.
+    /// Returns the GraphQL source string for the document containing this fragment.
+    /// If the document has been transformed, returns the transformed source.
     ///
     /// # Time Complexity
     ///
-    /// O(1) - uses hash map lookup with pointer equality
+    /// O(1) - uses hash map lookups with pointer equality
     ///
     /// # Example
     ///
@@ -241,7 +261,15 @@ impl<'a> DocumentIndex<'a> {
     /// }
     /// ```
     pub fn get_fragment_source(&self, fragment: &FragmentDefinition<'a>) -> Option<&'a str> {
-        self.fragment_sources.get(&(fragment as *const _)).copied()
+        let doc_ptr = self.fragment_to_document.get(&(fragment as *const _))?;
+
+        let original_doc = unsafe { &**doc_ptr };
+
+        if let Some(&transformed_doc) = self.document_transforms.get(doc_ptr) {
+            return Some(transformed_doc.source.code);
+        }
+
+        Some(original_doc.source.code)
     }
 }
 

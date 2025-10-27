@@ -76,9 +76,11 @@ export const client = createClient({
 
 ::: tip
 Install the `graphql-sse` package to use Server-Sent Events:
+
 ```sh
 npm install graphql-sse
 ```
+
 :::
 
 ### WebSocket
@@ -105,9 +107,11 @@ export const client = createClient({
 
 ::: tip
 Install the `graphql-ws` package to use WebSocket:
+
 ```sh
 npm install graphql-ws
 ```
+
 :::
 
 ## Latest State Only

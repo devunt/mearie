@@ -99,9 +99,7 @@ export default defineConfig({
       {
         text: 'Concepts',
         collapsed: true,
-        items: [
-          { text: 'Streams', link: '/concepts/streams' },
-        ],
+        items: [{ text: 'Streams', link: '/concepts/streams' }],
       },
       {
         text: 'Guides',
@@ -154,9 +152,7 @@ export default defineConfig({
       {
         text: 'References',
         collapsed: true,
-        items: [
-          { text: 'Streams', link: '/references/streams' },
-        ],
+        items: [{ text: 'Streams', link: '/references/streams' }],
       },
     ],
 

@@ -307,7 +307,8 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                 let key_fields_array_elements =
                     self.ast.vec1(ArrayExpressionElement::from(self.expr_string(key_field)));
                 let key_fields_array = Expression::ArrayExpression(
-                    self.ast.alloc(self.ast.array_expression(SPAN, key_fields_array_elements)),
+                    self.ast
+                        .alloc(self.ast.array_expression(SPAN, key_fields_array_elements)),
                 );
 
                 let entity_meta_props = self.ast.vec1(self.prop_object("keyFields", key_fields_array));
@@ -331,7 +332,8 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             }
         }
 
-        let entities_obj = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_properties)));
+        let entities_obj =
+            Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_properties)));
         let schema_props = self.ast.vec1(self.prop_object("entities", entities_obj));
         let schema_obj = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, schema_props)));
 

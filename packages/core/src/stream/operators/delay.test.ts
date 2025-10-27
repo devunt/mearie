@@ -3,7 +3,6 @@ import { delay } from './delay.ts';
 import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { pipe } from '../pipe.ts';
-import type { Subscription } from '../types.ts';
 
 describe('delay', () => {
   beforeEach(() => {
@@ -161,9 +160,8 @@ describe('delay', () => {
     it('should clear pending timeouts on cancel', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      const subscription: Subscription;
 
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({
@@ -182,9 +180,8 @@ describe('delay', () => {
     it('should not emit values after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      const subscription: Subscription;
 
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({
@@ -204,9 +201,7 @@ describe('delay', () => {
     it('should not emit completion after cancellation', () => {
       const source = fromArray([1, 2, 3]);
       let completed = false;
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({
@@ -224,9 +219,7 @@ describe('delay', () => {
 
     it('should cancel upstream source', () => {
       const source = fromArray([1, 2, 3]);
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({
@@ -433,9 +426,7 @@ describe('delay', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({
@@ -452,9 +443,8 @@ describe('delay', () => {
     it('should handle cancellation before first value', () => {
       const source = fromArray([1, 2, 3]);
       const emitted: number[] = [];
-      const subscription: Subscription;
 
-      subscription = pipe(
+      const subscription = pipe(
         source,
         delay(100),
       )({

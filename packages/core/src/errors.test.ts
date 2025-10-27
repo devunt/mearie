@@ -218,10 +218,7 @@ describe('AggregatedError', () => {
 
     expect(json).toEqual({
       message: 'Multiple errors',
-      errors: [
-        { message: 'GraphQL error' },
-        { message: 'Exchange error', exchangeName: 'customExchange' },
-      ],
+      errors: [{ message: 'GraphQL error' }, { message: 'Exchange error', exchangeName: 'customExchange' }],
     });
   });
 });

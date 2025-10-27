@@ -13,7 +13,6 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
       let activeInner = 0;
       let ended = false;
       const innerSubscriptions: Subscription[] = [];
-      const outerSubscription: Subscription;
 
       const checkComplete = () => {
         if (outerCompleted && activeInner === 0 && !ended) {
@@ -22,7 +21,7 @@ export const mergeMap = <A, B>(fn: (value: A) => Source<B>): Operator<A, B> => {
         }
       };
 
-      outerSubscription = source({
+      const outerSubscription = source({
         next(value) {
           if (ended) return;
 

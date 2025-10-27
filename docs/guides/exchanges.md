@@ -39,6 +39,7 @@ Results Stream
 ```
 
 Each exchange receives a stream of operations, transforms it, and produces a stream of results. This enables:
+
 - **Reactive** - Operations automatically flow through the pipeline
 - **Composable** - Exchanges operate independently and compose cleanly
 - **Cancellable** - Unsubscribing cancels in-flight operations
@@ -242,6 +243,7 @@ export const client = createClient({
 ```
 
 The exchange:
+
 1. Receives operations stream `ops$`
 2. Logs each operation with `tap`
 3. Forwards to next exchange with `forward`
@@ -264,6 +266,7 @@ type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 ```
 
 An exchange:
+
 - Takes `forward` (next exchange) and `client` as input
 - Returns a function that transforms operation streams to result streams
 - Uses stream operators to transform operations and results

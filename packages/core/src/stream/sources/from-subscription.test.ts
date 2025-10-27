@@ -575,7 +575,7 @@ describe('fromSubscription', () => {
       };
 
       const source = fromSubscription(pull, poke);
-      const emitted: typeof state[] = [];
+      const emitted: (typeof state)[] = [];
 
       source({
         next: (value) => {
@@ -584,12 +584,24 @@ describe('fromSubscription', () => {
         complete: () => {},
       });
 
-      state = { users: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }], count: 2 };
+      state = {
+        users: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' },
+        ],
+        count: 2,
+      };
       signal!();
 
       expect(emitted).toEqual([
         { users: [{ id: 1, name: 'Alice' }], count: 1 },
-        { users: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }], count: 2 },
+        {
+          users: [
+            { id: 1, name: 'Alice' },
+            { id: 2, name: 'Bob' },
+          ],
+          count: 2,
+        },
       ]);
     });
   });

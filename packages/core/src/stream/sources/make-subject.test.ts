@@ -28,5 +28,4 @@ describe('makeSubject', () => {
     expect(await promise1).toEqual([1, 2]);
     expect(await promise2).toEqual([1, 2]);
   });
-
 });

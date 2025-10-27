@@ -22,11 +22,7 @@ export function compose<A, B, C>(op1: Operator<A, B>, op2: Operator<B, C>): Oper
  * @param op3 - The third operator.
  * @returns A composed operator.
  */
-export function compose<A, B, C, D>(
-  op1: Operator<A, B>,
-  op2: Operator<B, C>,
-  op3: Operator<C, D>,
-): Operator<A, D>;
+export function compose<A, B, C, D>(op1: Operator<A, B>, op2: Operator<B, C>, op3: Operator<C, D>): Operator<A, D>;
 
 /**
  * Composes four operators into one.

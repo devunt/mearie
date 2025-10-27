@@ -17,6 +17,7 @@ type Source<T> = (sink: Sink<T>) => Subscription;
 ```
 
 When you call a source with a sink, it:
+
 1. Starts pushing values to the sink
 2. Returns a subscription for cancellation
 
@@ -26,8 +27,8 @@ Receives values from a source.
 
 ```typescript
 type Sink<T> = {
-  next(value: T): void;      // Receive a value
-  complete(): void;           // Receive completion signal
+  next(value: T): void; // Receive a value
+  complete(): void; // Receive completion signal
 };
 ```
 
@@ -37,7 +38,7 @@ Controls an active stream.
 
 ```typescript
 type Subscription = {
-  unsubscribe(): void;  // Cancel stream and cleanup resources
+  unsubscribe(): void; // Cancel stream and cleanup resources
 };
 ```
 
@@ -63,6 +64,7 @@ pipe<T, R>(
 ```
 
 **Example:**
+
 ```typescript
 const result$ = pipe(
   source$,
@@ -81,6 +83,7 @@ compose<T, R>(...operators: Operator[]): Operator<T, R>
 ```
 
 **Example:**
+
 ```typescript
 const transform = compose(
   take(5),
@@ -102,6 +105,7 @@ fromValue<T>(value: T): Source<T>
 ```
 
 **Example:**
+
 ```typescript
 const source$ = fromValue(42);
 ```
@@ -115,6 +119,7 @@ fromArray<T>(array: readonly T[]): Source<T>
 ```
 
 **Example:**
+
 ```typescript
 const source$ = fromArray([1, 2, 3, 4, 5]);
 ```
@@ -130,8 +135,9 @@ fromPromise<T>(promise: Promise<T>): Source<T | null>
 Emits the resolved value or `null` if rejected, then completes.
 
 **Example:**
+
 ```typescript
-const source$ = fromPromise(fetch('/api/data').then(r => r.json()));
+const source$ = fromPromise(fetch('/api/data').then((r) => r.json()));
 ```
 
 ### makeSubject
@@ -149,6 +155,7 @@ type Subject<T> = {
 ```
 
 **Example:**
+
 ```typescript
 const subject = makeSubject<number>();
 
@@ -180,6 +187,7 @@ make<T>(
 ```
 
 **Example:**
+
 ```typescript
 const ticker$ = make((sink) => {
   const id = setInterval(() => sink.next(Date.now()), 1000);
@@ -198,6 +206,7 @@ filter<T>(predicate: (value: T) => boolean): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -214,6 +223,7 @@ map<T, R>(transform: (value: T) => R): Operator<T, R>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -232,6 +242,7 @@ mergeMap<T, R>(
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   operations$,
@@ -248,6 +259,7 @@ take<T>(count: number): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -264,6 +276,7 @@ takeUntil<T>(notifier: Source<any>): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -280,6 +293,7 @@ merge<T>(...sources: Source<T>[]): Source<T>
 ```
 
 **Example:**
+
 ```typescript
 const combined$ = merge(source1$, source2$, source3$);
 ```
@@ -295,6 +309,7 @@ share<T>(): Operator<T>
 Without `share`, each subscriber creates a new subscription. With `share`, subscribers share the same underlying subscription.
 
 **Example:**
+
 ```typescript
 const shared$ = pipe(source$, share());
 
@@ -312,6 +327,7 @@ tap<T>(effect: (value: T) => void): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -329,6 +345,7 @@ initialize<T>(effect: () => void): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -345,6 +362,7 @@ finalize<T>(cleanup: () => void): Operator<T>
 ```
 
 **Example:**
+
 ```typescript
 pipe(
   source$,
@@ -368,6 +386,7 @@ type Observer<T> = {
 ```
 
 **Example:**
+
 ```typescript
 const subscription = subscribe({
   next: (value) => console.log(value),
@@ -387,6 +406,7 @@ collect<T>(source: Source<T>): Promise<T>
 ```
 
 **Example:**
+
 ```typescript
 const firstValue = await collect(source$);
 ```
@@ -400,6 +420,7 @@ collectAll<T>(source: Source<T>): Promise<T[]>
 ```
 
 **Example:**
+
 ```typescript
 const allValues = await collectAll(source$);
 ```
@@ -429,18 +450,10 @@ const myExchange = (): Exchange => {
   return ({ forward }) => {
     return (ops$) => {
       // Transform operations
-      const transformed$ = pipe(
-        ops$,
-        filter(shouldHandle),
-        map(transformOperation),
-      );
+      const transformed$ = pipe(ops$, filter(shouldHandle), map(transformOperation));
 
       // Forward and transform results
-      return pipe(
-        transformed$,
-        forward,
-        map(transformResult),
-      );
+      return pipe(transformed$, forward, map(transformResult));
     };
   };
 };

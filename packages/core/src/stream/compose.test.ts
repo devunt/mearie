@@ -186,12 +186,7 @@ describe('compose', () => {
         map((x) => x + 1),
       );
 
-      const result = await pipe(
-        fromArray([1, 2, 3, 4, 5]),
-        preprocess,
-        postprocess,
-        collectAll,
-      );
+      const result = await pipe(fromArray([1, 2, 3, 4, 5]), preprocess, postprocess, collectAll);
 
       expect(result).toEqual([7, 9]);
     });

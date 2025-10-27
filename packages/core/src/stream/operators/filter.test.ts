@@ -5,7 +5,6 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Subscription } from '../types.ts';
 
 describe('filter', () => {
   describe('basic filtering', () => {
@@ -370,9 +369,7 @@ describe('filter', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         filter((x) => x > 0),
       )({

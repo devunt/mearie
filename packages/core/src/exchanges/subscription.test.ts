@@ -121,11 +121,14 @@ describe('subscriptionExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalledWith(expect.any(Object) as Record<string, unknown>, {
-        next: expect.any(Function) as () => void,
-        error: expect.any(Function) as () => void,
-        complete: expect.any(Function) as () => void,
-      });
+      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalledWith(
+        expect.any(Object) as Record<string, unknown>,
+        {
+          next: expect.any(Function) as () => void,
+          error: expect.any(Function) as () => void,
+          complete: expect.any(Function) as () => void,
+        },
+      );
     });
   });
 

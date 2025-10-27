@@ -98,7 +98,6 @@ export const seedReviews = () => {
   }
 };
 
-
 const encodeGlobalId = (type: string, id: string): string => {
   return Buffer.from(`${type}:${id}`).toString('base64').replaceAll('=', '');
 };

@@ -31,9 +31,11 @@ export const client = createClient({
 ```
 
 ::: tip Install graphql-sse
+
 ```sh
 npm install graphql-sse
 ```
+
 :::
 
 ### WebSocket
@@ -59,9 +61,11 @@ export const client = createClient({
 ```
 
 ::: tip Install graphql-ws
+
 ```sh
 npm install graphql-ws
 ```
+
 :::
 
 ::: warning Terminating Exchange

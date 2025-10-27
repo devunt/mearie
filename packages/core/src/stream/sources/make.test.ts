@@ -247,7 +247,8 @@ describe('make', () => {
     it('should emit undefined', async () => {
       const source = make<number | undefined>((observer) => {
         observer.next(1);
-        observer.next();
+        // eslint-disable-next-line unicorn/no-useless-undefined
+        observer.next(undefined);
         observer.next(2);
         observer.complete();
         return () => {};

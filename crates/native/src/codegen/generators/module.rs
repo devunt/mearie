@@ -183,26 +183,20 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         let type_annotation = self.ast.ts_type_annotation(SPAN, schema_type);
 
         let id = self.ast.binding_pattern(
-            self.ast.binding_pattern_kind_binding_identifier(SPAN, self.ast.atom("schema")),
+            self.ast
+                .binding_pattern_kind_binding_identifier(SPAN, self.ast.atom("schema")),
             Some(self.ast.alloc(type_annotation)),
             false,
         );
 
-        let declarator = self.ast.variable_declarator(
-            SPAN,
-            VariableDeclarationKind::Const,
-            id,
-            None,
-            false,
-        );
+        let declarator = self
+            .ast
+            .variable_declarator(SPAN, VariableDeclarationKind::Const, id, None, false);
 
         let declarators = self.ast.vec1(declarator);
-        let var_decl = self.ast.variable_declaration(
-            SPAN,
-            VariableDeclarationKind::Const,
-            declarators,
-            true,
-        );
+        let var_decl = self
+            .ast
+            .variable_declaration(SPAN, VariableDeclarationKind::Const, declarators, true);
 
         let export_decl = self.ast.export_named_declaration(
             SPAN,

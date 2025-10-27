@@ -21,20 +21,25 @@ Each exchange receives a stream of operations, transforms it, and produces a str
 Streams provide several key benefits:
 
 ### Reactive
+
 Operations flow through the system automatically. When you execute a query, it immediately starts flowing through the exchange pipeline.
 
 ### Composable
+
 Exchanges are pure functions that transform streams. You can compose multiple exchanges together, and each operates independently on the stream.
 
 ### Cancellable
+
 Streams support cancellation. When you stop listening to results (e.g., component unmounts), the operation is cancelled and resources are cleaned up automatically.
 
 ### Lazy
+
 Streams are lazy by default. The exchange pipeline only runs when something subscribes to the results.
 
 ## Core Concepts
 
 ### Source
+
 A **Source** is a stream that emits values. In Mearie, operations flow as a source, and results flow back as another source.
 
 ```typescript
@@ -42,11 +47,14 @@ type Source<T> = (sink: Sink<T>) => Subscription;
 ```
 
 ### Sink
+
 A **Sink** receives values from a source. It has two methods:
+
 - `next(value)` - Receive a value
 - `complete()` - Signal completion
 
 ### Subscription
+
 A **Subscription** allows you to cancel a stream and clean up resources:
 
 ```typescript
@@ -64,6 +72,7 @@ type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 ```
 
 An exchange:
+
 1. Receives a stream of operations
 2. Transforms them (filter, modify, augment)
 3. Calls `forward` to pass operations to the next exchange
@@ -105,6 +114,7 @@ Think of exchanges as a series of pipes:
 ```
 
 Each exchange can:
+
 - Observe operations passing through
 - Filter or modify operations
 - Add new operations to the stream

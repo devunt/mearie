@@ -204,9 +204,10 @@ describe('httpExchange', () => {
     it('should extract GraphQL errors from response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          errors: [{ message: 'User not found' }],
-        }),
+        json: () =>
+          Promise.resolve({
+            errors: [{ message: 'User not found' }],
+          }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });
@@ -223,10 +224,11 @@ describe('httpExchange', () => {
     it('should extract extensions from response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          data: {},
-          extensions: { tracing: { duration: 123 } },
-        }),
+        json: () =>
+          Promise.resolve({
+            data: {},
+            extensions: { tracing: { duration: 123 } },
+          }),
       });
 
       const exchange = httpExchange({ url: 'http://test.com/graphql' });

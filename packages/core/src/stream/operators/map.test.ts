@@ -4,7 +4,6 @@ import { fromArray } from '../sources/from-array.ts';
 import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
-import type { Subscription } from '../types.ts';
 
 describe('map', () => {
   describe('basic transformation', () => {
@@ -270,9 +269,7 @@ describe('map', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         map((x) => x * 2),
       )({

@@ -14,8 +14,8 @@ An exchange transforms operation streams into result streams:
 type Exchange = (input: ExchangeInput) => ExchangeIO;
 
 type ExchangeInput = {
-  forward: ExchangeIO;  // Next exchange in the chain
-  client: Client;        // Access to the client instance
+  forward: ExchangeIO; // Next exchange in the chain
+  client: Client; // Access to the client instance
 };
 
 type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
@@ -113,10 +113,7 @@ const queriesOnlyExchange = (): Exchange => {
       );
 
       // Merge streams back into one, then forward ONCE
-      return pipe(
-        merge(queries$, others$),
-        forward,
-      );
+      return pipe(merge(queries$, others$), forward);
     };
   };
 };
@@ -401,17 +398,18 @@ Place custom exchanges strategically:
 export const client = createClient({
   schema,
   exchanges: [
-    loggingExchange(),       // Monitoring - outermost
-    performanceExchange(),   // Performance tracking
-    addMetadataExchange(),   // Request transformation - before cache
-    dedupExchange(),         // Deduplication
-    cacheExchange(),         // Caching
-    httpExchange({ url: 'https://api.example.com/graphql' }),  // Terminating
+    loggingExchange(), // Monitoring - outermost
+    performanceExchange(), // Performance tracking
+    addMetadataExchange(), // Request transformation - before cache
+    dedupExchange(), // Deduplication
+    cacheExchange(), // Caching
+    httpExchange({ url: 'https://api.example.com/graphql' }), // Terminating
   ],
 });
 ```
 
 General guidelines:
+
 - **Monitoring/logging** - Outermost layer to see all operations
 - **Request transformation** - Before cache to affect cache keys
 - **Non-terminating exchanges** - Before terminating exchanges

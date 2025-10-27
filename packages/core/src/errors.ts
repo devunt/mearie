@@ -102,10 +102,7 @@ export class ExchangeError<
 export class AggregatedError extends AggregateError {
   declare readonly errors: OperationError[];
 
-  constructor(
-    errors: readonly OperationError[],
-    message = `${errors.length} error(s) occurred`,
-  ) {
+  constructor(errors: readonly OperationError[], message = `${errors.length} error(s) occurred`) {
     super([...errors], message);
     this.name = 'AggregatedError';
 

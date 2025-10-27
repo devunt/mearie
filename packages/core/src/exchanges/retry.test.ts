@@ -207,7 +207,6 @@ describe('retryExchange', () => {
         },
       });
       const forward = makeTestForward((op) => {
-        callCount++;
         return {
           operation: op,
           errors: [
@@ -617,14 +616,7 @@ describe('retryExchange', () => {
       const teardown2 = makeTestOperation({ variant: 'teardown', key: 'op2' });
       const teardown3 = makeTestOperation({ variant: 'teardown', key: 'op3' });
 
-      await testExchange(exchange, forward, [
-        operation1,
-        operation2,
-        operation3,
-        teardown1,
-        teardown2,
-        teardown3,
-      ]);
+      await testExchange(exchange, forward, [operation1, operation2, operation3, teardown1, teardown2, teardown3]);
 
       expect(attempt1Count).toBe(1);
       expect(attempt2Count).toBe(1);

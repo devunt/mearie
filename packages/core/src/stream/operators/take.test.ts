@@ -5,7 +5,7 @@ import { fromValue } from '../sources/from-value.ts';
 import { collectAll } from '../sinks/collect-all.ts';
 import { pipe } from '../pipe.ts';
 import { map } from './map.ts';
-import type { Sink, Subscription } from '../types.ts';
+import type { Sink } from '../types.ts';
 
 describe('take', () => {
   describe('basic functionality', () => {
@@ -242,9 +242,7 @@ describe('take', () => {
   describe('subscription', () => {
     it('should provide subscription', () => {
       const source = fromArray([1, 2, 3]);
-      const subscription: Subscription;
-
-      subscription = pipe(
+      const subscription = pipe(
         source,
         take(2),
       )({

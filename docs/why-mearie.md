@@ -6,6 +6,10 @@ description: A zero-config GraphQL client with zero boilerplate, complete type s
 
 Mearie (메아리, meaning "echo" in Korean) is a zero-config GraphQL client for React, Vue, Svelte, Solid, and more.
 
+::: warning Early Development
+Mearie is in its very early stage and under very active development. Things may not work as expected or described in the documentation. Please expect frequent breaking changes.
+:::
+
 ## Features
 
 - **Zero boilerplate** - Write queries as template literals, no manual type definitions or config needed

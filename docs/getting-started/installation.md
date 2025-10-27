@@ -6,6 +6,10 @@ description: Install Mearie and your framework integration for React, Vue, Svelt
 
 Install Mearie and your framework integration.
 
+::: warning Early Development
+Mearie is in its very early stage and under very active development. Things may not work as expected or described in the documentation. Please expect frequent breaking changes.
+:::
+
 ## Install Packages
 
 Mearie consists of two packages:

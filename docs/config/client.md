@@ -1,22 +1,24 @@
 ---
-description: Configure the GraphQL client with links for networking, caching, and custom behavior. Learn basic and recommended production configurations.
+description: Configure the GraphQL client with exchanges for networking, caching, and custom behavior. Learn basic and recommended production configurations.
 ---
 
 # Client Config
 
-Configure the GraphQL client with links for networking, caching, and custom behavior.
+Configure the GraphQL client with exchanges for networking, caching, and custom behavior.
 
 ## Basic Configuration
 
-Create a client with at least one terminating link (like `httpLink`):
+Create a client with at least one terminating exchange (like `httpExchange`):
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    httpLink({
+  schema,
+  exchanges: [
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -28,13 +30,15 @@ export const client = createClient({
 Add caching and deduplication for production use:
 
 ```typescript
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -43,7 +47,7 @@ export const client = createClient({
 
 ## Next Steps
 
-- [Links Guide](/guides/links) - Learn how links work
-- [HTTP Link](/links/http) - Configure HTTP transport
-- [Cache Link](/links/cache) - Configure caching
-- [Custom Links](/links/custom) - Create custom middleware
+- [Exchanges Guide](/guides/exchanges) - Learn how exchanges work
+- [HTTP Exchange](/exchanges/http) - Configure HTTP transport
+- [Cache Exchange](/exchanges/cache) - Configure caching
+- [Custom Exchanges](/exchanges/custom) - Create custom middleware

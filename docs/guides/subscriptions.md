@@ -57,27 +57,58 @@ Configure your client to support subscriptions.
 Simple HTTP-based protocol. Recommended for most use cases.
 
 ```typescript
-import { createClient, httpLink, sseLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, httpExchange, subscriptionExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient as createSSEClient } from 'graphql-sse';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    httpLink({ url: 'https://api.example.com/graphql' }),
-    sseLink({ url: 'https://api.example.com/graphql/stream' }),
+  schema,
+  exchanges: [
+    httpExchange({ url: 'https://api.example.com/graphql' }),
+    subscriptionExchange({
+      client: createSSEClient({
+        url: 'https://api.example.com/graphql',
+      }),
+    }),
   ],
 });
 ```
 
+::: tip
+Install the `graphql-sse` package to use Server-Sent Events:
+```sh
+npm install graphql-sse
+```
+:::
+
 ### WebSocket
 
-Alternative protocol with lower latency.
+Alternative protocol with lower latency using GraphQL over WebSocket.
 
 ```typescript
-import { createClient, httpLink, wsLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, httpExchange, subscriptionExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient as createWSClient } from 'graphql-ws';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [httpLink({ url: 'https://api.example.com/graphql' }), wsLink({ url: 'wss://api.example.com/graphql' })],
+  schema,
+  exchanges: [
+    httpExchange({ url: 'https://api.example.com/graphql' }),
+    subscriptionExchange({
+      client: createWSClient({
+        url: 'wss://api.example.com/graphql',
+      }),
+    }),
+  ],
 });
 ```
+
+::: tip
+Install the `graphql-ws` package to use WebSocket:
+```sh
+npm install graphql-ws
+```
+:::
 
 ## Latest State Only
 
@@ -251,6 +282,6 @@ const { data, error, loading } = useSubscription(
 
 ## Next Steps
 
-- [SSE Link](/links/sse) - Set up Server-Sent Events for subscriptions
-- [WebSocket Link](/links/ws) - Set up WebSocket for subscriptions
+- [Subscription Exchange](/exchanges/subscription) - Learn more about subscription configuration
 - [Queries](/guides/queries) - Load initial data
+- [Exchanges](/guides/exchanges) - Learn about the exchange system

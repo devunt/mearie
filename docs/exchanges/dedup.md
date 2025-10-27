@@ -2,17 +2,19 @@
 description: Prevent duplicate concurrent requests to reduce unnecessary network traffic. Automatically deduplicates identical queries while preserving mutation safety.
 ---
 
-# Deduplication Link
+# Deduplication Exchange
 
 Prevent duplicate concurrent requests, reducing unnecessary network traffic.
 
 ## Basic Usage
 
 ```typescript
-import { createClient, dedupLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, dedupExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [dedupLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [dedupExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -99,15 +101,16 @@ This is because mutations may have side effects and should execute every time.
 
 ## Link Chain Placement
 
-Place dedupLink early in the chain, after retry but before cache:
+Place dedupExchange early in the chain, after retry but before cache:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink(),
-    dedupLink(), // After retry, before cache
-    cacheLink(),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+  schema,
+  exchanges: [
+    retryExchange(),
+    dedupExchange(), // After retry, before cache
+    cacheExchange(),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -116,6 +119,6 @@ This ensures deduplication happens before cache lookups.
 
 ## Next Steps
 
-- [Cache Link](/links/cache) - Add normalized caching
-- [Retry Link](/links/retry) - Automatically retry failed requests
-- [Links](/guides/links) - Learn about the link system
+- [Cache Exchange](/exchanges/cache) - Add normalized caching
+- [Retry Exchange](/exchanges/retry) - Automatically retry failed requests
+- [Exchanges](/guides/links) - Learn about the exchange system

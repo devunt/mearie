@@ -2,17 +2,19 @@
 description: Normalized caching with automatic dependency tracking and fine-grained updates. Configure fetch policies and enable progressive enhancement.
 ---
 
-# Cache Link
+# Cache Exchange
 
 Normalized caching with automatic dependency tracking and fine-grained updates.
 
 ## Basic Usage
 
 ```typescript
-import { createClient, cacheLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, cacheExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -31,11 +33,12 @@ Set default caching behavior:
 
 ```typescript
 export const client = createClient({
-  links: [
-    cacheLink({
+  schema,
+  exchanges: [
+    cacheExchange({
       fetchPolicy: 'cache-first', // Default for all operations
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -113,7 +116,8 @@ Cache is completely optional. Start without it:
 
 ```typescript
 export const client = createClient({
-  links: [httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -121,21 +125,23 @@ Add caching later with one line - components automatically benefit:
 
 ```typescript
 export const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
 ## Link Chain Placement
 
-Place cacheLink before httpLink:
+Place cacheExchange before httpExchange:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink(),
-    dedupLink(),
-    cacheLink(), // Before HTTP
-    httpLink({ url: 'https://api.example.com/graphql' }),
+  schema,
+  exchanges: [
+    retryExchange(),
+    dedupExchange(),
+    cacheExchange(), // Before HTTP
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -144,6 +150,6 @@ This ensures cache is checked before making network requests.
 
 ## Next Steps
 
-- [Retry Link](/links/retry) - Automatically retry failed requests
-- [Deduplication Link](/links/dedup) - Prevent duplicate requests
-- [Links](/guides/links) - Learn about the link system
+- [Retry Exchange](/exchanges/retry) - Automatically retry failed requests
+- [Deduplication Exchange](/exchanges/dedup) - Prevent duplicate requests
+- [Exchanges](/guides/links) - Learn about the exchange system

@@ -6,7 +6,7 @@
 Mearie is a type-safe GraphQL client with zero runtime overhead. Write queries
 as template literals and get automatic type generation at build time. The
 library provides normalized caching, fragment colocation, and composable
-middleware.
+exchanges.
 
 Mearie consists of two parts:
 
@@ -16,11 +16,12 @@ Mearie consists of two parts:
 Here's a quick example:
 
 ```tsx
-import { graphql } from '~graphql';
-import { createClient, httpLink, cacheLink, ClientProvider, useQuery } from '@mearie/react';
+import { graphql, schema } from '~graphql';
+import { createClient, httpExchange, cacheExchange, ClientProvider, useQuery } from '@mearie/react';
 
 const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 
 export function App() {

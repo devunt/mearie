@@ -52,6 +52,6 @@ features:
     details: Start with simple queries, add caching when you need it. One line of configuration unlocks advanced features without touching your components.
 
   - icon: 🔗
-    title: Composable Links
-    details: Customize your GraphQL stack with intuitive middleware pattern. Built-in dedup, retry, auth, and cache links compose seamlessly.
+    title: Composable Exchanges
+    details: Customize your GraphQL stack with stream-based architecture. Built-in dedup, retry, auth, and cache exchanges compose seamlessly.
 ---

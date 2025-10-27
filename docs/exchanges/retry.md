@@ -2,17 +2,19 @@
 description: Automatically retry failed requests with exponential backoff. Configure max attempts, backoff strategy, jitter, and retry conditions for network errors.
 ---
 
-# Retry Link
+# Retry Exchange
 
 Automatically retry failed requests with exponential backoff.
 
 ## Basic Usage
 
 ```typescript
-import { createClient, retryLink, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, retryExchange, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [retryLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [retryExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -24,11 +26,12 @@ Set the maximum number of retry attempts:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       maxAttempts: 3, // Default: 3
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -39,14 +42,15 @@ Customize the delay between retries:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       backoff: (attempt) => {
         // Exponential backoff: 1s, 2s, 4s, 8s...
         return Math.min(1000 * 2 ** attempt, 30000);
       },
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -59,11 +63,12 @@ Add randomness to prevent thundering herd:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       jitter: true, // Default: false
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -76,8 +81,9 @@ Control which errors should be retried:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       retryIf: (error) => {
         // Retry on network errors
         if (error.name === 'NetworkError') return true;
@@ -89,7 +95,7 @@ export const client = createClient({
         return false;
       },
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -109,11 +115,12 @@ Default: Retries on network errors and 5xx server errors.
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       retryIf: (error) => error.name === 'NetworkError',
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -122,11 +129,12 @@ export const client = createClient({
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       backoff: (attempt) => attempt * 1000, // 1s, 2s, 3s, 4s...
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -135,14 +143,15 @@ export const client = createClient({
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink({
+  schema,
+  exchanges: [
+    retryExchange({
       maxAttempts: 3,
       onRetry: (attempt, error) => {
         console.log(`Retry attempt ${attempt}:`, error.message);
       },
     }),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -152,7 +161,7 @@ export const client = createClient({
 **Mutations are never retried** by default, since they may not be idempotent:
 
 ```typescript
-// This will NOT be retried, even with retryLink
+// This will NOT be retried, even with retryExchange
 const [createUser] = useMutation(
   graphql(`
     mutation CreateUser($name: String!) {
@@ -167,7 +176,7 @@ const [createUser] = useMutation(
 
 ## Subscription Reconnection
 
-**Subscriptions automatically reconnect** when the connection is lost, independent of retryLink. See [SSE Link](/links/sse) or [WebSocket Link](/links/ws) for more information.
+**Subscriptions automatically reconnect** when the connection is lost, independent of retryExchange. See [SSE Exchange](/exchanges/sse) or [WebSocket Exchange](/exchanges/ws) for more information.
 
 ## Request Cancellation
 
@@ -184,15 +193,16 @@ controller.abort();
 
 ## Link Chain Placement
 
-Place retryLink early in the chain, before cache:
+Place retryExchange early in the chain, before cache:
 
 ```typescript
 export const client = createClient({
-  links: [
-    retryLink(), // Outermost
-    dedupLink(),
-    cacheLink(),
-    httpLink({ url: 'https://api.example.com/graphql' }),
+  schema,
+  exchanges: [
+    retryExchange(), // Outermost
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
@@ -201,6 +211,6 @@ This ensures retries trigger the entire cache + HTTP flow.
 
 ## Next Steps
 
-- [Deduplication Link](/links/dedup) - Prevent duplicate requests
-- [Cache Link](/links/cache) - Add normalized caching
-- [Links](/guides/links) - Learn about the link system
+- [Deduplication Exchange](/exchanges/dedup) - Prevent duplicate requests
+- [Cache Exchange](/exchanges/cache) - Add normalized caching
+- [Exchanges](/guides/links) - Learn about the exchange system

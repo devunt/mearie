@@ -61,7 +61,7 @@ export default defineConfig({
           { text: 'Mutations', link: '/guides/mutations' },
           { text: 'Fragments', link: '/guides/fragments' },
           { text: 'Subscriptions', link: '/guides/subscriptions' },
-          { text: 'Links', link: '/guides/links' },
+          { text: 'Exchanges', link: '/guides/exchanges' },
           { text: 'Scalars', link: '/guides/scalars' },
           { text: 'Directives', link: '/guides/directives' },
         ],
@@ -97,6 +97,13 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Concepts',
+        collapsed: true,
+        items: [
+          { text: 'Streams', link: '/concepts/streams' },
+        ],
+      },
+      {
         text: 'Guides',
         collapsed: true,
         items: [
@@ -104,22 +111,21 @@ export default defineConfig({
           { text: 'Mutations', link: '/guides/mutations' },
           { text: 'Fragments', link: '/guides/fragments' },
           { text: 'Subscriptions', link: '/guides/subscriptions' },
-          { text: 'Links', link: '/guides/links' },
+          { text: 'Exchanges', link: '/guides/exchanges' },
           { text: 'Scalars', link: '/guides/scalars' },
           { text: 'Directives', link: '/guides/directives' },
         ],
       },
       {
-        text: 'Links',
+        text: 'Exchanges',
         collapsed: true,
         items: [
-          { text: 'HTTP', link: '/links/http' },
-          { text: 'Cache', link: '/links/cache' },
-          { text: 'Retry', link: '/links/retry' },
-          { text: 'Deduplication', link: '/links/dedup' },
-          { text: 'SSE', link: '/links/sse' },
-          { text: 'WebSocket', link: '/links/ws' },
-          { text: 'Custom Links', link: '/links/custom' },
+          { text: 'HTTP', link: '/exchanges/http' },
+          { text: 'Cache', link: '/exchanges/cache' },
+          { text: 'Retry', link: '/exchanges/retry' },
+          { text: 'Deduplication', link: '/exchanges/dedup' },
+          { text: 'Subscription', link: '/exchanges/subscription' },
+          { text: 'Custom Exchanges', link: '/exchanges/custom' },
         ],
       },
       {
@@ -143,6 +149,13 @@ export default defineConfig({
         items: [
           { text: 'Codegen', link: '/config/codegen' },
           { text: 'Client', link: '/config/client' },
+        ],
+      },
+      {
+        text: 'References',
+        collapsed: true,
+        items: [
+          { text: 'Streams', link: '/references/streams' },
         ],
       },
     ],

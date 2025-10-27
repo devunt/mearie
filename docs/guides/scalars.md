@@ -39,9 +39,11 @@ export default defineConfig({
 Configure runtime transformations when creating your client:
 
 ```typescript
-import { createClient, httpLink, cacheLink } from '@mearie/react';
+import { createClient, httpExchange, cacheExchange } from '@mearie/react';
+import { schema } from '~graphql';
 
 export const client = createClient({
+  schema,
   scalars: {
     DateTime: {
       parse: (value: string) => new Date(value),
@@ -52,7 +54,7 @@ export const client = createClient({
       serialize: (value: unknown) => JSON.stringify(value),
     },
   },
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  exchanges: [cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 

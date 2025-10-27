@@ -62,24 +62,26 @@ By default, Mearie looks for `./schema.graphql` relative to your `vite.config.ts
 
 ### 2. Create Client
 
-Create a GraphQL client with your API endpoint. Import `createClient` and links from `@mearie/svelte`:
+Create a GraphQL client with your API endpoint. Import `createClient` and exchanges from `@mearie/svelte`:
 
 ```typescript
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/svelte';
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/svelte';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
 });
 ```
 
-See [Links](/guides/links) for more details on available links and middleware.
+See [Exchanges](/guides/exchanges) for more details on available exchanges and middleware.
 
 ### 3. Set Up Provider
 

@@ -62,19 +62,21 @@ This imports the auto-generated GraphQL types so TypeScript can provide type saf
 
 ## Create Client
 
-Create a GraphQL client with your API endpoint. Import `createClient` and links from your framework package:
+Create a GraphQL client with your API endpoint. Import `createClient` and exchanges from your framework package:
 
 ::: code-group
 
 ```typescript [React]
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/react';
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/react';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -83,13 +85,15 @@ export const client = createClient({
 
 ```typescript [Vue]
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/vue';
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/vue';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -98,13 +102,15 @@ export const client = createClient({
 
 ```typescript [Svelte]
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/svelte';
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/svelte';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -113,13 +119,15 @@ export const client = createClient({
 
 ```typescript [Solid]
 // src/lib/graphql-client.ts
-import { createClient, httpLink, cacheLink, dedupLink } from '@mearie/solid';
+import { createClient, httpExchange, cacheExchange, dedupExchange } from '@mearie/solid';
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [
-    dedupLink(),
-    cacheLink(),
-    httpLink({
+  schema,
+  exchanges: [
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({
       url: 'https://api.example.com/graphql',
     }),
   ],
@@ -128,7 +136,7 @@ export const client = createClient({
 
 :::
 
-See [Links](/guides/links) for more details on available links and middleware.
+See [Exchanges](/guides/exchanges) for more details on available exchanges and middleware.
 
 ## Set Up Provider
 

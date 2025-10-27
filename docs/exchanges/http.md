@@ -2,22 +2,24 @@
 description: Send GraphQL operations to a server over HTTP. Configure URL, headers, credentials, and request cancellation for your GraphQL endpoint.
 ---
 
-# HTTP Link
+# HTTP Exchange
 
 Send GraphQL operations to a server over HTTP.
 
 ## Basic Usage
 
 ```typescript
-import { createClient, httpLink } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { createClient, httpExchange } from '@mearie/react'; // or @mearie/vue, @mearie/svelte, @mearie/solid
+import { schema } from '~graphql';
 
 export const client = createClient({
-  links: [httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
-::: warning Terminating Link
-HTTP Link is a terminating link - it must be the last link in your chain (or one of the last if you have multiple terminating links).
+::: warning Terminating Exchange
+HTTP Exchange is a terminating exchange - it must be the last exchange in your chain (or one of the last if you have multiple terminating exchanges).
 :::
 
 ## Configuration
@@ -27,8 +29,11 @@ HTTP Link is a terminating link - it must be the last link in your chain (or one
 Specify the GraphQL endpoint:
 
 ```typescript
+import { schema } from '~graphql';
+
 export const client = createClient({
-  links: [httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -37,9 +42,12 @@ export const client = createClient({
 Add custom headers to all requests:
 
 ```typescript
+import { schema } from '~graphql';
+
 export const client = createClient({
-  links: [
-    httpLink({
+  schema,
+  exchanges: [
+    httpExchange({
       url: 'https://api.example.com/graphql',
       headers: {
         'X-Client-Name': 'mearie',
@@ -55,9 +63,12 @@ export const client = createClient({
 Control cookie/credential behavior:
 
 ```typescript
+import { schema } from '~graphql';
+
 export const client = createClient({
-  links: [
-    httpLink({
+  schema,
+  exchanges: [
+    httpExchange({
       url: 'https://api.example.com/graphql',
       credentials: 'include', // 'omit' | 'same-origin' | 'include'
     }),
@@ -80,25 +91,28 @@ client.query(GetUserQuery, { id: '1' }, { signal: controller.signal });
 controller.abort();
 ```
 
-## Link Chain Placement
+## Exchange Chain Placement
 
-Place httpLink at the end of your chain:
+Place httpExchange at the end of your chain:
 
 ```typescript
+import { schema } from '~graphql';
+
 export const client = createClient({
-  links: [
-    retryLink(),
-    dedupLink(),
-    cacheLink(),
-    httpLink({ url: 'https://api.example.com/graphql' }), // Last
+  schema,
+  exchanges: [
+    retryExchange(),
+    dedupExchange(),
+    cacheExchange(),
+    httpExchange({ url: 'https://api.example.com/graphql' }), // Last
   ],
 });
 ```
 
-This ensures all non-terminating links execute before the network request.
+This ensures all non-terminating exchanges execute before the network request.
 
 ## Next Steps
 
-- [Cache Link](/links/cache) - Add normalized caching
-- [Retry Link](/links/retry) - Automatically retry failed requests
-- [Links](/guides/links) - Learn about the link system
+- [Cache Exchange](/exchanges/cache) - Add normalized caching
+- [Retry Exchange](/exchanges/retry) - Automatically retry failed requests
+- [Exchanges](/guides/exchanges) - Learn about the exchange system

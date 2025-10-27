@@ -1,3 +1,5 @@
+<img src="docs/assets/logo.svg" width="64" height="64" align="right">
+
 # Mearie
 
 [![npm](https://img.shields.io/npm/v/mearie)](https://www.npmjs.com/package/mearie)

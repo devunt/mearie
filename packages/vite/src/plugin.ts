@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import type { Plugin, ResolvedConfig } from 'vite';
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 import { loadConfig, mergeConfig, type ResolvedMearieConfig } from '@mearie/config';
 import { CodegenContext, createMatcher, findFiles, logger, report } from '@mearie/codegen';
 import type { MearieOptions } from './types.ts';
@@ -50,7 +50,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
     ]);
   };
 
-  const scheduleGenerate = () => {
+  const scheduleGenerate = (server: ViteDevServer) => {
     if (generateTimer) {
       clearTimeout(generateTimer);
     }
@@ -59,6 +59,11 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
       void (async () => {
         try {
           await context?.generate();
+
+          const virtualModule = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
+          if (virtualModule) {
+            await server.reloadModule(virtualModule);
+          }
         } catch (error) {
           report(logger, error);
         }
@@ -85,7 +90,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
       }
     },
 
-    async hotUpdate({ file, type }) {
+    async hotUpdate({ file, type, server }) {
       if (!context || !mearieConfig) {
         return;
       }
@@ -129,7 +134,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
           }
         }
 
-        scheduleGenerate();
+        scheduleGenerate(server);
       } catch (error) {
         report(logger, error);
       }

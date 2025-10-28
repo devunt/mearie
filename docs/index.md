@@ -1,15 +1,15 @@
 ---
 layout: home
 
-title: Mearie - The GraphQL client that feels like magic
-description: Zero-boilerplate GraphQL client with complete type safety and zero runtime overhead. Supports React, Vue, Svelte, and Solid with automatic code generation and intelligent caching.
+title: Mearie - The Pragmatic GraphQL Client
+description: A full-featured, framework-agnostic GraphQL client. Delivers end-to-end type safety, normalized caching, and fragment colocation with minimal configuration. Supports React, Vue, Svelte, Solid, and vanilla JavaScript.
 
 titleTemplate: ':title'
 
 hero:
   name: Mearie
-  text: The GraphQL client that feels like magic
-  tagline: Hassle-free GraphQL client for modern frameworks
+  text: The Pragmatic GraphQL Client
+  tagline: End-to-end type safety, normalized caching, and fragment colocation across any framework
   image:
     src: /logo.svg
     alt: Mearie Logo
@@ -22,39 +22,39 @@ hero:
       link: https://github.com/devunt/mearie
 
 features:
-  - icon: ✨
-    title: Zero Boilerplate
-    details: Write GraphQL queries as template literals and get instant code generation. No manual type definitions, no code generation scripts, no config needed.
-
   - icon: 🎯
-    title: Complete Type Safety
-    details: End-to-end type safety from GraphQL schema to UI components. Catch errors at compile time, not in production.
-
-  - icon: 🌏
-    title: Universal Framework Support
-    details: First-class support for React, Vue, Svelte, and Solid. Use the same GraphQL client across all your projects.
-
-  - icon: ⚡
-    title: Zero Runtime Overhead
-    details: GraphQL parsing and analysis happen at build time. Zero parsing cost, zero runtime analysis—just pure execution speed.
-
-  - icon: ⚛️
-    title: Fine-Grained Reactivity
-    details: Only components reading changed fields re-render. Fragment-level subscriptions prevent unnecessary updates across your component tree.
+    title: End-to-End Type Safety
+    details: Generated types flow from your GraphQL schema through to UI components, catching errors at compile time rather than in production.
 
   - icon: 🧩
     title: Fragment Colocation
-    details: Define data requirements right next to the components that use them. Natural prop drilling with automatic fragment spreading.
+    details: Data requirements live alongside the components that use them, reducing coupling and preventing over-fetching across your application.
+
+  - icon: 🌏
+    title: Framework-Agnostic
+    details: Works seamlessly with React, Vue, Svelte, Solid, and vanilla JavaScript through dedicated integrations for each framework.
+
+  - icon: ⚡
+    title: Ahead-of-Time Compilation
+    details: Operations are parsed and optimized during build, eliminating runtime parsing overhead for faster execution.
+
+  - icon: ⚛️
+    title: Fine-Grained Reactivity
+    details: Updates propagate precisely to components consuming changed data, eliminating unnecessary re-renders through field-level subscriptions.
 
   - icon: 💾
-    title: Effortless Caching
-    details: Entity-based cache normalization works out of the box. Updates to any entity instantly reflect everywhere it's used.
+    title: Normalized Caching
+    details: Data stays consistent across your application as changes propagate automatically through the cache, eliminating manual synchronization.
 
   - icon: 📈
-    title: Progressive Enhancement
-    details: Start with simple queries, add caching when you need it. One line of configuration unlocks advanced features without touching your components.
+    title: Incremental Adoption
+    details: Start quickly with sensible defaults, scale to complex setups as requirements grow. Add features progressively as your application evolves.
+
+  - icon: ✨
+    title: Minimal Configuration
+    details: Works out of the box with minimal setup. Sensible defaults let you focus on building features rather than configuring tooling.
 
   - icon: 🔗
-    title: Composable Exchanges
-    details: Customize your GraphQL stack with stream-based architecture. Built-in dedup, retry, auth, and cache exchanges compose seamlessly.
+    title: Extensible Architecture
+    details: Composable exchange system enables auth, retries, logging, and custom request handling through a flexible stream-based architecture.
 ---

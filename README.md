@@ -5,15 +5,18 @@
 [![npm](https://img.shields.io/npm/v/mearie)](https://www.npmjs.com/package/mearie)
 [![License](https://img.shields.io/github/license/devunt/mearie)](https://github.com/devunt/mearie/blob/main/LICENSE)
 
-Mearie is a type-safe GraphQL client with zero runtime overhead. Write queries
-as template literals and get automatic type generation at build time. The
-library provides normalized caching, fragment colocation, and composable
-exchanges.
+**The Pragmatic GraphQL Client**
+
+A full-featured, framework-agnostic GraphQL client built on proven architectural patterns. Mearie delivers end-to-end type safety, normalized caching, and fragment colocation through ahead-of-time compilation. Write queries as template literals and get complete type inference from schema to UI components.
+
+Supports React, Vue, Svelte, Solid, and vanilla JavaScript through dedicated integrations.
+
+## Architecture
 
 Mearie consists of two parts:
 
-- `mearie` - Build-time codegen and tooling (dev dependency)
-- `@mearie/{framework}` - Framework-specific runtime with client and bindings (React, Vue, Svelte, Solid)
+- `mearie` - Build-time code generation and tooling (dev dependency)
+- `@mearie/{framework}` - Framework-specific runtime with client and bindings
 
 Here's a quick example:
 

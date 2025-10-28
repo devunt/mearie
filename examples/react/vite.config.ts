@@ -6,9 +6,4 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [tanstackStart(), react(), tailwindcss(), mearie()],
-  resolve: {
-    alias: {
-      '~': '/src',
-    },
-  },
 });

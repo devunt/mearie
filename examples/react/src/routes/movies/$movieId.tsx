@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@mearie/react';
 import { graphql } from '$mearie';
-import { Card } from '~/components/ui/card.tsx';
+import { Card } from '../../components/card.tsx';
 import { Star, Calendar, Users, MessageSquare } from 'lucide-react';
 
 export const Route = createFileRoute('/movies/$movieId')({

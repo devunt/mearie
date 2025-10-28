@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { createRootRoute, Outlet, Scripts, HeadContent, Link } from '@tanstack/react-router';
 import { ClientProvider } from '@mearie/react';
-import { mearieClient } from '~/lib/client.ts';
-import stylesUrl from '~/styles.css?url';
+import { mearieClient } from '../lib/client.ts';
+import stylesUrl from '../styles.css?url';
 
 export const Route = createRootRoute({
   head: () => ({

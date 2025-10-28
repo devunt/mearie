@@ -3,9 +3,9 @@ import { useQuery, useSubscription, type DataOf } from '@mearie/react';
 import { graphql } from '$mearie';
 import type { ReviewUpdates } from '$mearie';
 import { useState, useCallback, useEffect } from 'react';
-import { MovieCard } from '~/components/movie-card.tsx';
-import { Card } from '~/components/ui/card.tsx';
-import { Button } from '~/components/ui/button.tsx';
+import { MovieCard } from '../components/movie-card.tsx';
+import { Card } from '../components/card.tsx';
+import { Button } from '../components/button.tsx';
 import { Search, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-react';
 
 export const Route = createFileRoute('/')({

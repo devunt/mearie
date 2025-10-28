@@ -12,9 +12,14 @@ macro_rules! transform_test {
 
         let $arena = Arena::new();
 
+        let mut schema_builder = SchemaBuilder::new();
+
+        let built_in_source = Box::leak(Box::new(Source::ephemeral($crate::schema::BUILTIN_SCHEMA)));
+        let built_in_doc = Parser::new(&$arena).with_source(built_in_source).parse().unwrap();
+        schema_builder.add_document(&built_in_doc).unwrap();
+
         let schema_source = Source::ephemeral($schema);
         let schema_doc = Parser::new(&$arena).with_source(&schema_source).parse().unwrap();
-        let mut schema_builder = SchemaBuilder::new(&$arena);
         schema_builder.add_document(&schema_doc).unwrap();
         let $schema_index = schema_builder.build();
 

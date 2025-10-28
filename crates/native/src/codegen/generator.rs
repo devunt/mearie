@@ -24,16 +24,16 @@ use crate::source::SourceBuf;
 /// # Example
 ///
 /// ```
-/// use mearie_native::codegen::{CodegenContext, Builder};
+/// use mearie_native::codegen::{CodegenContext, Generator};
 /// use mearie_native::schema::{SchemaBuilder, DocumentIndex};
 /// use mearie_native::arena::Arena;
 ///
 /// let arena = Arena::new();
 /// let ctx = CodegenContext::new();
-/// let schema = SchemaBuilder::new(&arena).build();
+/// let schema = SchemaBuilder::new().build();
 /// let document = DocumentIndex::new();
 ///
-/// let builder = Builder::new(&ctx, &schema, &document);
+/// let builder = Generator::new(&ctx, &schema, &document);
 /// let sources = builder.generate().unwrap();
 /// ```
 pub struct Generator<'a, 'b> {
@@ -73,14 +73,14 @@ impl<'a, 'b> Generator<'a, 'b> {
     /// # Example
     ///
     /// ```
-    /// # use mearie_native::codegen::{CodegenContext, Builder};
+    /// # use mearie_native::codegen::{CodegenContext, Generator};
     /// # use mearie_native::schema::{SchemaBuilder, DocumentIndex};
     /// # use mearie_native::arena::Arena;
     /// # let arena = Arena::new();
     /// # let ctx = CodegenContext::new();
-    /// # let schema = SchemaBuilder::new(&arena).build();
+    /// # let schema = SchemaBuilder::new().build();
     /// # let document = DocumentIndex::new();
-    /// let builder = Builder::new(&ctx, &schema, &document);
+    /// let builder = Generator::new(&ctx, &schema, &document);
     /// let sources = builder.generate().unwrap();
     ///
     /// assert_eq!(sources.len(), 3);
@@ -100,19 +100,16 @@ impl<'a, 'b> Generator<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arena::Arena;
-    use crate::graphql::parser::Parser;
     use crate::schema::{DocumentIndex, SchemaBuilder};
-    use crate::source::Source;
+    use crate::setup_codegen;
     use assertables::*;
 
     #[test]
     fn test_operation_builder_new() {
-        let arena = Arena::new();
         let ctx = CodegenContext::new();
-        let schema = SchemaBuilder::new(&arena).build();
+        let schema = SchemaBuilder::new().build();
         let document = DocumentIndex::new();
-        let _builder = Generator::new(&ctx, &schema, &document);
+        let _generator = Generator::new(&ctx, &schema, &document);
     }
 
     #[test]
@@ -136,20 +133,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -181,20 +165,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -232,21 +203,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -287,21 +244,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -365,21 +308,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -438,21 +367,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -508,21 +423,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -567,21 +468,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -635,21 +522,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();
@@ -707,21 +580,7 @@ mod tests {
             }
         "#;
 
-        let arena = Arena::new();
-        let schema_source = Source::ephemeral(schema);
-        let schema_document = Parser::new(&arena).with_source(&schema_source).parse().unwrap();
-        let operations_source = Source::ephemeral(operations);
-        let operations_document = Parser::new(&arena).with_source(&operations_source).parse().unwrap();
-
-        let mut schema_builder = SchemaBuilder::new(&arena);
-        schema_builder.add_document(schema_document).unwrap();
-        let schema_index = schema_builder.build();
-
-        let mut document_index = DocumentIndex::new();
-
-        document_index.add_document(operations_document).unwrap();
-
-        let ctx = CodegenContext::new();
+        let (ctx, schema_index, document_index) = setup_codegen!(schema, operations);
         let builder = Generator::new(&ctx, &schema_index, &document_index);
 
         let result = builder.generate();

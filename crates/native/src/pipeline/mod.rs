@@ -70,7 +70,17 @@ impl<'a> Pipeline<'a> {
     pub fn process(self) -> PipelineOutput {
         let mut errors = Vec::new();
 
-        let mut schema_builder = SchemaBuilder::new(self.arena);
+        let mut schema_builder = SchemaBuilder::new();
+
+        let built_in_source = Source::ephemeral(crate::schema::BUILTIN_SCHEMA);
+        if let Err(e) = Parser::new(self.arena)
+            .with_source(&built_in_source)
+            .parse()
+            .and_then(|doc| schema_builder.add_document(doc))
+        {
+            errors.push(e);
+        }
+
         for source in &self.schemas {
             let document = Parser::new(self.arena).with_source(source).parse();
             if let Err(e) = document.and_then(|doc| schema_builder.add_document(doc)) {

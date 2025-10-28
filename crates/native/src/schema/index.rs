@@ -21,7 +21,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// use mearie_native::graphql::ast::*;
 ///
 /// let arena = Arena::new();
-/// let mut builder = SchemaBuilder::new(&arena);
+/// let mut builder = SchemaBuilder::new();
 ///
 /// // Build schema from documents
 /// // builder.add_document(schema_doc).unwrap();
@@ -111,7 +111,7 @@ impl<'a> SchemaIndex<'a> {
     /// # use mearie_native::arena::Arena;
     /// # use mearie_native::schema::{SchemaBuilder, TypeInfo};
     /// # let arena = Arena::new();
-    /// # let builder = SchemaBuilder::new(&arena);
+    /// # let builder = SchemaBuilder::new();
     /// # let index = builder.build();
     /// if let Some(TypeInfo::Object(obj)) = index.get_type("User") {
     ///     println!("Found object type: {}", obj.name);
@@ -208,7 +208,7 @@ impl<'a> SchemaIndex<'a> {
     /// # use mearie_native::arena::Arena;
     /// # use mearie_native::schema::SchemaBuilder;
     /// # let arena = Arena::new();
-    /// # let builder = SchemaBuilder::new(&arena);
+    /// # let builder = SchemaBuilder::new();
     /// # let index = builder.build();
     /// if let Some(field) = index.get_field("User", "id") {
     ///     println!("Field type: {:?}", field.typ);
@@ -240,7 +240,7 @@ impl<'a> SchemaIndex<'a> {
     /// # use mearie_native::arena::Arena;
     /// # use mearie_native::schema::SchemaBuilder;
     /// # let arena = Arena::new();
-    /// # let builder = SchemaBuilder::new(&arena);
+    /// # let builder = SchemaBuilder::new();
     /// # let index = builder.build();
     /// for type_name in index.get_possible_types("Node") {
     ///     println!("Type {} implements Node", type_name);
@@ -266,7 +266,7 @@ impl<'a> SchemaIndex<'a> {
     /// # use mearie_native::arena::Arena;
     /// # use mearie_native::schema::SchemaBuilder;
     /// # let arena = Arena::new();
-    /// # let builder = SchemaBuilder::new(&arena);
+    /// # let builder = SchemaBuilder::new();
     /// # let index = builder.build();
     /// if index.implements("User", "Node") {
     ///     println!("User implements Node interface");

@@ -1,8 +1,10 @@
 mod builder;
+mod builtin;
 mod document;
 mod index;
 
 pub use builder::SchemaBuilder;
+pub use builtin::BUILTIN_SCHEMA;
 pub use document::DocumentIndex;
 pub use index::{SchemaIndex, TypeInfo};
 
@@ -12,6 +14,7 @@ mod integration_tests {
     use crate::arena::Arena;
     use crate::error::location::Span;
     use crate::graphql::ast::*;
+    use crate::graphql::parser::Parser;
     use crate::source::Source;
 
     fn test_source() -> Source<'static> {
@@ -25,7 +28,14 @@ mod integration_tests {
     #[test]
     fn test_complete_schema_building_workflow() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+
+        let mut builder = SchemaBuilder::new();
+        let built_in_source = Source::ephemeral(BUILTIN_SCHEMA);
+        let doc = Parser::new(&arena)
+            .with_source(&built_in_source)
+            .parse()
+            .expect("Built-in SDL should parse");
+        builder.add_document(doc).expect("Built-in SDL should load");
 
         let source_binding = test_source();
         let schema_doc = arena.alloc(Document {
@@ -247,7 +257,15 @@ mod integration_tests {
     #[test]
     fn test_schema_and_document_separation() {
         let arena = Arena::new();
-        let mut schema_builder = SchemaBuilder::new(&arena);
+
+        let mut schema_builder = SchemaBuilder::new();
+        let built_in_source = Source::ephemeral(BUILTIN_SCHEMA);
+        let doc = Parser::new(&arena)
+            .with_source(&built_in_source)
+            .parse()
+            .expect("Built-in SDL should parse");
+        schema_builder.add_document(doc).expect("Built-in SDL should load");
+
         let mut doc_index = DocumentIndex::new();
 
         let source_binding1 = test_source();

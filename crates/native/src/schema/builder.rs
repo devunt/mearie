@@ -1,4 +1,3 @@
-use crate::arena::Arena;
 use crate::error::{MearieError, Result};
 use crate::graphql::ast::*;
 use crate::schema::{SchemaIndex, TypeInfo};
@@ -17,7 +16,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// use mearie_native::schema::SchemaBuilder;
 ///
 /// let arena = Arena::new();
-/// let mut builder = SchemaBuilder::new(&arena);
+/// let mut builder = SchemaBuilder::new();
 ///
 /// // Add schema documents
 /// // builder.add_document(schema_doc).unwrap();
@@ -26,7 +25,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// let index = builder.build();
 /// ```
 pub struct SchemaBuilder<'a> {
-    arena: &'a Arena,
     types: FxHashMap<&'a str, TypeInfo<'a>>,
     fields: FxHashMap<&'a str, FxHashMap<&'a str, &'a FieldDefinition<'a>>>,
     interface_implementors: FxHashMap<&'a str, FxHashSet<&'a str>>,
@@ -39,17 +37,11 @@ pub struct SchemaBuilder<'a> {
 }
 
 impl<'a> SchemaBuilder<'a> {
-    /// Creates a new schema builder with built-in scalars pre-registered.
+    /// Creates a new empty schema builder.
     ///
-    /// The following built-in scalars are automatically added:
-    /// - Int
-    /// - Float
-    /// - String
-    /// - Boolean
-    /// - ID
-    pub fn new(arena: &'a Arena) -> Self {
-        let mut builder = Self {
-            arena,
+    /// Built-in types and directives are loaded separately by the pipeline.
+    pub fn new() -> Self {
+        Self {
             types: FxHashMap::default(),
             fields: FxHashMap::default(),
             interface_implementors: FxHashMap::default(),
@@ -59,22 +51,6 @@ impl<'a> SchemaBuilder<'a> {
             query_type: None,
             mutation_type: None,
             subscription_type: None,
-        };
-        builder.add_built_in_scalars();
-        builder
-    }
-
-    fn add_built_in_scalars(&mut self) {
-        const BUILT_INS: &[&str] = &["Int", "Float", "String", "Boolean", "ID"];
-        for &name in BUILT_INS {
-            let scalar_name_str = self.arena.intern(name);
-            let scalar_name = TypeName::new(Name::new(scalar_name_str));
-            let scalar_def = self.arena.alloc(ScalarTypeDefinition {
-                name: scalar_name,
-                directives: self.arena.alloc_vec(),
-                description: None,
-            });
-            self.types.insert(scalar_name_str, TypeInfo::Scalar(scalar_def));
         }
     }
 
@@ -96,7 +72,7 @@ impl<'a> SchemaBuilder<'a> {
     /// # use mearie_native::schema::SchemaBuilder;
     /// # use mearie_native::graphql::ast::*;
     /// # let arena = Arena::new();
-    /// let mut builder = SchemaBuilder::new(&arena);
+    /// let mut builder = SchemaBuilder::new();
     /// // builder.add_document(schema_doc)?;
     /// ```
     pub fn add_document(&mut self, doc: &'a Document<'a>) -> Result<()> {
@@ -285,7 +261,7 @@ impl<'a> SchemaBuilder<'a> {
     /// # use mearie_native::arena::Arena;
     /// # use mearie_native::schema::SchemaBuilder;
     /// # let arena = Arena::new();
-    /// let builder = SchemaBuilder::new(&arena);
+    /// let builder = SchemaBuilder::new();
     /// let index = builder.build();
     /// ```
     pub fn build(self) -> SchemaIndex<'a> {
@@ -303,30 +279,24 @@ impl<'a> SchemaBuilder<'a> {
     }
 }
 
+impl<'a> Default for SchemaBuilder<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arena::Arena;
     use crate::graphql::ast::{FieldName, Name, TypeName};
     use crate::source::Source;
     use assertables::*;
 
     #[test]
-    fn test_new_builder_has_built_in_scalars() {
-        let arena = Arena::new();
-        let builder = SchemaBuilder::new(&arena);
-        let index = builder.build();
-
-        assert!(index.is_scalar("Int"));
-        assert!(index.is_scalar("Float"));
-        assert!(index.is_scalar("String"));
-        assert!(index.is_scalar("Boolean"));
-        assert!(index.is_scalar("ID"));
-    }
-
-    #[test]
     fn test_add_object_type() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let user_name = TypeName::new(Name::new(arena.intern("User")));
         let obj = ObjectTypeDefinition {
@@ -355,7 +325,7 @@ mod tests {
     #[test]
     fn test_add_object_with_interfaces() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let node_name = TypeName::new(Name::new(arena.intern("Node")));
         let user_name = TypeName::new(Name::new(arena.intern("User")));
@@ -393,7 +363,7 @@ mod tests {
     #[test]
     fn test_add_union_type() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let user_name = TypeName::new(Name::new(arena.intern("User")));
         let union_name = TypeName::new(Name::new(arena.intern("SearchResult")));
@@ -430,7 +400,7 @@ mod tests {
     #[test]
     fn test_field_index_creation_for_object() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let user_name = TypeName::new(Name::new(arena.intern("User")));
 
@@ -480,7 +450,7 @@ mod tests {
     #[test]
     fn test_field_index_creation_for_interface() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let node_name = TypeName::new(Name::new(arena.intern("Node")));
 
@@ -518,7 +488,7 @@ mod tests {
     #[test]
     fn test_custom_scalar_tracking() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let datetime_name = TypeName::new(Name::new(arena.intern("DateTime")));
 
@@ -547,7 +517,7 @@ mod tests {
     #[test]
     fn test_schema_definition_processing() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let source = Source::ephemeral("");
         let doc = arena.alloc(Document {
@@ -574,7 +544,7 @@ mod tests {
     #[test]
     fn test_duplicate_type_detection() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
         let user_name = TypeName::new(Name::new(arena.intern("User")));
 
@@ -605,9 +575,9 @@ mod tests {
     #[test]
     fn test_directive_registration() {
         let arena = Arena::new();
-        let mut builder = SchemaBuilder::new(&arena);
+        let mut builder = SchemaBuilder::new();
 
-        let directive_name = DirectiveName::new(Name::new(arena.intern("deprecated")));
+        let directive_name = DirectiveName::new(Name::new(arena.intern("custom")));
 
         let source = Source::ephemeral("");
         let doc = arena.alloc(Document {
@@ -626,6 +596,6 @@ mod tests {
         builder.add_document(doc).unwrap();
         let index = builder.build();
 
-        assert_some!(index.get_directive("deprecated"));
+        assert_some!(index.get_directive("custom"));
     }
 }

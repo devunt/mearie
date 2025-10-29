@@ -132,6 +132,12 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
             cache.writeQuery(result.operation.artifact, result.operation.variables, result.data);
           }
         }),
+        filter(
+          (result) =>
+            result.operation.variant !== 'request' ||
+            result.operation.artifact.kind !== 'query' ||
+            fetchPolicy === 'network-only',
+        ),
       );
 
       return merge(fragment$, cache$, forward$);

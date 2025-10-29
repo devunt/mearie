@@ -1,8 +1,8 @@
 import { useParams } from '@solidjs/router';
-import { createQuery } from '@mearie/solid';
+import { createQuery, createMutation } from '@mearie/solid';
 import { graphql } from '$mearie';
 import { Card } from '../../components/card.tsx';
-import { Star, Calendar, Users, MessageSquare } from 'lucide-solid';
+import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-solid';
 import { Show, For } from 'solid-js';
 
 const formatReleaseDate = (date: string | null | undefined): string => {
@@ -34,6 +34,8 @@ export default function MovieDetailPage() {
           rating
           posterUrl
           backdropUrl
+          likeCount
+          dislikeCount
 
           credits {
             __typename
@@ -80,6 +82,30 @@ export default function MovieDetailPage() {
     }),
   );
 
+  const [likeMovie] = createMutation(
+    graphql(`
+      mutation LikeMovie($movieId: ID!) {
+        likeMovie(movieId: $movieId) {
+          id
+          likeCount
+          dislikeCount
+        }
+      }
+    `),
+  );
+
+  const [dislikeMovie] = createMutation(
+    graphql(`
+      mutation DislikeMovie($movieId: ID!) {
+        dislikeMovie(movieId: $movieId) {
+          id
+          likeCount
+          dislikeCount
+        }
+      }
+    `),
+  );
+
   const movie = () => result.data?.movie;
   const cast = () => movie()?.credits.filter((c) => c.__typename === 'Cast') || [];
   const crew = () => movie()?.credits.filter((c) => c.__typename === 'Crew') || [];
@@ -123,27 +149,49 @@ export default function MovieDetailPage() {
                 <div class="md:col-span-2 space-y-6">
                   <Card>
                     <div class="space-y-4">
-                      <div class="flex items-center flex-wrap gap-3">
-                        <Show when={m().rating}>
-                          <div class="flex items-center gap-2">
-                            <Star class="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                            <span class="text-xl font-semibold text-neutral-950">{m().rating!.toFixed(1)}</span>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center flex-wrap gap-3">
+                          <Show when={m().rating}>
+                            <div class="flex items-center gap-2">
+                              <Star class="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                              <span class="text-xl font-semibold text-neutral-950">{m().rating!.toFixed(1)}</span>
+                            </div>
+                          </Show>
+                          <Show when={formatReleaseDate(m().releaseDate as string)}>
+                            <div class="flex items-center gap-1.5 text-sm text-neutral-500">
+                              <Calendar class="w-4 h-4" />
+                              <span>{formatReleaseDate(m().releaseDate as string)}</span>
+                            </div>
+                          </Show>
+                          <div class="flex flex-wrap gap-2">
+                            <For each={m().genres}>
+                              {(genre) => (
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200">
+                                  {genre.name}
+                                </span>
+                              )}
+                            </For>
                           </div>
-                        </Show>
-                        <Show when={formatReleaseDate(m().releaseDate as string)}>
-                          <div class="flex items-center gap-1.5 text-sm text-neutral-500">
-                            <Calendar class="w-4 h-4" />
-                            <span>{formatReleaseDate(m().releaseDate as string)}</span>
-                          </div>
-                        </Show>
-                        <div class="flex flex-wrap gap-2">
-                          <For each={m().genres}>
-                            {(genre) => (
-                              <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200">
-                                {genre.name}
-                              </span>
-                            )}
-                          </For>
+                        </div>
+
+                        <div class="flex items-center gap-0.5 border border-neutral-200 bg-white overflow-hidden">
+                          <button
+                            onClick={() => likeMovie({ movieId: movieId() })}
+                            class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                            aria-label="Like movie"
+                          >
+                            <ThumbsUp class="w-4 h-4" />
+                            <span>{m().likeCount}</span>
+                          </button>
+                          <div class="w-px h-6 bg-neutral-200" />
+                          <button
+                            onClick={() => dislikeMovie({ movieId: movieId() })}
+                            class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                            aria-label="Dislike movie"
+                          >
+                            <ThumbsDown class="w-4 h-4" />
+                            <span>{m().dislikeCount}</span>
+                          </button>
                         </div>
                       </div>
 

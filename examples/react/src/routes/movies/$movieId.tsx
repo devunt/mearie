@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery } from '@mearie/react';
+import { useQuery, useMutation } from '@mearie/react';
 import { graphql } from '$mearie';
 import { Card } from '../../components/card.tsx';
-import { Star, Calendar, Users, MessageSquare } from 'lucide-react';
+import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 export const Route = createFileRoute('/movies/$movieId')({
   component: MovieDetailPage,
@@ -24,7 +24,7 @@ const formatReleaseDate = (date: string | null | undefined): string => {
 function MovieDetailPage() {
   const { movieId } = Route.useParams();
 
-  const { data, loading, error, refetch } = useQuery(
+  const { data, loading, error } = useQuery(
     graphql(`
       query MovieDetail($id: ID!) {
         movie(id: $id) {
@@ -36,6 +36,8 @@ function MovieDetailPage() {
           rating
           posterUrl
           backdropUrl
+          likeCount
+          dislikeCount
 
           credits {
             __typename
@@ -82,6 +84,30 @@ function MovieDetailPage() {
     },
   );
 
+  const [likeMovie] = useMutation(
+    graphql(`
+      mutation LikeMovie($movieId: ID!) {
+        likeMovie(movieId: $movieId) {
+          id
+          likeCount
+          dislikeCount
+        }
+      }
+    `),
+  );
+
+  const [dislikeMovie] = useMutation(
+    graphql(`
+      mutation DislikeMovie($movieId: ID!) {
+        dislikeMovie(movieId: $movieId) {
+          id
+          likeCount
+          dislikeCount
+        }
+      }
+    `),
+  );
+
   if (loading && !data) {
     return <p className="text-sm text-neutral-500">Loading movie details...</p>;
   }
@@ -124,28 +150,50 @@ function MovieDetailPage() {
         <div className="md:col-span-2 space-y-6">
           <Card>
             <div className="space-y-4">
-              <div className="flex items-center flex-wrap gap-3">
-                {movie.rating && (
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xl font-semibold text-neutral-950">{movie.rating.toFixed(1)}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center flex-wrap gap-3">
+                  {movie.rating && (
+                    <div className="flex items-center gap-2">
+                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                      <span className="text-xl font-semibold text-neutral-950">{movie.rating.toFixed(1)}</span>
+                    </div>
+                  )}
+                  {formatReleaseDate(movie.releaseDate as string) && (
+                    <div className="flex items-center gap-1.5 text-sm text-neutral-500">
+                      <Calendar className="w-4 h-4" />
+                      <span>{formatReleaseDate(movie.releaseDate as string)}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {movie.genres.map((genre) => (
+                      <span
+                        key={genre.id}
+                        className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200"
+                      >
+                        {genre.name}
+                      </span>
+                    ))}
                   </div>
-                )}
-                {formatReleaseDate(movie.releaseDate as string) && (
-                  <div className="flex items-center gap-1.5 text-sm text-neutral-500">
-                    <Calendar className="w-4 h-4" />
-                    <span>{formatReleaseDate(movie.releaseDate as string)}</span>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {movie.genres.map((genre) => (
-                    <span
-                      key={genre.id}
-                      className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200"
-                    >
-                      {genre.name}
-                    </span>
-                  ))}
+                </div>
+
+                <div className="flex items-center gap-0.5 border border-neutral-200 bg-white overflow-hidden">
+                  <button
+                    onClick={() => likeMovie({ movieId })}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    aria-label="Like movie"
+                  >
+                    <ThumbsUp className="w-4 h-4" />
+                    <span>{movie.likeCount}</span>
+                  </button>
+                  <div className="w-px h-6 bg-neutral-200" />
+                  <button
+                    onClick={() => dislikeMovie({ movieId })}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    aria-label="Dislike movie"
+                  >
+                    <ThumbsDown className="w-4 h-4" />
+                    <span>{movie.dislikeCount}</span>
+                  </button>
                 </div>
               </div>
 

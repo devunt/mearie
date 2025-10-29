@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useQuery } from '@mearie/vue';
+import { useQuery, useMutation } from '@mearie/vue';
 import { graphql } from '$mearie';
 import { computed } from 'vue';
 import Card from '~/components/Card.vue';
-import { Star, Calendar, Users, MessageSquare } from 'lucide-vue-next';
+import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-vue-next';
 
 const route = useRoute();
 const movieId = computed(() => route.params.id as string);
@@ -21,7 +21,7 @@ const formatReleaseDate = (date: string | null | undefined): string => {
   }
 };
 
-const { data, loading, error, refetch } = useQuery(
+const { data, loading, error } = useQuery(
   graphql(`
     query MovieDetail($id: ID!) {
       movie(id: $id) {
@@ -33,6 +33,8 @@ const { data, loading, error, refetch } = useQuery(
         rating
         posterUrl
         backdropUrl
+        likeCount
+        dislikeCount
 
         credits {
           __typename
@@ -79,6 +81,30 @@ const { data, loading, error, refetch } = useQuery(
   }),
 );
 
+const [likeMovie] = useMutation(
+  graphql(`
+    mutation LikeMovie($movieId: ID!) {
+      likeMovie(movieId: $movieId) {
+        id
+        likeCount
+        dislikeCount
+      }
+    }
+  `),
+);
+
+const [dislikeMovie] = useMutation(
+  graphql(`
+    mutation DislikeMovie($movieId: ID!) {
+      dislikeMovie(movieId: $movieId) {
+        id
+        likeCount
+        dislikeCount
+      }
+    }
+  `),
+);
+
 const movie = computed(() => data.value?.movie);
 const cast = computed(() => movie.value?.credits.filter((c) => c.__typename === 'Cast') || []);
 const crew = computed(() => movie.value?.credits.filter((c) => c.__typename === 'Crew') || []);
@@ -116,26 +142,48 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
         <div class="md:col-span-2 space-y-6">
           <Card>
             <div class="space-y-4">
-              <div class="flex items-center flex-wrap gap-3">
-                <div v-if="movie.rating" class="flex items-center gap-2">
-                  <Star class="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span class="text-xl font-semibold text-neutral-950">{{ movie.rating.toFixed(1) }}</span>
-                </div>
-                <div
-                  v-if="formatReleaseDate(movie.releaseDate as string)"
-                  class="flex items-center gap-1.5 text-sm text-neutral-500"
-                >
-                  <Calendar class="w-4 h-4" />
-                  <span>{{ formatReleaseDate(movie.releaseDate as string) }}</span>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <span
-                    v-for="genre in movie.genres"
-                    :key="genre.id"
-                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200"
+              <div class="flex items-center justify-between">
+                <div class="flex items-center flex-wrap gap-3">
+                  <div v-if="movie.rating" class="flex items-center gap-2">
+                    <Star class="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span class="text-xl font-semibold text-neutral-950">{{ movie.rating.toFixed(1) }}</span>
+                  </div>
+                  <div
+                    v-if="formatReleaseDate(movie.releaseDate as string)"
+                    class="flex items-center gap-1.5 text-sm text-neutral-500"
                   >
-                    {{ genre.name }}
-                  </span>
+                    <Calendar class="w-4 h-4" />
+                    <span>{{ formatReleaseDate(movie.releaseDate as string) }}</span>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="genre in movie.genres"
+                      :key="genre.id"
+                      class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-50 text-neutral-500 border border-neutral-200"
+                    >
+                      {{ genre.name }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-0.5 border border-neutral-200 bg-white overflow-hidden">
+                  <button
+                    @click="likeMovie({ movieId })"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    aria-label="Like movie"
+                  >
+                    <ThumbsUp class="w-4 h-4" />
+                    <span>{{ movie.likeCount }}</span>
+                  </button>
+                  <div class="w-px h-6 bg-neutral-200" />
+                  <button
+                    @click="dislikeMovie({ movieId })"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    aria-label="Dislike movie"
+                  >
+                    <ThumbsDown class="w-4 h-4" />
+                    <span>{{ movie.dislikeCount }}</span>
+                  </button>
                 </div>
               </div>
 

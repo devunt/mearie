@@ -107,7 +107,7 @@ impl<'a> Visit<'_> for Extractor<'a> {
 
 pub fn extract_graphql_sources(source: SourceBuf) -> ExtractResult {
     let allocator = Allocator::default();
-    let source_type = SourceType::from_path(&source.file_path).unwrap_or_default();
+    let source_type = SourceType::tsx();
 
     let parser = Parser::new(&allocator, &source.code, source_type);
     let result = parser.parse();

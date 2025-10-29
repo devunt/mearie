@@ -5,7 +5,7 @@ import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
 
 export type UseQueryOptions = QueryOptions & {
-  skip?: MaybeRefOrGetter<boolean>;
+  skip?: boolean;
 };
 
 export type Query<T extends Artifact<'query'>> =
@@ -31,13 +31,13 @@ export type Query<T extends Artifact<'query'>> =
 export const useQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends undefined
-    ? [undefined?, UseQueryOptions?]
-    : [MaybeRefOrGetter<VariablesOf<T>>, UseQueryOptions?]
+    ? [undefined?, MaybeRefOrGetter<UseQueryOptions>?]
+    : [MaybeRefOrGetter<VariablesOf<T>>, MaybeRefOrGetter<UseQueryOptions>?]
 ): Query<T> => {
   const client = useClient();
 
   const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(!toValue(options?.skip));
+  const loading = ref<boolean>(!toValue(options)?.skip);
   const error = ref<AggregatedError | undefined>(undefined);
 
   let unsubscribe: (() => void) | null = null;
@@ -45,7 +45,7 @@ export const useQuery = <T extends Artifact<'query'>>(
   const execute = () => {
     unsubscribe?.();
 
-    if (toValue(options?.skip)) {
+    if (toValue(options)?.skip) {
       return;
     }
 
@@ -54,7 +54,7 @@ export const useQuery = <T extends Artifact<'query'>>(
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, toValue(variables), options),
+      client.executeQuery(query, toValue(variables), toValue(options)),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {

@@ -8,12 +8,25 @@ export const extractVueScript = async (source: Source): Promise<Source[]> => {
 
   const { descriptor } = vueCompiler.parse(source.code, { filename: source.filePath });
 
-  if (!descriptor.script && !descriptor.scriptSetup) {
-    return [];
+  const blocks: Source[] = [];
+
+  if (descriptor.script) {
+    blocks.push({
+      code: descriptor.script.content,
+      filePath: source.filePath,
+      startLine: source.startLine + descriptor.script.loc.start.line - 1,
+    });
   }
 
-  const code = vueCompiler.compileScript(descriptor, { id: Date.now().toString() }).content;
-  return [{ ...source, code }];
+  if (descriptor.scriptSetup) {
+    blocks.push({
+      code: descriptor.scriptSetup.content,
+      filePath: source.filePath,
+      startLine: source.startLine + descriptor.scriptSetup.loc.start.line - 1,
+    });
+  }
+
+  return blocks;
 };
 
 export const extractSvelteScript = async (source: Source): Promise<Source[]> => {

@@ -10,11 +10,11 @@ export type Fragment<T extends Artifact<'fragment'>> = Ref<DataOf<T>>;
 export const useFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
   fragmentRef: MaybeRefOrGetter<FragmentRefs<T['name']>>,
-  options?: UseFragmentOptions,
+  ...[options]: [MaybeRefOrGetter<UseFragmentOptions>?]
 ): Fragment<T> => {
   const client = useClient();
 
-  const result = pipe(client.executeFragment(fragment, toValue(fragmentRef), options), peek);
+  const result = pipe(client.executeFragment(fragment, toValue(fragmentRef), toValue(options)), peek);
 
   if (result.data === undefined) {
     throw new Error('Fragment data not found');
@@ -24,7 +24,7 @@ export const useFragment = <T extends Artifact<'fragment'>>(
 
   watchEffect((onCleanup) => {
     const unsubscribe = pipe(
-      client.executeFragment(fragment, toValue(fragmentRef), options),
+      client.executeFragment(fragment, toValue(fragmentRef), toValue(options)),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {

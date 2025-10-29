@@ -22,7 +22,7 @@ export type Subscription<T extends Artifact<'subscription'>> =
     };
 
 export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
-  skip?: MaybeRefOrGetter<boolean>;
+  skip?: boolean;
   onData?: (data: DataOf<T>) => void;
   onError?: (error: AggregatedError) => void;
 };
@@ -30,13 +30,13 @@ export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = Subscri
 export const useSubscription = <T extends Artifact<'subscription'>>(
   subscription: T,
   ...[variables, options]: VariablesOf<T> extends undefined
-    ? [undefined?, UseSubscriptionOptions<T>?]
-    : [MaybeRefOrGetter<VariablesOf<T>>, UseSubscriptionOptions<T>?]
+    ? [undefined?, MaybeRefOrGetter<UseSubscriptionOptions<T>>?]
+    : [MaybeRefOrGetter<VariablesOf<T>>, MaybeRefOrGetter<UseSubscriptionOptions<T>>?]
 ): Subscription<T> => {
   const client = useClient();
 
   const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(!toValue(options?.skip));
+  const loading = ref<boolean>(!toValue(options)?.skip);
   const error = ref<AggregatedError | undefined>(undefined);
 
   let unsubscribe: (() => void) | null = null;
@@ -44,7 +44,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
   const execute = () => {
     unsubscribe?.();
 
-    if (toValue(options?.skip)) {
+    if (toValue(options)?.skip) {
       return;
     }
 
@@ -53,7 +53,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, toValue(variables), options),
+      client.executeSubscription(subscription, toValue(variables), toValue(options)),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -62,14 +62,14 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
             error.value = err;
             loading.value = false;
 
-            options?.onError?.(err);
+            toValue(options)?.onError?.(err);
           } else {
             const resultData = result.data as DataOf<T>;
 
             data.value = resultData;
             loading.value = false;
 
-            options?.onData?.(resultData);
+            toValue(options)?.onData?.(resultData);
           }
         },
       }),

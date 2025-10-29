@@ -1,0 +1,26 @@
+{
+  "name": "@mearie-internal/examples-solid",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vinxi build",
+    "dev": "vinxi dev",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@mearie/solid": "workspace:*",
+    "@solidjs/meta": "^0.29.4",
+    "@solidjs/router": "^0.15.3",
+    "@solidjs/start": "^1.2.0",
+    "graphql-sse": "^2.6.0",
+    "lucide-solid": "^0.548.0",
+    "solid-js": "^1.9.10",
+    "vinxi": "^0.5.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16",
+    "mearie": "workspace:*",
+    "tailwindcss": "^4.1.16"
+  }
+}

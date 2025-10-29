@@ -30,17 +30,17 @@ export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = Subs
 export const createSubscription = <T extends Artifact<'subscription'>>(
   subscription: T,
   ...[variables, options]: VariablesOf<T> extends undefined
-    ? [undefined?, CreateSubscriptionOptions<T>?]
-    : [Accessor<VariablesOf<T>>, CreateSubscriptionOptions<T>?]
+    ? [undefined?, Accessor<CreateSubscriptionOptions<T>>?]
+    : [Accessor<VariablesOf<T>>, Accessor<CreateSubscriptionOptions<T>>?]
 ): Subscription<T> => {
   const client = useClient();
 
   const [data, setData] = createSignal<DataOf<T> | undefined>();
-  const [loading, setLoading] = createSignal<boolean>(!options?.skip);
+  const [loading, setLoading] = createSignal<boolean>(!options?.()?.skip);
   const [error, setError] = createSignal<AggregatedError | undefined>();
 
   createEffect(() => {
-    if (options?.skip) {
+    if (options?.()?.skip) {
       return;
     }
 
@@ -49,7 +49,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 
     const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : variables, options),
+      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : variables, options?.()),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -58,7 +58,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
             setError(err);
             setLoading(false);
 
-            options?.onError?.(err);
+            options?.()?.onError?.(err);
           } else {
             const resultData = result.data as DataOf<T>;
 
@@ -66,7 +66,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
             setLoading(false);
             setError(undefined);
 
-            options?.onData?.(resultData);
+            options?.()?.onData?.(resultData);
           }
         },
       }),

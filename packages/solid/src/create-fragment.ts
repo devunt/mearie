@@ -10,11 +10,11 @@ export type Fragment<T extends Artifact<'fragment'>> = Accessor<DataOf<T>>;
 export const createFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
   fragmentRef: Accessor<FragmentRefs<T['name']>>,
-  options?: CreateFragmentOptions,
+  options?: Accessor<CreateFragmentOptions>,
 ): Fragment<T> => {
   const client = useClient();
 
-  const result = pipe(client.executeFragment(fragment, fragmentRef(), options), peek);
+  const result = pipe(client.executeFragment(fragment, fragmentRef(), options?.()), peek);
 
   if (result.data === undefined) {
     throw new Error('Fragment data not found');
@@ -24,7 +24,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
 
   createEffect(() => {
     const unsubscribe = pipe(
-      client.executeFragment(fragment, fragmentRef(), options),
+      client.executeFragment(fragment, fragmentRef(), options?.()),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {

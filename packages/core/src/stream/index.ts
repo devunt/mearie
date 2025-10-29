@@ -16,6 +16,7 @@ export { takeUntil } from './operators/take-until.ts';
 export { share } from './operators/share.ts';
 export { merge } from './operators/merge.ts';
 export { mergeMap } from './operators/merge-map.ts';
+export { switchMap } from './operators/switch-map.ts';
 export { tap } from './operators/tap.ts';
 export { initialize } from './operators/initialize.ts';
 export { finalize } from './operators/finalize.ts';

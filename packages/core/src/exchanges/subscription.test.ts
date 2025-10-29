@@ -40,7 +40,8 @@ describe('subscriptionExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockClient.subscribe).toHaveBeenCalled();
     });
 
     it('should forward non-subscription operations', async () => {
@@ -57,7 +58,8 @@ describe('subscriptionExchange', () => {
       await testExchange(exchange, forward, [operation]);
 
       expect(forwardedOps).toHaveLength(1);
-      expect(mockClient.subscribe.bind(mockClient)).not.toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockClient.subscribe).not.toHaveBeenCalled();
     });
 
     it('should forward teardown operations', async () => {
@@ -88,7 +90,8 @@ describe('subscriptionExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalledWith(
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockClient.subscribe).toHaveBeenCalledWith(
         expect.objectContaining({ query: expect.any(String) as string }) as Record<string, unknown>,
         expect.any(Object) as Record<string, unknown>,
       );
@@ -106,7 +109,8 @@ describe('subscriptionExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalledWith(
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockClient.subscribe).toHaveBeenCalledWith(
         expect.objectContaining({ variables: { roomId: '123' } }),
         expect.any(Object) as Record<string, unknown>,
       );
@@ -121,14 +125,12 @@ describe('subscriptionExchange', () => {
 
       await testExchange(exchange, forward, [operation]);
 
-      expect(mockClient.subscribe.bind(mockClient)).toHaveBeenCalledWith(
-        expect.any(Object) as Record<string, unknown>,
-        {
-          next: expect.any(Function) as () => void,
-          error: expect.any(Function) as () => void,
-          complete: expect.any(Function) as () => void,
-        },
-      );
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockClient.subscribe).toHaveBeenCalledWith(expect.any(Object) as Record<string, unknown>, {
+        next: expect.any(Function) as () => void,
+        error: expect.any(Function) as () => void,
+        complete: expect.any(Function) as () => void,
+      });
     });
   });
 

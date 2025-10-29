@@ -1,0 +1,27 @@
+{
+  "name": "@mearie-internal/examples-svelte",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "preview": "vite preview",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@mearie/svelte": "workspace:*",
+    "graphql-sse": "^2.6.0",
+    "lucide-svelte": "^0.548.0"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^6.1.0",
+    "@sveltejs/kit": "^2.43.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.0",
+    "@tailwindcss/vite": "^4.1.16",
+    "mearie": "workspace:*",
+    "svelte": "^5.39.5",
+    "tailwindcss": "^4.1.16",
+    "vite": "^7.1.12"
+  }
+}

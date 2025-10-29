@@ -29,17 +29,17 @@ export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = Subs
 export const createSubscription = <T extends Artifact<'subscription'>>(
   subscription: T,
   ...[variables, options]: VariablesOf<T> extends undefined
-    ? [undefined?, CreateSubscriptionOptions<T>?]
-    : [() => VariablesOf<T>, CreateSubscriptionOptions<T>?]
+    ? [undefined?, (() => CreateSubscriptionOptions<T>)?]
+    : [() => VariablesOf<T>, (() => CreateSubscriptionOptions<T>)?]
 ): Subscription<T> => {
   const client = getClient();
 
   let data = $state<DataOf<T> | undefined>();
-  let loading = $state<boolean>(true);
+  let loading = $state<boolean>(!options?.().skip);
   let error = $state<AggregatedError | undefined>();
 
   $effect(() => {
-    if (options?.skip) {
+    if (options?.().skip) {
       return;
     }
 
@@ -48,7 +48,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 
     const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : undefined, options),
+      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : undefined, options?.()),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {
@@ -57,14 +57,14 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
             error = err;
             loading = false;
 
-            options?.onError?.(err);
+            options?.().onError?.(err);
           } else {
             const resultData = result.data as DataOf<T>;
 
             data = resultData;
             loading = false;
 
-            options?.onData?.(resultData);
+            options?.().onData?.(resultData);
           }
         },
       }),

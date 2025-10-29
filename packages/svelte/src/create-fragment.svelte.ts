@@ -4,17 +4,19 @@ import { getClient } from './client-context.svelte.ts';
 
 export type CreateFragmentOptions = FragmentOptions;
 
-export type Fragment<T extends Artifact<'fragment'>> = DataOf<T>;
+export type Fragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>;
+};
 
 export const createFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
   fragmentRef: () => FragmentRefs<T['name']>,
-  options?: CreateFragmentOptions,
+  options?: () => CreateFragmentOptions,
 ): Fragment<T> => {
   const client = getClient();
 
   const ref = fragmentRef();
-  const result = pipe(client.executeFragment(fragment, ref, options), peek);
+  const result = pipe(client.executeFragment(fragment, ref, options?.()), peek);
 
   if (result.data === undefined) {
     throw new Error('Fragment data not found');
@@ -24,7 +26,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
 
   $effect(() => {
     const unsubscribe = pipe(
-      client.executeFragment(fragment, fragmentRef(), options),
+      client.executeFragment(fragment, fragmentRef(), options?.()),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {
@@ -39,5 +41,9 @@ export const createFragment = <T extends Artifact<'fragment'>>(
     };
   });
 
-  return $derived.by(() => data);
+  return {
+    get data() {
+      return data;
+    },
+  };
 };

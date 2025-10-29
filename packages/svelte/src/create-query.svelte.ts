@@ -31,13 +31,13 @@ export type Query<T extends Artifact<'query'>> =
 export const createQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends undefined
-    ? [undefined?, CreateQueryOptions?]
-    : [() => VariablesOf<T>, CreateQueryOptions?]
+    ? [undefined?, (() => CreateQueryOptions)?]
+    : [() => VariablesOf<T>, (() => CreateQueryOptions)?]
 ): Query<T> => {
   const client = getClient();
 
   let data = $state<DataOf<T> | undefined>();
-  let loading = $state<boolean>(false);
+  let loading = $state<boolean>(!options?.().skip);
   let error = $state<AggregatedError | undefined>();
 
   let unsubscribe: (() => void) | null = null;
@@ -45,7 +45,7 @@ export const createQuery = <T extends Artifact<'query'>>(
   const execute = () => {
     unsubscribe?.();
 
-    if (options?.skip) {
+    if (options?.().skip) {
       return;
     }
 
@@ -54,7 +54,7 @@ export const createQuery = <T extends Artifact<'query'>>(
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options),
+      client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options?.()),
       subscribe({
         next: (result) => {
           if (result.errors && result.errors.length > 0) {

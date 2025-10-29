@@ -1,5 +1,5 @@
 import type { Selection } from '@mearie/shared';
-import { makeFieldKey, isEntityLink } from './utils.ts';
+import { makeFieldKey, isEntityLink, isNullish } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
 
@@ -19,7 +19,7 @@ export const denormalize = (
     selections: readonly Selection[],
     value: unknown,
   ): unknown => {
-    if (value === null || value === undefined) {
+    if (isNullish(value)) {
       return value;
     }
 

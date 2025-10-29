@@ -599,6 +599,103 @@ describe('Cache', () => {
       expect(listener1).not.toHaveBeenCalled();
       expect(listener2).toHaveBeenCalledTimes(1);
     });
+
+    it('should NOT notify when fragment field changes but query only has FragmentSpread', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename' },
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: 'email' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFragment',
+              selections: fragmentSelections,
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(queryArtifact, {}, listener);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Bob', email: 'alice@example.com' },
+        },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('should notify when fragment field changes and query explicitly requests overlapping field', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename' },
+        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: 'email' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename' },
+            { kind: 'Field', name: 'id' },
+            { kind: 'Field', name: 'name' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFragment',
+              selections: fragmentSelections,
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(queryArtifact, {}, listener);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Bob', email: 'alice@example.com' },
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('readFragment', () => {

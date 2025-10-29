@@ -88,3 +88,13 @@ export const isEntityLink = (value: unknown): value is EntityLink => {
 export const isFragmentRef = (value: unknown): value is FragmentRefs<string> => {
   return typeof value === 'object' && value !== null && FragmentRefKey in value;
 };
+
+/**
+ * Type guard to check if a value is nullish.
+ * @internal
+ * @param value - Value to check.
+ * @returns True if the value is nullish.
+ */
+export const isNullish = (value: unknown): value is null | undefined => {
+  return value === undefined || value === null;
+};

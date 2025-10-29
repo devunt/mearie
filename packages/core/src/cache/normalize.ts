@@ -1,5 +1,5 @@
 import type { Selection, SchemaMeta } from '@mearie/shared';
-import { makeEntityKey, makeFieldKey, isEntityLink } from './utils.ts';
+import { makeEntityKey, makeFieldKey, isEntityLink, isNullish } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
@@ -12,7 +12,7 @@ export const normalize = (
   accessor?: (storageKey: StorageKey, fieldKey: FieldKey, oldValue: unknown, newValue: unknown) => void,
 ): void => {
   const normalizeField = (storageKey: StorageKey | null, selections: readonly Selection[], value: unknown): unknown => {
-    if (value === null || value === undefined) {
+    if (isNullish(value)) {
       return value;
     }
 
@@ -37,7 +37,10 @@ export const normalize = (
         const fieldValue = data[selection.alias ?? selection.name];
 
         if (storageKey !== null) {
-          accessor?.(storageKey, fieldKey, storage[storageKey]?.[fieldKey], fieldValue);
+          const oldValue = storage[storageKey]?.[fieldKey];
+          if (!selection.selections || isNullish(oldValue) || isNullish(fieldValue)) {
+            accessor?.(storageKey, fieldKey, oldValue, fieldValue);
+          }
         }
 
         fields[fieldKey] = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;

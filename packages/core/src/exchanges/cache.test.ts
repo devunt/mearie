@@ -469,5 +469,170 @@ describe('cacheExchange', () => {
 
       expect(results.length).toBeGreaterThan(0);
     });
+
+    it('should re-notify query subscription when mutation updates entity field', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') {
+          return { operation: op };
+        }
+
+        if (op.artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+          };
+        } else if (op.artifact?.kind === 'mutation') {
+          return {
+            operation: op,
+            data: { updateUser: { __typename: 'User', id: '1', name: 'Bob' } },
+          };
+        }
+        return { operation: op };
+      });
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'query-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            selections: [
+              { kind: 'Field', name: '__typename' },
+              { kind: 'Field', name: 'id' },
+              { kind: 'Field', name: 'name' },
+            ],
+          },
+        ],
+      });
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        key: 'mutation-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'updateUser',
+            selections: [
+              { kind: 'Field', name: '__typename' },
+              { kind: 'Field', name: 'id' },
+              { kind: 'Field', name: 'name' },
+            ],
+          },
+        ],
+      });
+
+      const results = await testExchange(exchange, forward, [queryOp, mutationOp], client);
+
+      expect(results).toHaveLength(3);
+      expect(results[0]!.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice' },
+      });
+      expect(results[1]!.data).toEqual({
+        updateUser: { __typename: 'User', id: '1', name: 'Bob' },
+      });
+
+      expect(results[2]!.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Bob' },
+      });
+    });
+
+    it('should re-notify fragment subscription when mutation updates entity field', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') {
+          return { operation: op };
+        }
+
+        if (op.artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+          };
+        } else if (op.artifact?.kind === 'mutation') {
+          return {
+            operation: op,
+            data: { updateUser: { __typename: 'User', id: '1', email: 'bob@example.com' } },
+          };
+        }
+        return { operation: op };
+      });
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'query-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            selections: [
+              { kind: 'Field', name: '__typename' },
+              { kind: 'Field', name: 'id' },
+              { kind: 'Field', name: 'name' },
+              { kind: 'Field', name: 'email' },
+            ],
+          },
+        ],
+      });
+
+      const fragmentRef = { __fragmentRef: 'User:1' };
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'fragment-1',
+        metadata: { fragmentRef },
+        selections: [
+          { kind: 'Field', name: '__typename' },
+          { kind: 'Field', name: 'id' },
+          { kind: 'Field', name: 'email' },
+        ],
+      });
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        key: 'mutation-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'updateUser',
+            selections: [
+              { kind: 'Field', name: '__typename' },
+              { kind: 'Field', name: 'id' },
+              { kind: 'Field', name: 'email' },
+            ],
+          },
+        ],
+      });
+
+      const results = await testExchange(exchange, forward, [queryOp, fragmentOp, mutationOp], client);
+
+      expect(results).toHaveLength(5);
+      expect(results[0]!.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+      });
+      expect(results[1]!.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        email: 'alice@example.com',
+      });
+      expect(results[2]!.data).toEqual({
+        updateUser: { __typename: 'User', id: '1', email: 'bob@example.com' },
+      });
+      expect(results[3]!.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'bob@example.com' },
+      });
+      expect(results[4]!.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        email: 'bob@example.com',
+      });
+    });
   });
 });

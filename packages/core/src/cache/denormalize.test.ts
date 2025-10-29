@@ -731,7 +731,10 @@ describe('denormalize', () => {
         user: null,
       });
       expect(partial).toBe(true);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+      ]);
     });
 
     it('entity with missing field', () => {
@@ -2881,6 +2884,7 @@ describe('denormalize', () => {
         ['Post:1', 'id@{}'],
         ['Post:1', 'title@{}'],
         ['Post:1', 'author@{}'],
+        ['User:999', '__typename@{}'],
       ]);
     });
 
@@ -2900,7 +2904,7 @@ describe('denormalize', () => {
 
       expect(data).toBeNull();
       expect(partial).toBe(true);
-      expectSameCalls(calls, []);
+      expectSameCalls(calls, [['User:999', '__typename@{}']]);
     });
 
     it('should handle deeply nested structure when starting from entity', () => {
@@ -3466,7 +3470,10 @@ describe('denormalize', () => {
         user: null,
       });
       expect(partial).toBe(true);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:999', '__typename@{}'],
+      ]);
     });
 
     it('nested field missing propagates partial', () => {

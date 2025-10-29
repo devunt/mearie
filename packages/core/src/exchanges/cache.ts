@@ -11,6 +11,8 @@ import { filter } from '../stream/operators/filter.ts';
 import { share } from '../stream/operators/share.ts';
 import { tap } from '../stream/operators/tap.ts';
 import { takeUntil } from '../stream/operators/take-until.ts';
+import { switchMap } from '../stream/operators/switch-map.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
 import { isFragmentRef } from '../cache/utils.ts';
 
 export type CacheOptions = {
@@ -50,15 +52,26 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
             });
           }
 
+          const trigger = makeSubject<void>();
+
           const teardown$ = pipe(
             ops$,
             filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
+            tap(() => trigger.complete()),
           );
 
           return pipe(
-            fromSubscription(
-              () => cache.readFragment(op.artifact, fragmentRef),
-              (signal) => cache.subscribeFragment(op.artifact, fragmentRef, signal),
+            // eslint-disable-next-line unicorn/no-useless-undefined
+            merge(fromValue(undefined), trigger.source),
+            switchMap(() =>
+              fromSubscription(
+                () => cache.readFragment(op.artifact, fragmentRef),
+                () =>
+                  cache.subscribeFragment(op.artifact, fragmentRef, async () => {
+                    await Promise.resolve();
+                    trigger.next();
+                  }),
+              ),
             ),
             takeUntil(teardown$),
             map((data) => ({ operation: op, data, errors: [] })),
@@ -89,15 +102,26 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
       const cache$ = pipe(
         query$,
         mergeMap((op) => {
+          const trigger = makeSubject<void>();
+
           const teardown$ = pipe(
             ops$,
             filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
+            tap(() => trigger.complete()),
           );
 
           return pipe(
-            fromSubscription(
-              () => cache.readQuery(op.artifact, op.variables),
-              (signal) => cache.subscribeQuery(op.artifact, op.variables, signal),
+            // eslint-disable-next-line unicorn/no-useless-undefined
+            merge(fromValue(undefined), trigger.source),
+            switchMap(() =>
+              fromSubscription(
+                () => cache.readQuery(op.artifact, op.variables),
+                () =>
+                  cache.subscribeQuery(op.artifact, op.variables, async () => {
+                    await Promise.resolve();
+                    trigger.next();
+                  }),
+              ),
             ),
             takeUntil(teardown$),
             map((data) => ({ operation: op, data, errors: [] })),

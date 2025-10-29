@@ -52,7 +52,7 @@ export class Cache {
     }
 
     for (const subscription of subscriptions) {
-      subscription.listener();
+      void subscription.listener();
     }
   }
 

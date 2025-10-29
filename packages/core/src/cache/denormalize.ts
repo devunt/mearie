@@ -34,7 +34,9 @@ export const denormalize = (
       const entity = storage[entityKey];
 
       if (!entity) {
+        accessor?.(entityKey, typenameFieldKey);
         partial = true;
+
         return null;
       }
 

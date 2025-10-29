@@ -1,3 +1,4 @@
+import type { MaybePromise } from '@mearie/shared';
 import type { EntityLinkKey, RootFieldKey } from './constants.ts';
 
 /**
@@ -72,6 +73,6 @@ export type Data = {
  * Listener function.
  * @internal
  */
-export type Listener = () => void;
+export type Listener = () => MaybePromise<void>;
 
 export type Subscription = { listener: Listener };

@@ -89,6 +89,21 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
       }
     },
 
+    async configureServer(server) {
+      await ensureInitialized();
+
+      const { schema, exclude } = mearieConfig;
+
+      const schemaFiles = await findFiles(projectRoot, {
+        include: schema,
+        exclude,
+      });
+
+      for (const file of schemaFiles) {
+        server.watcher.add(file);
+      }
+    },
+
     async hotUpdate({ file, type, server }) {
       await ensureInitialized();
 

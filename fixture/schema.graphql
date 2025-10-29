@@ -167,6 +167,16 @@ type Movie implements Node {
   Reviews submitted for this movie
   """
   reviews: [Review!]!
+
+  """
+  Number of likes this movie has received
+  """
+  likeCount: Int!
+
+  """
+  Number of dislikes this movie has received
+  """
+  dislikeCount: Int!
 }
 
 """
@@ -510,6 +520,20 @@ type Mutation {
   Delete a review by ID
   """
   deleteReview(id: ID!): Boolean!
+
+  # --------------------------------------------------------------------------
+  # Like mutations
+  # --------------------------------------------------------------------------
+
+  """
+  Like a movie
+  """
+  likeMovie(movieId: ID!): Movie!
+
+  """
+  Dislike a movie
+  """
+  dislikeMovie(movieId: ID!): Movie!
 }
 
 # ==============================================================================

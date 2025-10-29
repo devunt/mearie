@@ -21,6 +21,9 @@ const genreMap = new Map<string, Genre>(genres.map((g) => [g.id, g]));
 
 const reviews = new Map<string, Review>();
 
+const likes = new Map<string, number>();
+const dislikes = new Map<string, number>();
+
 const generateReview = (movie: Movie): Review => {
   let rating: number;
   if (movie.rating) {
@@ -289,6 +292,32 @@ export const resolvers = {
       if (decoded?.type !== 'Review') return false;
       return reviews.delete(decoded.id);
     },
+
+    likeMovie: (_parent: unknown, args: { movieId: string }) => {
+      const decoded = decodeGlobalId(args.movieId);
+      if (decoded?.type !== 'Movie') throw new Error('Invalid movie ID');
+
+      const movie = movieMap.get(decoded.id);
+      if (!movie) throw new Error('Movie not found');
+
+      const currentLikes = likes.get(decoded.id) ?? 0;
+      likes.set(decoded.id, currentLikes + 1);
+
+      return movie;
+    },
+
+    dislikeMovie: (_parent: unknown, args: { movieId: string }) => {
+      const decoded = decodeGlobalId(args.movieId);
+      if (decoded?.type !== 'Movie') throw new Error('Invalid movie ID');
+
+      const movie = movieMap.get(decoded.id);
+      if (!movie) throw new Error('Movie not found');
+
+      const currentDislikes = dislikes.get(decoded.id) ?? 0;
+      dislikes.set(decoded.id, currentDislikes + 1);
+
+      return movie;
+    },
   },
 
   Subscription: {
@@ -362,6 +391,8 @@ export const resolvers = {
         .filter((r) => r.movieId === movie.id)
         .toSorted((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     },
+    likeCount: (movie: Movie) => likes.get(movie.id) ?? 0,
+    dislikeCount: (movie: Movie) => dislikes.get(movie.id) ?? 0,
   },
 
   Person: {

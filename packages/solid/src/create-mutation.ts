@@ -4,39 +4,33 @@ import { AggregatedError } from '@mearie/core';
 import { pipe, collect } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
-export type CreateMutationOptions = MutationOptions;
-
-export type Mutation<T extends Artifact<'mutation'>> =
+export type MutationResult<T extends Artifact<'mutation'>> =
   | {
       data: undefined;
       loading: true;
       error: undefined;
-      mutate: (
-        ...[variables, options]: VariablesOf<T> extends undefined
-          ? [undefined?, CreateMutationOptions?]
-          : [VariablesOf<T>, CreateMutationOptions?]
-      ) => Promise<DataOf<T>>;
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
-      mutate: (
-        ...[variables, options]: VariablesOf<T> extends undefined
-          ? [undefined?, CreateMutationOptions?]
-          : [VariablesOf<T>, CreateMutationOptions?]
-      ) => Promise<DataOf<T>>;
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
-      mutate: (
-        ...[variables, options]: VariablesOf<T> extends undefined
-          ? [undefined?, CreateMutationOptions?]
-          : [VariablesOf<T>, CreateMutationOptions?]
-      ) => Promise<DataOf<T>>;
     };
+
+export type CreateMutationOptions = MutationOptions;
+
+export type Mutation<T extends Artifact<'mutation'>> = [
+  (
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, CreateMutationOptions?]
+      : [VariablesOf<T>, CreateMutationOptions?]
+  ) => Promise<DataOf<T>>,
+  MutationResult<T>,
+];
 
 export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutation<T> => {
   const client = useClient();
@@ -80,16 +74,22 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
     }
   };
 
-  return {
-    get data() {
-      return data();
-    },
-    get loading() {
-      return loading();
-    },
-    get error() {
-      return error();
-    },
-    mutate: execute,
-  } as Mutation<T>;
+  return [
+    execute as (
+      ...[variables, options]: VariablesOf<T> extends undefined
+        ? [undefined?, CreateMutationOptions?]
+        : [VariablesOf<T>, CreateMutationOptions?]
+    ) => Promise<DataOf<T>>,
+    {
+      get data() {
+        return data();
+      },
+      get loading() {
+        return loading();
+      },
+      get error() {
+        return error();
+      },
+    } as MutationResult<T>,
+  ];
 };

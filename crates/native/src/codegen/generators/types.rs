@@ -21,11 +21,7 @@ pub struct TypesGenerator<'a, 'b> {
 }
 
 impl<'a, 'b> TypesGenerator<'a, 'b> {
-    pub fn new(
-        ctx: &'b CodegenContext,
-        schema: &'a SchemaIndex<'b>,
-        document: &'a DocumentIndex<'b>,
-    ) -> Self {
+    pub fn new(ctx: &'b CodegenContext, schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>) -> Self {
         Self {
             ctx,
             ast: ctx.ast(),
@@ -147,13 +143,17 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     fn export_enum(&self, enum_def: &EnumTypeDefinition<'b>) -> Statement<'b> {
         let type_name = enum_def.name.as_str();
 
-        let types = self.ast.vec_from_iter(enum_def.values.iter().map(|value_def| {
-            let value_name = value_def.value.as_str();
-            let string_literal = self.ast.ts_literal_string_literal(SPAN, value_name, None);
-            self.ast.ts_type_literal_type(SPAN, string_literal)
-        }));
+        let types: Vec<TSType<'b>> = enum_def
+            .values
+            .iter()
+            .map(|value_def| {
+                let value_name = value_def.value.as_str();
+                let string_literal = self.ast.ts_literal_string_literal(SPAN, value_name, None);
+                self.ast.ts_type_literal_type(SPAN, string_literal)
+            })
+            .collect();
 
-        let union_type = self.ast.ts_type_union_type(SPAN, types);
+        let union_type = self.create_union(types);
         self.stmt_export_type(type_name, union_type)
     }
 
@@ -224,15 +224,14 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             return Ok(self.type_empty_object());
         }
 
-        let mut field_map: FxHashMap<&'b str, (TSType<'b>, bool)> = FxHashMap::default();
-        let mut inline_fragment_types: Vec<TSType<'b>> = Vec::new();
+        let mut shared_fields: Vec<&Field<'b>> = Vec::new();
+        let mut inline_fragments: Vec<(&'b str, &InlineFragment<'b>)> = Vec::new();
         let mut fragment_refs: Vec<&'b str> = Vec::new();
 
         for selection in &selection_set.selections {
             match selection {
                 Selection::Field(field) => {
-                    let (field_name, field_type, is_optional) = self.field_type_info(field, parent_type)?;
-                    field_map.insert(field_name, (field_type, is_optional));
+                    shared_fields.push(field);
                 }
                 Selection::FragmentSpread(spread) => {
                     let fragment_name = spread.fragment_name.as_str();
@@ -242,13 +241,13 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
                     fragment_refs.push(fragment_name);
                 }
                 Selection::InlineFragment(inline) => {
-                    let fragment_type = self.type_inline_fragment(inline, parent_type)?;
-                    inline_fragment_types.push(fragment_type);
+                    let type_condition = inline.type_condition.map(|name| name.as_str()).unwrap_or(parent_type);
+                    inline_fragments.push((type_condition, inline));
                 }
             }
         }
 
-        Ok(self.type_intersect_selections(field_map, inline_fragment_types, fragment_refs))
+        self.type_combine_selections(parent_type, shared_fields, inline_fragments, fragment_refs)
     }
 
     fn field_type_info(&self, field: &Field<'b>, parent_type: &'b str) -> Result<(&'b str, TSType<'b>, bool)> {
@@ -257,7 +256,10 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
 
         if actual_field_name.starts_with("__") {
             let introspection_type = match actual_field_name {
-                "__typename" => self.ast.ts_type_string_keyword(SPAN),
+                "__typename" => {
+                    let literal = self.ast.ts_literal_string_literal(SPAN, parent_type, None);
+                    self.ast.ts_type_literal_type(SPAN, literal)
+                }
                 _ => self.ast.ts_type_unknown_keyword(SPAN),
             };
             return Ok((field_name, introspection_type, false));
@@ -284,41 +286,85 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         Ok((field_name, field_type, is_optional))
     }
 
-    fn type_inline_fragment(&self, inline_fragment: &InlineFragment<'b>, parent_type: &'b str) -> Result<TSType<'b>> {
-        let type_condition = inline_fragment
-            .type_condition
-            .map(|name| name.as_str())
-            .unwrap_or(parent_type);
-
-        self.type_selection_set(&inline_fragment.selection_set, type_condition)
+    fn build_fields_type(&self, fields: &[&Field<'b>], parent_type: &'b str) -> Result<TSType<'b>> {
+        let mut field_map = FxHashMap::default();
+        for field in fields {
+            let (name, typ, optional) = self.field_type_info(field, parent_type)?;
+            field_map.insert(name, (typ, optional));
+        }
+        Ok(self.type_object(field_map))
     }
 
-    fn type_intersect_selections(
-        &self,
-        field_map: FxHashMap<&'b str, (TSType<'b>, bool)>,
-        inline_fragment_types: Vec<TSType<'b>>,
-        fragment_refs: Vec<&'b str>,
-    ) -> TSType<'b> {
-        let base_type = if !field_map.is_empty() {
-            self.type_object(field_map)
+    fn create_union(&self, types: Vec<TSType<'b>>) -> TSType<'b> {
+        if types.is_empty() {
+            self.ast.ts_type_never_keyword(SPAN)
+        } else if types.len() == 1 {
+            types.into_iter().next().unwrap()
         } else {
+            self.ast.ts_type_union_type(SPAN, self.ast.vec_from_iter(types))
+        }
+    }
+
+    fn create_intersection(&self, types: Vec<TSType<'b>>) -> TSType<'b> {
+        if types.is_empty() {
             self.type_empty_object()
+        } else if types.len() == 1 {
+            types.into_iter().next().unwrap()
+        } else {
+            let parenthesized_types: Vec<TSType<'b>> = types
+                .into_iter()
+                .map(|typ| {
+                    if matches!(typ, TSType::TSUnionType(_)) {
+                        self.ast.ts_type_parenthesized_type(SPAN, typ)
+                    } else {
+                        typ
+                    }
+                })
+                .collect();
+
+            self.ast
+                .ts_type_intersection_type(SPAN, self.ast.vec_from_iter(parenthesized_types))
+        }
+    }
+
+    fn type_combine_selections(
+        &self,
+        parent_type: &'b str,
+        shared_fields: Vec<&Field<'b>>,
+        inline_fragments: Vec<(&'b str, &InlineFragment<'b>)>,
+        fragment_refs: Vec<&'b str>,
+    ) -> Result<TSType<'b>> {
+        let possible_types: Vec<&'b str> = if self.schema.is_abstract(parent_type) {
+            self.schema.get_possible_types(parent_type).collect()
+        } else {
+            vec![parent_type]
         };
 
-        let mut all_types = vec![base_type];
-        all_types.extend(inline_fragment_types);
+        let branch_types: Result<Vec<TSType<'b>>> = possible_types
+            .iter()
+            .map(|&type_condition| {
+                let mut branch_parts = Vec::new();
 
+                if !shared_fields.is_empty() {
+                    branch_parts.push(self.build_fields_type(&shared_fields, type_condition)?);
+                }
+
+                if let Some((_, inline_fragment)) = inline_fragments.iter().find(|(t, _)| *t == type_condition) {
+                    branch_parts.push(self.type_selection_set(&inline_fragment.selection_set, type_condition)?);
+                }
+
+                Ok(self.create_intersection(branch_parts))
+            })
+            .collect();
+
+        let union_type = self.create_union(branch_types?);
+
+        let mut final_parts = vec![union_type];
         if !fragment_refs.is_empty() {
-            let fragment_refs_type = self.type_fragment_refs(fragment_refs);
-            all_types.push(fragment_refs_type);
+            final_parts.push(self.type_fragment_refs(fragment_refs));
         }
 
-        if all_types.len() == 1 {
-            all_types.into_iter().next().unwrap()
-        } else {
-            let ts_types = self.ast.vec_from_iter(all_types);
-            self.ast.ts_type_intersection_type(SPAN, ts_types)
-        }
+        Ok(self.create_intersection(final_parts))
     }
 
     fn type_variables(&self, variables: &[VariableDefinition<'b>]) -> TSType<'b> {
@@ -420,16 +466,15 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn type_fragment_refs(&self, fragment_names: Vec<&'b str>) -> TSType<'b> {
-        let union_types = self.ast.vec_from_iter(fragment_names.iter().map(|name| {
-            let literal = self.ast.ts_literal_string_literal(SPAN, *name, None::<Atom>);
-            self.ast.ts_type_literal_type(SPAN, literal)
-        }));
+        let union_types: Vec<TSType<'b>> = fragment_names
+            .iter()
+            .map(|name| {
+                let literal = self.ast.ts_literal_string_literal(SPAN, *name, None::<Atom>);
+                self.ast.ts_type_literal_type(SPAN, literal)
+            })
+            .collect();
 
-        let value_type = if union_types.len() == 1 {
-            union_types.into_iter().next().unwrap()
-        } else {
-            self.ast.ts_type_union_type(SPAN, union_types)
-        };
+        let value_type = self.create_union(union_types);
 
         let type_param_instantiation = self
             .ast
@@ -641,7 +686,7 @@ mod tests {
 
         assert_ok!(&result);
         let source_buf = result.unwrap();
-        assert_contains!(source_buf.code, "__typename: string");
+        assert_contains!(source_buf.code, "__typename: \"User\"");
     }
 
     #[test]
@@ -668,6 +713,220 @@ mod tests {
 
         assert_ok!(&result);
         let source_buf = result.unwrap();
-        assert_contains!(source_buf.code, "__typename: string");
+        assert_contains!(source_buf.code, "__typename: \"User\"");
+        assert_contains!(source_buf.code, "__typename: \"Post\"");
+    }
+
+    #[test]
+    fn test_union_type_generates_union_operator() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult }
+                union SearchResult = Movie | Person
+                type Movie { id: ID! title: String! }
+                type Person { id: ID! name: String! }
+            "#,
+            r#"
+                query Search {
+                    search {
+                        ... on Movie { __typename id title }
+                        ... on Person { __typename id name }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, " | ");
+        assert_contains!(source_buf.code, "__typename: \"Movie\"");
+        assert_contains!(source_buf.code, "__typename: \"Person\"");
+    }
+
+    #[test]
+    fn test_union_with_shared_typename_field() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult }
+                union SearchResult = Movie | Person
+                type Movie { id: ID! title: String! }
+                type Person { id: ID! name: String! }
+            "#,
+            r#"
+                query Search {
+                    search {
+                        __typename
+                        ... on Movie { id title }
+                        ... on Person { id name }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, " | ");
+        assert_contains!(source_buf.code, "\"Movie\"");
+        assert_contains!(source_buf.code, "\"Person\"");
+    }
+
+    #[test]
+    fn test_interface_with_inline_fragments_generates_union() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { node: Node }
+                interface Node { id: ID! }
+                type User implements Node { id: ID! name: String! }
+                type Post implements Node { id: ID! title: String! }
+            "#,
+            r#"
+                query GetNode {
+                    node {
+                        ... on User { __typename id name }
+                        ... on Post { __typename id title }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, " | ");
+        assert_contains!(source_buf.code, "__typename: \"User\"");
+        assert_contains!(source_buf.code, "__typename: \"Post\"");
+    }
+
+    #[test]
+    fn test_union_with_top_level_typename_generates_discriminated_union() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { author: Author! }
+                union Author = User | Anonymous
+                type User { id: ID! name: String! email: String! }
+                type Anonymous { id: ID! ipAddress: String! }
+            "#,
+            r#"
+                query GetAuthor {
+                    author {
+                        __typename
+                        ... on User { id name email }
+                        ... on Anonymous { id ipAddress }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+
+        assert_contains!(source_buf.code, "__typename: \"User\"");
+        assert_contains!(source_buf.code, "__typename: \"Anonymous\"");
+        assert_contains!(source_buf.code, " | ");
+    }
+
+    #[test]
+    fn test_union_with_typename_only_generates_all_branches() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult! }
+                union SearchResult = Movie | Person
+                type Movie { id: ID! title: String! }
+                type Person { id: ID! name: String! }
+            "#,
+            r#"
+                query Search {
+                    search {
+                        __typename
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+
+        assert_contains!(source_buf.code, "__typename: \"Movie\"");
+        assert_contains!(source_buf.code, "__typename: \"Person\"");
+        assert_contains!(source_buf.code, " | ");
+    }
+
+    #[test]
+    fn test_union_with_partial_inline_fragment_generates_empty_branch() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult! }
+                union SearchResult = Movie | Person
+                type Movie { id: ID! title: String! }
+                type Person { id: ID! name: String! }
+            "#,
+            r#"
+                query Search {
+                    search {
+                        ... on Movie { __typename }
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+
+        assert_contains!(source_buf.code, "__typename: \"Movie\"");
+        assert_contains!(source_buf.code, " | ");
+        assert_contains!(source_buf.code, "{}");
+    }
+
+    #[test]
+    fn test_union_with_fragment_refs_has_proper_precedence() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { search: SearchResult! }
+                union SearchResult = Movie | Person
+                type Movie { id: ID! }
+                type Person { id: ID! }
+            "#,
+            r#"
+                fragment MovieFields on Movie { id }
+
+                query Search {
+                    search {
+                        __typename
+                        ...MovieFields
+                    }
+                }
+            "#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+
+        // Verify union is properly parenthesized when intersected with fragment refs
+        assert_contains!(source_buf.code, "__typename: \"Movie\"");
+        assert_contains!(source_buf.code, "__typename: \"Person\"");
+        assert_contains!(source_buf.code, "$FragmentRefs<\"MovieFields\">");
+
+        // Verify parentheses are present: (...) & $FragmentRefs
+        assert_contains!(source_buf.code, "}) & $FragmentRefs");
     }
 }

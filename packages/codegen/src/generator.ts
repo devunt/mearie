@@ -2,9 +2,14 @@ import { generateCode } from '@mearie/native';
 import { MearieError } from './errors.ts';
 import type { Source } from './types.ts';
 
+export type GenerateConfig = {
+  scalars?: Record<string, string>;
+};
+
 export type GenerateOptions = {
   schemas: Source[];
   documents: Source[];
+  config?: GenerateConfig;
 };
 
 type GenerateResult = {
@@ -19,9 +24,9 @@ type GenerateResult = {
  * @throws {Error} If code generation fails.
  */
 export const generate = (options: GenerateOptions): GenerateResult => {
-  const { schemas, documents } = options;
+  const { schemas, documents, config } = options;
 
-  const { sources, errors } = generateCode(schemas, documents);
+  const { sources, errors } = generateCode(schemas, documents, config);
 
   return { sources, errors: errors.map((error) => MearieError.fromNative(error)) };
 };

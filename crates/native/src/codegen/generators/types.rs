@@ -14,14 +14,20 @@ use rustc_hash::FxHashMap;
 type StmtVec<'b> = oxc_allocator::Vec<'b, Statement<'b>>;
 
 pub struct TypesGenerator<'a, 'b> {
+    ctx: &'b CodegenContext,
     ast: AstBuilder<'b>,
     schema: &'a SchemaIndex<'b>,
     document: &'a DocumentIndex<'b>,
 }
 
 impl<'a, 'b> TypesGenerator<'a, 'b> {
-    pub fn new(ctx: &'b CodegenContext, schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>) -> Self {
+    pub fn new(
+        ctx: &'b CodegenContext,
+        schema: &'a SchemaIndex<'b>,
+        document: &'a DocumentIndex<'b>,
+    ) -> Self {
         Self {
+            ctx,
             ast: ctx.ast(),
             schema,
             document,
@@ -112,7 +118,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
                 )
             }),
             self.schema.custom_scalars().iter().map(|name| {
-                let typ = match None {
+                let typ = match self.ctx.config().scalar_map.get(*name) {
                     Some(type_name) => self.type_ref(type_name),
                     None => self.ast.ts_type_unknown_keyword(SPAN),
                 };

@@ -3,6 +3,7 @@ use super::{
     generators::{ModuleGenerator, RuntimeGenerator, TypesGenerator},
 };
 use crate::error::Result;
+use crate::pipeline::PipelineConfig;
 use crate::schema::{DocumentIndex, SchemaIndex};
 use crate::source::SourceBuf;
 
@@ -50,7 +51,11 @@ impl<'a, 'b> Generator<'a, 'b> {
     /// - `ctx` - Codegen context containing AST builder
     /// - `schema` - Schema index with type definitions
     /// - `document` - Document index with operations and fragments
-    pub fn new(ctx: &'a CodegenContext, schema: &'a SchemaIndex<'b>, document: &'a DocumentIndex<'b>) -> Self {
+    pub fn new(
+        ctx: &'a CodegenContext,
+        schema: &'a SchemaIndex<'b>,
+        document: &'a DocumentIndex<'b>,
+    ) -> Self {
         Self { ctx, schema, document }
     }
 
@@ -106,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_operation_builder_new() {
-        let ctx = CodegenContext::new();
+        let ctx = CodegenContext::new(PipelineConfig::default());
         let schema = SchemaBuilder::new().build();
         let document = DocumentIndex::new();
         let _generator = Generator::new(&ctx, &schema, &document);

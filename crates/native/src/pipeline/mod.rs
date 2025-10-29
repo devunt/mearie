@@ -17,7 +17,6 @@ pub struct Pipeline<'a> {
     arena: &'a Arena,
     schemas: Vec<Source<'a>>,
     documents: Vec<Source<'a>>,
-    #[allow(dead_code)]
     config: PipelineConfig,
 }
 
@@ -110,7 +109,7 @@ impl<'a> Pipeline<'a> {
             document_index.set_transformed_document(document, transformed);
         }
 
-        let ctx = CodegenContext::new();
+        let ctx = CodegenContext::new(self.config);
         let generator = Generator::new(&ctx, &schema_index, &document_index);
         let sources = generator.generate().unwrap_or_else(|e| {
             errors.push(e);

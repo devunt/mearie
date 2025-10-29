@@ -1,9 +1,11 @@
 use crate::arena::Arena;
 use crate::extraction::extract_graphql_sources;
-use crate::pipeline::Pipeline;
+use crate::pipeline::{Pipeline, PipelineConfig};
 use crate::source::{Source, SourceBuf};
 use napi_derive::napi;
+use rustc_hash::FxHashMap;
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[napi(object)]
 #[derive(Serialize)]
@@ -21,6 +23,11 @@ pub struct GenerateCodeResult {
     pub errors: serde_json::Value,
 }
 
+#[napi(object)]
+pub struct GenerateCodeConfig {
+    pub scalars: Option<HashMap<String, String>>,
+}
+
 #[napi(js_name = "extractGraphQLSources")]
 pub fn napi_extract_graphql_sources(source: SourceBuf) -> ExtractGraphQLSourcesResult {
     let result = extract_graphql_sources(source);
@@ -31,13 +38,24 @@ pub fn napi_extract_graphql_sources(source: SourceBuf) -> ExtractGraphQLSourcesR
 }
 
 #[napi(js_name = "generateCode")]
-pub fn napi_generate_code(schemas: Vec<SourceBuf>, documents: Vec<SourceBuf>) -> GenerateCodeResult {
+pub fn napi_generate_code(
+    schemas: Vec<SourceBuf>,
+    documents: Vec<SourceBuf>,
+    config: Option<GenerateCodeConfig>,
+) -> GenerateCodeResult {
     let schemas = schemas.iter().map(|source| source.into()).collect::<Vec<Source>>();
     let documents = documents.iter().map(|source| source.into()).collect::<Vec<Source>>();
 
+    let pipeline_config = config
+        .and_then(|c| c.scalars)
+        .map(|scalars| {
+            let scalar_map: FxHashMap<String, String> = scalars.into_iter().collect();
+            PipelineConfig::new().with_scalar_map(scalar_map)
+        })
+        .unwrap_or_default();
+
     let arena = Arena::new();
 
-    // Build and process pipeline
     let mut pipeline_builder = Pipeline::builder(&arena);
 
     for schema in schemas {
@@ -48,7 +66,7 @@ pub fn napi_generate_code(schemas: Vec<SourceBuf>, documents: Vec<SourceBuf>) ->
         pipeline_builder = pipeline_builder.with_document(document);
     }
 
-    let pipeline = pipeline_builder.build();
+    let pipeline = pipeline_builder.with_config(pipeline_config).build();
     let output = pipeline.process();
 
     GenerateCodeResult {

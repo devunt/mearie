@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { extractGraphQLSources } from './extractor.ts';
 import { MearieAggregateError } from './errors.ts';
-import { generate } from './generator.ts';
+import { generate, type GenerateConfig } from './generator.ts';
 import { writeFiles } from './writer.ts';
 import type { Source } from './types.ts';
 
@@ -13,9 +13,14 @@ export class CodegenContext {
   private schemas = new Map<string, Source>();
   private documents = new Map<string, Source[]>();
   private cwd: string;
+  private config?: GenerateConfig;
 
   constructor(cwd: string = process.cwd()) {
     this.cwd = cwd;
+  }
+
+  setConfig(config: GenerateConfig): void {
+    this.config = config;
   }
 
   /**
@@ -67,7 +72,7 @@ export class CodegenContext {
     const schemas = [...this.schemas.values()];
     const documents = [...this.documents.values()].flat();
 
-    const { sources, errors } = generate({ schemas, documents });
+    const { sources, errors } = generate({ schemas, documents, config: this.config });
 
     await writeFiles(this.cwd, sources);
 

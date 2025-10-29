@@ -30,9 +30,10 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
     projectRoot = cwd;
     mearieConfig = mergeConfig(config, options);
 
-    const { schema, document, exclude } = mearieConfig;
+    const { schema, document, exclude, scalars } = mearieConfig;
 
     context = new CodegenContext(projectRoot);
+    context.setConfig({ scalars });
 
     const schemaFiles = await findFiles(projectRoot, {
       include: schema,

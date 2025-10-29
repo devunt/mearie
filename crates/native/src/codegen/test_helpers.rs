@@ -3,6 +3,7 @@ macro_rules! setup_codegen {
     ($schema_code:expr, $document_code:expr) => {{
         use $crate::arena::Arena;
         use $crate::graphql::parser::Parser;
+        use $crate::pipeline::PipelineConfig;
         use $crate::schema::{DocumentIndex, SchemaBuilder};
         use $crate::source::Source;
 
@@ -25,7 +26,7 @@ macro_rules! setup_codegen {
         let mut document_index = DocumentIndex::new();
         document_index.add_document(operations_document).unwrap();
 
-        let ctx = $crate::codegen::CodegenContext::new();
+        let ctx = $crate::codegen::CodegenContext::new(PipelineConfig::default());
         (ctx, schema_index, document_index)
     }};
 }

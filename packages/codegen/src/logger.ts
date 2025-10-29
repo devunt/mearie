@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import { MearieAggregateError, MearieError } from './errors.ts';
 
 configureSync({
+  reset: true,
   sinks: {
     console: getConsoleSink({
       formatter: getAnsiColorFormatter({

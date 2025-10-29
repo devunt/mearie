@@ -24,12 +24,6 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
     const cache = new Cache(client.schema);
 
     return (ops$) => {
-      const teardowns$ = pipe(
-        ops$,
-        filter((op) => op.variant === 'teardown'),
-        share(),
-      );
-
       const fragment$ = pipe(
         ops$,
         filter((op): op is RequestOperation<'fragment'> => op.variant === 'request' && op.artifact.kind === 'fragment'),
@@ -57,8 +51,8 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
           }
 
           const teardown$ = pipe(
-            teardowns$,
-            filter((operation) => operation.key === op.key),
+            ops$,
+            filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
           );
 
           return pipe(
@@ -89,14 +83,15 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
           (op): op is RequestOperation<'query'> =>
             op.variant === 'request' && op.artifact.kind === 'query' && fetchPolicy !== 'network-only',
         ),
+        share(),
       );
 
       const cache$ = pipe(
         query$,
         mergeMap((op) => {
           const teardown$ = pipe(
-            teardowns$,
-            filter((operation) => operation.key === op.key),
+            ops$,
+            filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
           );
 
           return pipe(
@@ -124,20 +119,19 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
         }),
       );
 
+      const teardown$ = pipe(
+        ops$,
+        filter((op) => op.variant === 'teardown'),
+      );
+
       const forward$ = pipe(
-        merge(nonCache$, network$, teardowns$),
+        merge(nonCache$, network$, teardown$),
         forward,
         tap((result) => {
           if (result.operation.variant === 'request' && result.data) {
             cache.writeQuery(result.operation.artifact, result.operation.variables, result.data);
           }
         }),
-        filter(
-          (result) =>
-            result.operation.variant !== 'request' ||
-            result.operation.artifact.kind !== 'query' ||
-            fetchPolicy === 'network-only',
-        ),
       );
 
       return merge(fragment$, cache$, forward$);

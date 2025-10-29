@@ -59,10 +59,10 @@ const movie = useFragment(
   () => props.movieRef,
 );
 
-const year = computed(() => getYearFromDate(movie.value.releaseDate as string));
-const genres = computed(() => movie.value.genres.map((g) => g.name).join(', '));
+const year = computed(() => getYearFromDate(movie.data.releaseDate as string));
+const genres = computed(() => movie.data.genres.map((g) => g.name).join(', '));
 const castMembers = computed(() =>
-  movie.value.credits
+  movie.data.credits
     .filter((c) => c.__typename === 'Cast')
     .slice(0, 3)
     .map((c) => (c.__typename === 'Cast' ? c.person.name : ''))
@@ -72,22 +72,22 @@ const castMembers = computed(() =>
 
 <template>
   <NuxtLink
-    :to="`/movies/${movie.id}`"
+    :to="`/movies/${movie.data.id}`"
     class="block border border-neutral-200 bg-white overflow-hidden"
   >
     <img
-      v-if="movie.posterUrl"
-      :src="movie.posterUrl as string"
-      :alt="movie.title"
+      v-if="movie.data.posterUrl"
+      :src="movie.data.posterUrl as string"
+      :alt="movie.data.title"
       class="w-full aspect-[2/3] object-cover"
     />
 
     <div class="p-4 space-y-1.5">
       <div class="flex items-center justify-between gap-1.5">
-        <h3 class="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{{ movie.title }}</h3>
-        <div v-if="movie.rating" class="flex items-center gap-0.5 flex-shrink-0">
+        <h3 class="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{{ movie.data.title }}</h3>
+        <div v-if="movie.data.rating" class="flex items-center gap-0.5 flex-shrink-0">
           <Star class="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-          <span class="text-sm text-neutral-950 font-semibold">{{ movie.rating.toFixed(1) }}</span>
+          <span class="text-sm text-neutral-950 font-semibold">{{ movie.data.rating.toFixed(1) }}</span>
         </div>
       </div>
 

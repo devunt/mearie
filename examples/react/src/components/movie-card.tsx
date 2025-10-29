@@ -57,33 +57,33 @@ export function MovieCard({ $movie }: MovieCardProps) {
     $movie,
   );
 
-  const year = getYearFromDate(movie.releaseDate as string);
-  const genres = movie.genres.map((g) => g.name).join(', ');
+  const year = getYearFromDate(movie.data.releaseDate as string);
+  const genres = movie.data.genres.map((g) => g.name).join(', ');
 
   return (
     <Link
       to="/movies/$movieId"
-      params={{ movieId: movie.id }}
+      params={{ movieId: movie.data.id }}
       className="block border border-neutral-200 bg-white overflow-hidden"
     >
-      {movie.posterUrl && (
-        <img src={movie.posterUrl as string} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+      {movie.data.posterUrl && (
+        <img src={movie.data.posterUrl as string} alt={movie.data.title} className="w-full aspect-[2/3] object-cover" />
       )}
 
       <div className="p-4 space-y-1.5">
         <div className="flex items-center justify-between gap-1.5">
-          <h3 className="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{movie.title}</h3>
-          {movie.rating && (
+          <h3 className="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{movie.data.title}</h3>
+          {movie.data.rating && (
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm text-neutral-950 font-semibold">{movie.rating.toFixed(1)}</span>
+              <span className="text-sm text-neutral-950 font-semibold">{movie.data.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
 
-        {movie.credits.filter((c) => c.__typename === 'Cast').length > 0 && (
+        {movie.data.credits.filter((c) => c.__typename === 'Cast').length > 0 && (
           <p className="text-xs text-neutral-500 line-clamp-1">
-            {movie.credits
+            {movie.data.credits
               .filter((c) => c.__typename === 'Cast')
               .slice(0, 3)
               .map((c) => (c.__typename === 'Cast' ? c.person.name : ''))

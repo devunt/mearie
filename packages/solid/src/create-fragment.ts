@@ -5,7 +5,9 @@ import { useClient } from './client-provider.tsx';
 
 export type CreateFragmentOptions = FragmentOptions;
 
-export type Fragment<T extends Artifact<'fragment'>> = Accessor<DataOf<T>>;
+export type Fragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>;
+};
 
 export const createFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
@@ -39,5 +41,9 @@ export const createFragment = <T extends Artifact<'fragment'>>(
     });
   });
 
-  return data;
+  return {
+    get data() {
+      return data();
+    },
+  };
 };

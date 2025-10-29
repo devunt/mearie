@@ -58,23 +58,23 @@ export function MovieCard(props: MovieCardProps) {
     () => props.$movie,
   );
 
-  const year = () => getYearFromDate(movie().releaseDate as string);
-  const genres = () => movie().genres.map((g) => g.name).join(', ');
-  const castMembers = () => movie().credits.filter((c) => c.__typename === 'Cast');
+  const year = () => getYearFromDate(movie.data.releaseDate as string);
+  const genres = () => movie.data.genres.map((g) => g.name).join(', ');
+  const castMembers = () => movie.data.credits.filter((c) => c.__typename === 'Cast');
 
   return (
-    <A href={`/movies/${movie().id}`} class="block border border-neutral-200 bg-white overflow-hidden">
-      <Show when={movie().posterUrl}>
-        <img src={movie().posterUrl as string} alt={movie().title} class="w-full aspect-[2/3] object-cover" />
+    <A href={`/movies/${movie.data.id}`} class="block border border-neutral-200 bg-white overflow-hidden">
+      <Show when={movie.data.posterUrl}>
+        <img src={movie.data.posterUrl as string} alt={movie.data.title} class="w-full aspect-[2/3] object-cover" />
       </Show>
 
       <div class="p-4 space-y-1.5">
         <div class="flex items-center justify-between gap-1.5">
-          <h3 class="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{movie().title}</h3>
-          <Show when={movie().rating}>
+          <h3 class="text-sm font-semibold text-neutral-950 line-clamp-1 flex-1">{movie.data.title}</h3>
+          <Show when={movie.data.rating}>
             <div class="flex items-center gap-0.5 flex-shrink-0">
               <Star class="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-              <span class="text-sm text-neutral-950 font-semibold">{movie().rating!.toFixed(1)}</span>
+              <span class="text-sm text-neutral-950 font-semibold">{movie.data.rating!.toFixed(1)}</span>
             </div>
           </Show>
         </div>

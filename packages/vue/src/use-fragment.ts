@@ -5,7 +5,9 @@ import { useClient } from './client-plugin.ts';
 
 export type UseFragmentOptions = FragmentOptions;
 
-export type Fragment<T extends Artifact<'fragment'>> = Ref<DataOf<T>>;
+export type Fragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>;
+};
 
 export const useFragment = <T extends Artifact<'fragment'>>(
   fragment: T,
@@ -37,5 +39,9 @@ export const useFragment = <T extends Artifact<'fragment'>>(
     onCleanup(() => unsubscribe());
   });
 
-  return data as Fragment<T>;
+  return {
+    get data() {
+      return data.value;
+    },
+  };
 };

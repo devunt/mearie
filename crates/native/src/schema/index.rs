@@ -134,10 +134,7 @@ impl<'a> SchemaIndex<'a> {
     }
 
     pub fn is_abstract(&self, name: &str) -> bool {
-        matches!(
-            self.get_type(name),
-            Some(TypeInfo::Interface(_) | TypeInfo::Union(_))
-        )
+        matches!(self.get_type(name), Some(TypeInfo::Interface(_) | TypeInfo::Union(_)))
     }
 
     pub fn is_composite(&self, name: &str) -> bool {

@@ -254,14 +254,12 @@ fn get_field_type(ctx: &TransformContext<'_>, parent_type: &str, field_name: &st
     if field_name.starts_with("__") {
         return None;
     }
-    ctx.schema()
-        .get_field(parent_type, field_name)
-        .and_then(|f| {
-            let type_name = f.typ.innermost_type().to_string();
-            if ctx.schema().is_composite(&type_name) {
-                Some(type_name)
-            } else {
-                None
-            }
-        })
+    ctx.schema().get_field(parent_type, field_name).and_then(|f| {
+        let type_name = f.typ.innermost_type().to_string();
+        if ctx.schema().is_composite(&type_name) {
+            Some(type_name)
+        } else {
+            None
+        }
+    })
 }

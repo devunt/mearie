@@ -71,7 +71,8 @@ impl<'a> DocumentIndex<'a> {
                 }
                 Definition::Executable(ExecutableDefinition::Operation(operation)) => {
                     self.register_operation(operation);
-                    self.operation_to_document.insert(operation as *const _, doc as *const _);
+                    self.operation_to_document
+                        .insert(operation as *const _, doc as *const _);
                 }
                 Definition::TypeSystem(_) | Definition::TypeSystemExtension(_) => {}
             }

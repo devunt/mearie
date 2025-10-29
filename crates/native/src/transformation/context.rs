@@ -13,10 +13,7 @@ pub struct TransformContext<'a> {
 
 impl<'a> TransformContext<'a> {
     pub fn new(arena: &'a Arena, schema: &'a SchemaIndex<'a>) -> Self {
-        Self {
-            arena,
-            schema,
-        }
+        Self { arena, schema }
     }
 
     pub fn arena(&self) -> &'a Arena {

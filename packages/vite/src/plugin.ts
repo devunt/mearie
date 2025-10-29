@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
 import { loadConfig, mergeConfig, type ResolvedMearieConfig } from '@mearie/config';
 import { CodegenContext, createMatcher, findFiles, logger, report } from '@mearie/codegen';
 import type { MearieOptions } from './types.ts';
@@ -14,32 +14,32 @@ const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
  * @returns Vite plugin.
  */
 export const mearie = (options: MearieOptions = {}): Plugin => {
-  let viteConfig: ResolvedConfig;
+  let projectRoot: string;
   let mearieConfig: ResolvedMearieConfig;
 
-  let context: CodegenContext | null = null;
+  let context: CodegenContext;
   let generateTimer: NodeJS.Timeout | null = null;
 
   const ensureInitialized = async () => {
     if (context) return;
 
-    const baseConfig = await loadConfig({
-      cwd: viteConfig.root,
+    const { config, cwd } = await loadConfig({
       filename: options.config,
     });
 
-    mearieConfig = mergeConfig(baseConfig, options);
+    projectRoot = cwd;
+    mearieConfig = mergeConfig(config, options);
 
     const { schema, document, exclude } = mearieConfig;
 
-    context = new CodegenContext(viteConfig.root);
+    context = new CodegenContext(projectRoot);
 
-    const schemaFiles = await findFiles(viteConfig.root, {
+    const schemaFiles = await findFiles(projectRoot, {
       include: schema,
       exclude,
     });
 
-    const documentFiles = await findFiles(viteConfig.root, {
+    const documentFiles = await findFiles(projectRoot, {
       include: document,
       exclude,
     });
@@ -58,6 +58,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
     generateTimer = setTimeout(() => {
       void (async () => {
         try {
+          await ensureInitialized();
           await context?.generate();
 
           const virtualModule = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
@@ -75,28 +76,24 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
     name: 'mearie',
     enforce: 'pre',
 
-    async configResolved(resolvedConfig) {
-      viteConfig = resolvedConfig;
-
+    async configResolved(config) {
       try {
         await ensureInitialized();
         await context?.generate();
       } catch (error) {
         report(logger, error);
 
-        if (viteConfig.command === 'build') {
+        if (config.command === 'build') {
           throw error;
         }
       }
     },
 
     async hotUpdate({ file, type, server }) {
-      if (!context || !mearieConfig) {
-        return;
-      }
+      await ensureInitialized();
 
       const { schema, document, exclude } = mearieConfig;
-      const relativePath = path.relative(viteConfig.root, file);
+      const relativePath = path.relative(projectRoot, file);
 
       const schemaMatcher = createMatcher({
         include: schema,
@@ -147,7 +144,7 @@ export const mearie = (options: MearieOptions = {}): Plugin => {
 
     async load(id) {
       if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-        const jsPath = path.join(viteConfig.root, '.mearie', 'graphql.js');
+        const jsPath = path.join(projectRoot, '.mearie', 'graphql.js');
         try {
           return await readFile(jsPath, 'utf8');
         } catch {

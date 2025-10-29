@@ -5,17 +5,20 @@ import { mergeConfig } from './merge.ts';
 import { defaultResolvedMearieConfig } from './defaults.ts';
 
 export type LoadConfigOptions = {
-  cwd?: string;
   filename?: string;
 };
 
-export const loadConfig = async (options: LoadConfigOptions = {}): Promise<ResolvedMearieConfig> => {
-  const { config } = await c12LoadConfig<MearieConfig>({
+export const loadConfig = async (
+  options: LoadConfigOptions = {},
+): Promise<{ config: ResolvedMearieConfig; cwd: string }> => {
+  const { config, cwd } = await c12LoadConfig<MearieConfig>({
     name: 'mearie',
-    cwd: options.cwd,
     configFile: options.filename,
   });
 
   const parsed = mearieConfigSchema.parse(config ?? {});
-  return mergeConfig(defaultResolvedMearieConfig, parsed);
+  return {
+    config: mergeConfig(defaultResolvedMearieConfig, parsed),
+    cwd: cwd ?? process.cwd(),
+  };
 };

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { useQuery, useSubscription, type DataOf } from '@mearie/vue';
 import { graphql } from '$mearie';
-import type { ReviewUpdates } from '$mearie';
+import type { ReviewUpdates, Movies, Search } from '$mearie';
 import { ref, computed, watch } from 'vue';
 import MovieCard from '~/components/MovieCard.vue';
 import Card from '~/components/Card.vue';
 import Button from '~/components/Button.vue';
-import { Search, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-vue-next';
+import { Search as SearchIcon, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-vue-next';
 
 type ActivityItem = {
   id: string;
   timestamp: Date;
   message: string;
-  data: any;
+  data: DataOf<ReviewUpdates>['reviewAdded'];
 };
 
 const route = useRoute();
@@ -23,12 +23,7 @@ const searchQuery = ref(q.value);
 const debouncedQuery = ref(q.value);
 const activities = ref<ActivityItem[]>([]);
 const isConnected = ref(true);
-const allMovies = ref<any[]>([]);
-
-const getYearFromDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  return date.split('-')[0] || '';
-};
+const allMovies = ref<DataOf<Movies>['movies']['edges']>([]);
 
 const moviesResult = useQuery(
   graphql(`
@@ -88,7 +83,7 @@ const searchResult = useQuery(
 const handleReviewData = (data: DataOf<ReviewUpdates>) => {
   const activity: ActivityItem = {
     id: `review-${data.reviewAdded.id}-${Date.now()}`,
-    timestamp: new Date(data.reviewAdded.createdAt as any),
+    timestamp: data.reviewAdded.createdAt,
     message: `New review for "${data.reviewAdded.movie.title}"`,
     data: data.reviewAdded,
   };
@@ -173,13 +168,16 @@ const formatTime = (date: Date) => {
 
 const groupedResults = computed(() => {
   if (!searchResult.data.value?.search) return null;
-  return searchResult.data.value.search.reduce(
+  return searchResult.data.value.search.reduce<{
+    movies: Extract<DataOf<Search>['search'][number], { __typename: 'Movie' }>[];
+    people: Extract<DataOf<Search>['search'][number], { __typename: 'Person' }>[];
+  }>(
     (acc, result) => {
       if (result.__typename === 'Movie') acc.movies.push(result);
       else if (result.__typename === 'Person') acc.people.push(result);
       return acc;
     },
-    { movies: [] as any[], people: [] as any[] },
+    { movies: [], people: [] },
   );
 });
 
@@ -195,7 +193,7 @@ const showingSearch = computed(() => debouncedQuery.value && debouncedQuery.valu
 
     <div class="border border-neutral-200 bg-white p-4">
       <div class="relative">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+        <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
         <input
           type="search"
           placeholder="Search for movies or people..."
@@ -249,7 +247,7 @@ const showingSearch = computed(() => debouncedQuery.value && debouncedQuery.valu
                     />
                     <div class="flex-1 min-w-0">
                       <div class="text-sm font-medium text-neutral-950 truncate">{{ movie.title }}</div>
-                      <div class="text-xs text-neutral-400">{{ getYearFromDate(movie.releaseDate) }}</div>
+                      <div class="text-xs text-neutral-400">{{ movie.releaseDate?.getFullYear() ?? '' }}</div>
                     </div>
                   </div>
                 </NuxtLink>

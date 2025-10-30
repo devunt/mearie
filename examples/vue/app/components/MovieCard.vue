@@ -11,11 +11,6 @@ interface MovieCardProps {
 
 const props = defineProps<MovieCardProps>();
 
-const getYearFromDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  return date.split('-')[0] || '';
-};
-
 const movie = useFragment(
   graphql(`
     fragment MovieCard on Movie {
@@ -59,13 +54,13 @@ const movie = useFragment(
   () => props.movieRef,
 );
 
-const year = computed(() => getYearFromDate(movie.data.releaseDate as string));
+const year = computed(() => movie.data.releaseDate?.getFullYear() ?? '');
 const genres = computed(() => movie.data.genres.map((g) => g.name).join(', '));
 const castMembers = computed(() =>
   movie.data.credits
     .filter((c) => c.__typename === 'Cast')
     .slice(0, 3)
-    .map((c) => (c.__typename === 'Cast' ? c.person.name : ''))
+    .map((c) => c.person.name)
     .join(', '),
 );
 </script>
@@ -77,7 +72,7 @@ const castMembers = computed(() =>
   >
     <img
       v-if="movie.data.posterUrl"
-      :src="movie.data.posterUrl as string"
+      :src="movie.data.posterUrl"
       :alt="movie.data.title"
       class="w-full aspect-[2/3] object-cover"
     />

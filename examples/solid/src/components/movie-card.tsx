@@ -9,11 +9,6 @@ interface MovieCardProps {
   $movie: MovieCard$key;
 }
 
-const getYearFromDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  return date.split('-')[0] || '';
-};
-
 export function MovieCard(props: MovieCardProps) {
   const movie = createFragment(
     graphql(`
@@ -58,14 +53,14 @@ export function MovieCard(props: MovieCardProps) {
     () => props.$movie,
   );
 
-  const year = () => getYearFromDate(movie.data.releaseDate as string);
+  const year = () => movie.data.releaseDate?.getFullYear() ?? '';
   const genres = () => movie.data.genres.map((g) => g.name).join(', ');
   const castMembers = () => movie.data.credits.filter((c) => c.__typename === 'Cast');
 
   return (
     <A href={`/movies/${movie.data.id}`} class="block border border-neutral-200 bg-white overflow-hidden">
       <Show when={movie.data.posterUrl}>
-        <img src={movie.data.posterUrl as string} alt={movie.data.title} class="w-full aspect-[2/3] object-cover" />
+        <img src={movie.data.posterUrl!} alt={movie.data.title} class="w-full aspect-[2/3] object-cover" />
       </Show>
 
       <div class="p-4 space-y-1.5">
@@ -83,7 +78,7 @@ export function MovieCard(props: MovieCardProps) {
           <p class="text-xs text-neutral-500 line-clamp-1">
             {castMembers()
               .slice(0, 3)
-              .map((c) => (c.__typename === 'Cast' ? c.person.name : ''))
+              .map((c) => c.person.name)
               .join(', ')}
           </p>
         </Show>

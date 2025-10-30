@@ -5,19 +5,6 @@ import { Card } from '../../components/card.tsx';
 import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-solid';
 import { Show, For } from 'solid-js';
 
-const formatReleaseDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  try {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return date;
-  }
-};
-
 export default function MovieDetailPage() {
   const params = useParams();
   const movieId = () => params.id || '';
@@ -142,7 +129,7 @@ export default function MovieDetailPage() {
               <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="md:col-span-1">
                   <Show when={m().posterUrl}>
-                    <img src={m().posterUrl as string} alt={m().title} class="w-full border border-neutral-200" />
+                    <img src={m().posterUrl!} alt={m().title} class="w-full border border-neutral-200" />
                   </Show>
                 </div>
 
@@ -157,10 +144,10 @@ export default function MovieDetailPage() {
                               <span class="text-xl font-semibold text-neutral-950">{m().rating!.toFixed(1)}</span>
                             </div>
                           </Show>
-                          <Show when={formatReleaseDate(m().releaseDate as string)}>
+                          <Show when={m().releaseDate}>
                             <div class="flex items-center gap-1.5 text-sm text-neutral-500">
                               <Calendar class="w-4 h-4" />
-                              <span>{formatReleaseDate(m().releaseDate as string)}</span>
+                              <span>{m().releaseDate!.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             </div>
                           </Show>
                           <div class="flex flex-wrap gap-2">
@@ -230,7 +217,7 @@ export default function MovieDetailPage() {
                                 <div class="flex gap-3 items-center">
                                   <Show when={member.person.imageUrl}>
                                     <img
-                                      src={member.person.imageUrl as unknown as string}
+                                      src={member.person.imageUrl!}
                                       alt={member.person.name}
                                       class="w-12 h-12 rounded-full object-cover"
                                     />
@@ -265,7 +252,7 @@ export default function MovieDetailPage() {
                                     <span class="text-sm font-medium text-neutral-950">{review.rating}</span>
                                   </div>
                                   <span class="text-xs text-neutral-400">
-                                    {new Date(review.createdAt as any).toLocaleDateString()}
+                                    {review.createdAt.toLocaleDateString()}
                                   </span>
                                 </div>
                                 <Show when={review.text}>

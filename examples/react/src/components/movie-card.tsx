@@ -8,11 +8,6 @@ interface MovieCardProps {
   $movie: MovieCard$key;
 }
 
-const getYearFromDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  return date.split('-')[0] || '';
-};
-
 export function MovieCard({ $movie }: MovieCardProps) {
   const movie = useFragment(
     graphql(`
@@ -57,7 +52,7 @@ export function MovieCard({ $movie }: MovieCardProps) {
     $movie,
   );
 
-  const year = getYearFromDate(movie.data.releaseDate as string);
+  const year = movie.data.releaseDate?.getFullYear();
   const genres = movie.data.genres.map((g) => g.name).join(', ');
 
   return (
@@ -67,7 +62,7 @@ export function MovieCard({ $movie }: MovieCardProps) {
       className="block border border-neutral-200 bg-white overflow-hidden"
     >
       {movie.data.posterUrl && (
-        <img src={movie.data.posterUrl as string} alt={movie.data.title} className="w-full aspect-[2/3] object-cover" />
+        <img src={movie.data.posterUrl} alt={movie.data.title} className="w-full aspect-[2/3] object-cover" />
       )}
 
       <div className="p-4 space-y-1.5">
@@ -86,7 +81,7 @@ export function MovieCard({ $movie }: MovieCardProps) {
             {movie.data.credits
               .filter((c) => c.__typename === 'Cast')
               .slice(0, 3)
-              .map((c) => (c.__typename === 'Cast' ? c.person.name : ''))
+              .map((c) => c.person.name)
               .join(', ')}
           </p>
         )}

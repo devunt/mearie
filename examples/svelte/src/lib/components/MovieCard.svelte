@@ -53,18 +53,13 @@
 		() => movieRef,
 	);
 
-	const getYearFromDate = (date: string | null | undefined): string => {
-		if (!date) return '';
-		return date.split('-')[0] || '';
-	};
-
-	const year = $derived(getYearFromDate(movie.data.releaseDate as string));
+	const year = $derived(movie.data.releaseDate?.getFullYear() ?? '');
 	const genres = $derived(movie.data.genres.map((g) => g.name).join(', '));
 	const castMembers = $derived(
 		movie.data.credits
 			.filter((c) => c.__typename === 'Cast')
 			.slice(0, 3)
-			.map((c) => (c.__typename === 'Cast' ? c.person.name : ''))
+			.map((c) => c.person.name)
 			.join(', ')
 	);
 </script>

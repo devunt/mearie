@@ -2,24 +2,19 @@
 	import { untrack } from 'svelte';
 	import { createQuery, createSubscription, type DataOf } from '@mearie/svelte';
 	import { graphql } from '$mearie';
-	import type { ReviewUpdates } from '$mearie';
+	import type { ReviewUpdates, Movies, Search } from '$mearie';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import { Search, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-svelte';
+	import { Search as SearchIcon, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-svelte';
 
 	type ActivityItem = {
 		id: string;
 		timestamp: Date;
 		message: string;
-		data: any;
-	};
-
-	const getYearFromDate = (date: string | null | undefined): string => {
-		if (!date) return '';
-		return date.split('-')[0] || '';
+		data: DataOf<ReviewUpdates>['reviewAdded'];
 	};
 
 	const formatTime = (date: Date) => {
@@ -35,7 +30,7 @@
 	let debouncedQuery = $state(page.url.searchParams.get('q') ?? '');
 	let activities = $state<ActivityItem[]>([]);
 	let isConnected = $state(true);
-	let allMovies = $state<any[]>([]);
+	let allMovies = $state<DataOf<Movies>['movies']['edges']>([]);
 
 	const query = createQuery(
 		graphql(`
@@ -95,7 +90,7 @@
 	const handleReviewData = (data: DataOf<ReviewUpdates>) => {
 		const activity: ActivityItem = {
 			id: `review-${data.reviewAdded.id}-${Date.now()}`,
-			timestamp: new Date(data.reviewAdded.createdAt as any),
+			timestamp: data.reviewAdded.createdAt,
 			message: `New review for "${data.reviewAdded.movie.title}"`,
 			data: data.reviewAdded,
 		};
@@ -167,13 +162,16 @@
 	});
 
 	const groupedResults = $derived(
-		searchResult.data?.search.reduce(
+		searchResult.data?.search.reduce<{
+			movies: Extract<DataOf<Search>['search'][number], { __typename: 'Movie' }>[];
+			people: Extract<DataOf<Search>['search'][number], { __typename: 'Person' }>[];
+		}>(
 			(acc, result) => {
 				if (result.__typename === 'Movie') acc.movies.push(result);
 				else if (result.__typename === 'Person') acc.people.push(result);
 				return acc;
 			},
-			{ movies: [] as any[], people: [] as any[] },
+			{ movies: [], people: [] },
 		),
 	);
 
@@ -188,7 +186,7 @@
 
 	<div class="border border-neutral-200 bg-white p-4">
 		<div class="relative">
-			<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+			<SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
 			<input
 				type="search"
 				placeholder="Search for movies or people..."
@@ -240,7 +238,7 @@
 													{/if}
 													<div class="flex-1 min-w-0">
 														<div class="text-sm font-medium text-neutral-950 truncate">{movie.title}</div>
-														<div class="text-xs text-neutral-400">{getYearFromDate(movie.releaseDate)}</div>
+														<div class="text-xs text-neutral-400">{movie.releaseDate?.getFullYear() ?? ''}</div>
 													</div>
 												</div>
 											</a>

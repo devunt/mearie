@@ -24,4 +24,14 @@ export const mearieClient = createClient({
       }),
     }),
   ],
+  scalars: {
+    DateTime: {
+      parse: (value) => new Date(value as string),
+      serialize: (value) => value.toISOString(),
+    },
+    URL: {
+      parse: (value) => value as string,
+      serialize: (value) => value,
+    },
+  },
 });

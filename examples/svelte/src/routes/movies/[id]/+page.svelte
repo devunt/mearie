@@ -5,19 +5,6 @@
 	import Card from '$lib/components/Card.svelte';
 	import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-svelte';
 
-	const formatReleaseDate = (date: string | null | undefined): string => {
-		if (!date) return '';
-		try {
-			return new Date(date).toLocaleDateString('en-US', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-			});
-		} catch {
-			return date;
-		}
-	};
-
 	let movieId = $derived($page.params.id);
 
 	const query = createQuery(
@@ -145,10 +132,10 @@
 										<span class="text-xl font-semibold text-neutral-950">{movie.rating.toFixed(1)}</span>
 									</div>
 								{/if}
-								{#if formatReleaseDate(movie.releaseDate)}
+								{#if movie.releaseDate}
 									<div class="flex items-center gap-1.5 text-sm text-neutral-500">
 										<Calendar class="w-4 h-4" />
-										<span>{formatReleaseDate(movie.releaseDate)}</span>
+										<span>{movie.releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
 									</div>
 								{/if}
 								<div class="flex flex-wrap gap-2">

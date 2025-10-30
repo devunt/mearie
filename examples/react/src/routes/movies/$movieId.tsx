@@ -8,19 +8,6 @@ export const Route = createFileRoute('/movies/$movieId')({
   component: MovieDetailPage,
 });
 
-const formatReleaseDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  try {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return date;
-  }
-};
-
 function MovieDetailPage() {
   const { movieId } = Route.useParams();
 
@@ -142,8 +129,8 @@ function MovieDetailPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
-          {(movie.posterUrl as string) && (
-            <img src={movie.posterUrl as string} alt={movie.title} className="w-full border border-neutral-200" />
+          {movie.posterUrl && (
+            <img src={movie.posterUrl} alt={movie.title} className="w-full border border-neutral-200" />
           )}
         </div>
 
@@ -158,10 +145,16 @@ function MovieDetailPage() {
                       <span className="text-xl font-semibold text-neutral-950">{movie.rating.toFixed(1)}</span>
                     </div>
                   )}
-                  {formatReleaseDate(movie.releaseDate as string) && (
+                  {movie.releaseDate && (
                     <div className="flex items-center gap-1.5 text-sm text-neutral-500">
                       <Calendar className="w-4 h-4" />
-                      <span>{formatReleaseDate(movie.releaseDate as string)}</span>
+                      <span>
+                        {movie.releaseDate.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
@@ -226,9 +219,9 @@ function MovieDetailPage() {
                   {cast.slice(0, 12).map((member) =>
                     member.__typename === 'Cast' ? (
                       <div key={member.id} className="flex gap-3 items-center">
-                        {(member.person.imageUrl as unknown as string) && (
+                        {member.person.imageUrl && (
                           <img
-                            src={member.person.imageUrl as unknown as string}
+                            src={member.person.imageUrl}
                             alt={member.person.name}
                             className="w-12 h-12 rounded-full object-cover"
                           />
@@ -260,9 +253,7 @@ function MovieDetailPage() {
                           <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                           <span className="text-sm font-medium text-neutral-950">{review.rating}</span>
                         </div>
-                        <span className="text-xs text-neutral-400">
-                          {new Date(review.createdAt as any).toLocaleDateString()}
-                        </span>
+                        <span className="text-xs text-neutral-400">{review.createdAt.toLocaleDateString()}</span>
                       </div>
                       {review.text && <p className="text-sm text-neutral-600 line-clamp-3">{review.text}</p>}
                     </div>

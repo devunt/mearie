@@ -8,19 +8,6 @@ import { Star, Calendar, Users, MessageSquare, ThumbsUp, ThumbsDown } from 'luci
 const route = useRoute();
 const movieId = computed(() => route.params.id as string);
 
-const formatReleaseDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  try {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return date;
-  }
-};
-
 const { data, loading, error } = useQuery(
   graphql(`
     query MovieDetail($id: ID!) {
@@ -133,7 +120,7 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
         <div class="md:col-span-1">
           <img
             v-if="movie.posterUrl"
-            :src="movie.posterUrl as string"
+            :src="movie.posterUrl"
             :alt="movie.title"
             class="w-full border border-neutral-200"
           />
@@ -149,11 +136,11 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
                     <span class="text-xl font-semibold text-neutral-950">{{ movie.rating.toFixed(1) }}</span>
                   </div>
                   <div
-                    v-if="formatReleaseDate(movie.releaseDate as string)"
+                    v-if="movie.releaseDate"
                     class="flex items-center gap-1.5 text-sm text-neutral-500"
                   >
                     <Calendar class="w-4 h-4" />
-                    <span>{{ formatReleaseDate(movie.releaseDate as string) }}</span>
+                    <span>{{ movie.releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <span
@@ -195,7 +182,7 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
               <div v-if="directors.length > 0" class="space-y-2">
                 <h3 class="text-sm font-semibold text-neutral-950">Director</h3>
                 <p class="text-sm text-neutral-600">
-                  {{ directors.map((d) => (d.__typename === 'Crew' ? d.person.name : '')).join(', ') }}
+                  {{ directors.map((d) => d.person.name).join(', ') }}
                 </p>
               </div>
             </div>
@@ -212,7 +199,7 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
                   <template v-if="member.__typename === 'Cast'">
                     <img
                       v-if="member.person.imageUrl"
-                      :src="member.person.imageUrl as string"
+                      :src="member.person.imageUrl"
                       :alt="member.person.name"
                       class="w-12 h-12 rounded-full object-cover"
                     />
@@ -244,7 +231,7 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
                       <span class="text-sm font-medium text-neutral-950">{{ review.rating }}</span>
                     </div>
                     <span class="text-xs text-neutral-400">
-                      {{ new Date(review.createdAt as any).toLocaleDateString() }}
+                      {{ review.createdAt.toLocaleDateString() }}
                     </span>
                   </div>
                   <p v-if="review.text" class="text-sm text-neutral-600 line-clamp-3">{{ review.text }}</p>

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@mearie/vue": "workspace:*",

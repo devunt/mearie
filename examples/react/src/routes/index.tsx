@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useSubscription, type DataOf } from '@mearie/react';
 import { graphql } from '$mearie';
-import type { ReviewUpdates } from '$mearie';
+import type { ReviewUpdates, Search } from '$mearie';
 import { useState, useCallback, useEffect } from 'react';
 import { MovieCard } from '../components/movie-card.tsx';
 import { Card } from '../components/card.tsx';
 import { Button } from '../components/button.tsx';
-import { Search, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-react';
+import { Search as SearchIcon, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-react';
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -20,12 +20,7 @@ type ActivityItem = {
   id: string;
   timestamp: Date;
   message: string;
-  data: any;
-};
-
-const getYearFromDate = (date: string | null | undefined): string => {
-  if (!date) return '';
-  return date.split('-')[0] || '';
+  data: DataOf<ReviewUpdates>['reviewAdded'];
 };
 
 function HomePage() {
@@ -37,7 +32,7 @@ function HomePage() {
   const [debouncedQuery, setDebouncedQuery] = useState(q);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isConnected, setIsConnected] = useState(true);
-  const [allMovies, setAllMovies] = useState<any[]>([]);
+  const [allMovies, setAllMovies] = useState<DataOf<Movies>['movies']['edges']>([]);
 
   const moviesResult = useQuery(
     graphql(`
@@ -176,13 +171,16 @@ function HomePage() {
     });
   };
 
-  const groupedResults = searchResult.data?.search.reduce(
+  const groupedResults = searchResult.data?.search.reduce<{
+    movies: Extract<DataOf<Search>['search'][number], { __typename: 'Movie' }>[];
+    people: Extract<DataOf<Search>['search'][number], { __typename: 'Person' }>[];
+  }>(
     (acc, result) => {
       if (result.__typename === 'Movie') acc.movies.push(result);
       else if (result.__typename === 'Person') acc.people.push(result);
       return acc;
     },
-    { movies: [] as any[], people: [] as any[] },
+    { movies: [], people: [] },
   );
 
   const showingSearch = debouncedQuery && debouncedQuery.length >= 1;
@@ -196,7 +194,7 @@ function HomePage() {
 
       <div className="border border-neutral-200 bg-white p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="search"
             placeholder="Search for movies or people..."
@@ -254,7 +252,7 @@ function HomePage() {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-neutral-950 truncate">{movie.title}</div>
-                                <div className="text-xs text-neutral-400">{getYearFromDate(movie.releaseDate)}</div>
+                                <div className="text-xs text-neutral-400">{movie.releaseDate?.toISOString()}</div>
                               </div>
                             </div>
                           </Link>

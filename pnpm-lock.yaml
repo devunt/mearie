@@ -291,6 +291,28 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
 
+  packages/cli:
+    dependencies:
+      '@mearie/codegen':
+        specifier: workspace:*
+        version: link:../codegen
+      '@mearie/config':
+        specifier: workspace:*
+        version: link:../config
+      citty:
+        specifier: ^0.1.6
+        version: 0.1.6
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.9.1
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.15.10(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   packages/codegen:
     dependencies:
       '@logtape/logtape':
@@ -368,6 +390,9 @@ importers:
 
   packages/mearie:
     dependencies:
+      '@mearie/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@mearie/config':
         specifier: workspace:*
         version: link:../config

@@ -18,6 +18,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@mearie/cli": "workspace:*",
     "@mearie/config": "workspace:*",
     "@mearie/shared": "workspace:*",
     "@mearie/vite": "workspace:*"

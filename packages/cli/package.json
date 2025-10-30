@@ -1,0 +1,48 @@
+{
+  "name": "@mearie/cli",
+  "version": "0.0.1-next.3",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": "./src/cli.ts"
+  },
+  "bin": {
+    "mearie": "./src/cli.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@mearie/codegen": "workspace:*",
+    "@mearie/config": "workspace:*",
+    "citty": "^0.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "mearie": "./dist/cli.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/cli.d.ts",
+        "import": "./dist/cli.js",
+        "require": "./dist/cli.cjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "main": "./dist/cli.cjs",
+    "module": "./dist/cli.js",
+    "types": "./dist/cli.d.ts"
+  }
+}

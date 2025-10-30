@@ -1,7 +1,9 @@
 import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs, SchemaMeta } from '@mearie/shared';
 import type { Exchange, Operation, OperationResult } from './exchange.ts';
+import type { ScalarsConfig } from './scalars.ts';
 import { composeExchange } from './exchanges/compose.ts';
 import { fragmentExchange } from './exchanges/fragment.ts';
+import { scalarExchange } from './exchanges/scalar.ts';
 import { terminalExchange } from './exchanges/terminal.ts';
 import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
 import type { Source } from './stream/types.ts';
@@ -22,18 +24,21 @@ export type FragmentOptions = {};
 export type ClientOptions = {
   schema: SchemaMeta;
   exchanges: Exchange[];
+  scalars?: ScalarsConfig;
 };
 
 export class Client {
   #schema: SchemaMeta;
+  #scalars?: ScalarsConfig;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
   constructor(config: ClientOptions) {
     this.#schema = config.schema;
+    this.#scalars = config.scalars;
 
     const exchange = composeExchange({
-      exchanges: [...config.exchanges, fragmentExchange(), terminalExchange()],
+      exchanges: [scalarExchange(), ...config.exchanges, fragmentExchange(), terminalExchange()],
     });
 
     this.operations$ = makeSubject<Operation>();
@@ -42,6 +47,10 @@ export class Client {
 
   get schema(): SchemaMeta {
     return this.#schema;
+  }
+
+  get scalars(): ScalarsConfig | undefined {
+    return this.#scalars;
   }
 
   private createOperationKey(): string {

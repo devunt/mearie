@@ -8,10 +8,21 @@ export type Opaque<T> = T & { readonly ' $opaque'?: unique symbol };
 
 export type SchemaMeta = {
   entities: Record<string, EntityMeta>;
+  inputs: Record<string, InputMeta>;
 };
 
 export type EntityMeta = {
   keyFields: string[];
+};
+
+export type InputMeta = {
+  fields: readonly InputFieldMeta[];
+};
+
+export type InputFieldMeta = {
+  name: string;
+  type: string;
+  array?: boolean;
 };
 
 export type ArtifactKind = 'query' | 'mutation' | 'subscription' | 'fragment';
@@ -27,9 +38,17 @@ export type Artifact<
   readonly name: Name;
   readonly body: string;
   readonly selections: readonly Selection[];
+  readonly variableDefs?: readonly VariableDef[];
 
   readonly ' $data'?: Data;
   readonly ' $variables'?: Variables;
+};
+
+export type VariableDef = {
+  name: string;
+  type: string;
+  array?: boolean;
+  nullable?: boolean;
 };
 
 export type Selection = FieldSelection | FragmentSpreadSelection | InlineFragmentSelection;
@@ -37,7 +56,7 @@ export type Selection = FieldSelection | FragmentSpreadSelection | InlineFragmen
 export type FieldSelection = {
   kind: 'Field';
   name: string;
-  type?: string;
+  type: string;
   array?: boolean;
   alias?: string;
   args?: Record<string, Argument>;

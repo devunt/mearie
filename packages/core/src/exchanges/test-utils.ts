@@ -1,11 +1,12 @@
 import type { Operation, OperationResult, ExchangeIO, Exchange, RequestOperation } from '../exchange.ts';
-import type { ArtifactKind, Artifact, Selection, SchemaMeta } from '@mearie/shared';
+import type { ArtifactKind, Artifact, Selection, SchemaMeta, VariableDef } from '@mearie/shared';
 import type { Client } from '../client.ts';
 import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 import { vi } from 'vitest';
 import { subscribe } from '../stream/sinks/subscribe.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
+import type { ScalarsConfig } from '../scalars.ts';
 
 let operationCounter = 0;
 
@@ -17,6 +18,7 @@ export type TestOperationOptions = {
   metadata?: Record<string, unknown>;
   key?: string;
   selections?: readonly Selection[];
+  variableDefs?: readonly VariableDef[];
 };
 
 export const makeTestOperation = (options: TestOperationOptions = {}): Operation => {
@@ -28,6 +30,7 @@ export const makeTestOperation = (options: TestOperationOptions = {}): Operation
     metadata = {},
     key = `op-${++operationCounter}`,
     selections = [],
+    variableDefs = [],
   } = options;
 
   if (variant === 'teardown') {
@@ -43,6 +46,7 @@ export const makeTestOperation = (options: TestOperationOptions = {}): Operation
     name,
     body: '',
     selections,
+    variableDefs,
   };
 
   return {
@@ -77,9 +81,13 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
     );
 };
 
-export const makeTestClient = (schema: SchemaMeta): Pick<Client, 'schema'> => {
+export const makeTestClient = (config: {
+  schema: SchemaMeta;
+  scalars?: ScalarsConfig;
+}): Pick<Client, 'schema' | 'scalars'> => {
   return {
-    schema,
+    schema: config.schema,
+    scalars: config.scalars,
   };
 };
 

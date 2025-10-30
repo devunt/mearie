@@ -114,7 +114,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         };
 
         let selections = self.flatten_selections(&operation.selection_set, root_type)?;
-        let obj_expr = self.expr_artifact(name, &body, kind, &selections);
+        let obj_expr = self.expr_artifact(name, &body, kind, &selections, Some(&operation.variable_definitions));
 
         let var_name = format!("${}", name);
 
@@ -126,7 +126,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let name = fragment.name.as_str();
 
         let selections = self.flatten_selections(&fragment.selection_set, fragment.type_condition.as_str())?;
-        let obj_expr = self.expr_artifact(name, &body, "fragment", &selections);
+        let obj_expr = self.expr_artifact(name, &body, "fragment", &selections, None);
 
         let var_name = format!("${}", name);
 
@@ -139,13 +139,20 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         body: &str,
         kind: &str,
         selections: &[SelectionNodeData<'b>],
+        variables: Option<&bumpalo::collections::Vec<'b, VariableDefinition<'b>>>,
     ) -> Expression<'b> {
-        let properties = self.ast.vec_from_array([
+        let mut properties = self.ast.vec_from_array([
             self.prop_object("name", self.expr_string(name)),
             self.prop_object("body", self.expr_string(body)),
             self.prop_object("kind", self.expr_string(kind)),
             self.prop_object("selections", self.expr_selections_array(selections)),
         ]);
+
+        if let Some(vars) = variables
+            && !vars.is_empty()
+        {
+            properties.push(self.prop_object("variableDefs", self.expr_variable_defs_array(vars)));
+        }
 
         Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
     }
@@ -332,9 +339,50 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             }
         }
 
+        let mut input_type_properties = self.ast.vec();
+
+        for (type_name, type_info) in self.schema.types() {
+            if let TypeInfo::InputObject(input_obj) = type_info {
+                let fields_array_elements = self.ast.vec_from_iter(
+                    input_obj
+                        .fields
+                        .iter()
+                        .map(|field| ArrayExpressionElement::from(self.expr_from_input_field(field))),
+                );
+                let fields_array =
+                    Expression::ArrayExpression(self.ast.alloc(self.ast.array_expression(SPAN, fields_array_elements)));
+
+                let input_meta_props = self.ast.vec1(self.prop_object("fields", fields_array));
+                let input_meta_obj =
+                    Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, input_meta_props)));
+
+                let type_name_literal = self.ast.string_literal(SPAN, self.ast.atom(type_name), None::<Atom>);
+                let property_key = PropertyKey::StringLiteral(self.ast.alloc(type_name_literal));
+
+                let property = self.ast.object_property(
+                    SPAN,
+                    PropertyKind::Init,
+                    property_key,
+                    input_meta_obj,
+                    false,
+                    false,
+                    false,
+                );
+
+                input_type_properties.push(ObjectPropertyKind::ObjectProperty(self.ast.alloc(property)));
+            }
+        }
+
         let entities_obj =
             Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_properties)));
-        let schema_props = self.ast.vec1(self.prop_object("entities", entities_obj));
+        let mut schema_props = self.ast.vec1(self.prop_object("entities", entities_obj));
+
+        if !input_type_properties.is_empty() {
+            let input_types_obj =
+                Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, input_type_properties)));
+            schema_props.push(self.prop_object("inputs", input_types_obj));
+        }
+
         let schema_obj = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, schema_props)));
 
         Ok(self.stmt_export_const("schema", schema_obj))
@@ -372,6 +420,63 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         );
 
         Expression::ArrayExpression(self.ast.alloc(self.ast.array_expression(SPAN, elements)))
+    }
+
+    fn expr_variable_defs_array(
+        &self,
+        variables: &bumpalo::collections::Vec<'b, VariableDefinition<'b>>,
+    ) -> Expression<'b> {
+        let elements = self.ast.vec_from_iter(
+            variables
+                .iter()
+                .map(|var_def| ArrayExpressionElement::from(self.expr_from_variable_def(var_def))),
+        );
+
+        Expression::ArrayExpression(self.ast.alloc(self.ast.array_expression(SPAN, elements)))
+    }
+
+    fn expr_from_variable_def(&self, var_def: &VariableDefinition<'b>) -> Expression<'b> {
+        let var_name = var_def.variable.as_str();
+        let type_name = var_def.typ.innermost_type().as_str();
+        let is_nullable = var_def.typ.is_nullable();
+        let is_array = var_def.typ.is_list();
+
+        let mut properties = self.ast.vec_from_array([
+            self.prop_object("name", self.expr_string(var_name)),
+            self.prop_object("type", self.expr_string(type_name)),
+        ]);
+
+        if is_array {
+            properties.push(self.prop_object("array", self.expr_boolean(true)));
+        }
+
+        if is_nullable {
+            properties.push(self.prop_object("nullable", self.expr_boolean(true)));
+        }
+
+        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
+    }
+
+    fn expr_from_input_field(&self, field: &crate::graphql::ast::InputValueDefinition) -> Expression<'b> {
+        let field_name = field.name.as_str();
+        let type_name = field.typ.innermost_type().as_str();
+        let is_nullable = field.typ.is_nullable();
+        let is_array = field.typ.is_list();
+
+        let mut properties = self.ast.vec_from_array([
+            self.prop_object("name", self.expr_string(field_name)),
+            self.prop_object("type", self.expr_string(type_name)),
+        ]);
+
+        if is_array {
+            properties.push(self.prop_object("array", self.expr_boolean(true)));
+        }
+
+        if is_nullable {
+            properties.push(self.prop_object("nullable", self.expr_boolean(true)));
+        }
+
+        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
     }
 
     fn expr_from_selection_node(&self, node: &SelectionNodeData<'b>) -> Expression<'b> {

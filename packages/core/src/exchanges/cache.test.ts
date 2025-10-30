@@ -9,9 +9,10 @@ const schema: SchemaMeta = {
     User: { keyFields: ['id'] },
     Post: { keyFields: ['id'] },
   },
+  inputTypes: {},
 };
 
-const client = makeTestClient(schema);
+const client = makeTestClient({ schema });
 
 describe('cacheExchange', () => {
   describe('fetch policies', () => {

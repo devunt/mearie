@@ -10,6 +10,10 @@ Customize how GraphQL operations are executed with composable middleware.
 
 Exchanges are composable middleware that process your GraphQL operations. Each exchange can modify requests, handle responses, or add features like authentication, caching, and logging.
 
+::: tip Acknowledgment
+Mearie's exchange architecture is based on [urql's exchange system](https://nearform.com/open-source/urql/), which provides a proven pattern for composable GraphQL middleware.
+:::
+
 ## Basic Usage
 
 ```typescript
@@ -75,16 +79,18 @@ The order you define exchanges determines the execution flow:
 export const client = createClient({
   schema,
   exchanges: [
-    retryExchange(), // 1. Retry logic (outermost)
-    cacheExchange(), // 2. Cache layer
-    httpExchange(), // 3. Network request (innermost)
+    dedupExchange(), // 1. Deduplication (outermost)
+    retryExchange(), // 2. Retry logic
+    cacheExchange(), // 3. Cache layer
+    httpExchange(), // 4. Network request (innermost)
   ],
 });
 ```
 
 This means:
 
-- Retries will trigger the entire cache + HTTP flow
+- Deduplication filters duplicate operations first
+- Retries will trigger the cache + HTTP flow (downstream only)
 - Cache can return early without hitting HTTP
 - HTTP terminates the chain by making the actual request
 
@@ -152,7 +158,7 @@ export const client = createClient({
 
 ### Subscription Exchange
 
-Handles real-time subscriptions via Server-Sent Events or WebSocket:
+Handles real-time subscriptions via Server-Sent Events or WebSocket (terminating exchange):
 
 ```typescript
 import { createClient as createSSEClient } from 'graphql-sse';
@@ -184,8 +190,8 @@ import { schema } from '$mearie';
 export const client = createClient({
   schema,
   exchanges: [
-    retryExchange({ maxAttempts: 3 }),
     dedupExchange(),
+    retryExchange({ maxAttempts: 3 }),
     cacheExchange(),
     httpExchange({ url: 'https://api.example.com/graphql' }),
     subscriptionExchange({

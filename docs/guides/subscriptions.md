@@ -152,10 +152,17 @@ const UserStatus = ({ userId }: { userId: string }) => {
 Collect events over time (e.g., chat messages):
 
 ```typescript
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useSubscription, type DataOf } from '@mearie/react';
+import { graphql } from '$mearie';
+import type { MessageAddedSubscription } from '$mearie';
 
 const ChatMessages = ({ chatId }: { chatId: string }) => {
   const [messages, setMessages] = useState<Message[]>([]);
+
+  const handleMessageAdded = useCallback((data: DataOf<MessageAddedSubscription>) => {
+    setMessages((prev) => [...prev, data.messageAdded]);
+  }, []);
 
   useSubscription(
     graphql(`
@@ -173,9 +180,7 @@ const ChatMessages = ({ chatId }: { chatId: string }) => {
     `),
     { chatId },
     {
-      onData: (data) => {
-        setMessages((prev) => [...prev, data.messageAdded]);
-      },
+      onData: handleMessageAdded,
     },
   );
 
@@ -194,6 +199,11 @@ const ChatMessages = ({ chatId }: { chatId: string }) => {
 Load initial data with a query, then subscribe for updates:
 
 ```typescript
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useSubscription, type DataOf } from '@mearie/react';
+import { graphql } from '$mearie';
+import type { MessageAddedSubscription } from '$mearie';
+
 const ChatRoom = ({ chatId }: { chatId: string }) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -216,6 +226,10 @@ const ChatRoom = ({ chatId }: { chatId: string }) => {
     }
   }, [data]);
 
+  const handleMessageAdded = useCallback((data: DataOf<MessageAddedSubscription>) => {
+    setMessages((prev) => [...prev, data.messageAdded]);
+  }, []);
+
   // Subscribe to new messages
   useSubscription(
     graphql(`
@@ -228,9 +242,7 @@ const ChatRoom = ({ chatId }: { chatId: string }) => {
     `),
     { chatId },
     {
-      onData: (data) => {
-        setMessages((prev) => [...prev, data.messageAdded]);
-      },
+      onData: handleMessageAdded,
     },
   );
 
@@ -251,6 +263,19 @@ const ChatRoom = ({ chatId }: { chatId: string }) => {
 Control subscription behavior with options:
 
 ```typescript
+import { useCallback } from 'react';
+import { useSubscription, type DataOf } from '@mearie/react';
+import { graphql } from '$mearie';
+import type { MessageAddedSubscription } from '$mearie';
+
+const handleData = useCallback((data: DataOf<MessageAddedSubscription>) => {
+  console.log('New message:', data.messageAdded);
+}, []);
+
+const handleError = useCallback((error: Error) => {
+  console.error('Subscription error:', error);
+}, []);
+
 const { data, error, loading } = useSubscription(
   graphql(`
     subscription MessageAddedSubscription($chatId: ID!) {
@@ -266,14 +291,10 @@ const { data, error, loading } = useSubscription(
     skip: !chatId,
 
     // Process each event
-    onData: (data) => {
-      console.log('New message:', data.messageAdded);
-    },
+    onData: handleData,
 
     // Handle errors
-    onError: (error) => {
-      console.error('Subscription error:', error);
-    },
+    onError: handleError,
   },
 );
 ```

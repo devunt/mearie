@@ -152,9 +152,11 @@ if (loading) {
 
 ## Error Handling
 
-Handle errors consistently:
+Handle errors with the aggregated error object:
 
 ```typescript
+import { isGraphQLError, isExchangeError } from '@mearie/core';
+
 const { data, error, refetch } = useQuery(
   graphql(`
     query GetUserQuery($id: ID!) {
@@ -168,8 +170,18 @@ const { data, error, refetch } = useQuery(
 );
 
 if (error) {
-  console.error('GraphQL errors:', error.graphQLErrors);
-  console.error('Link error:', error.linkError);
+  // error is an AggregatedError containing all errors
+  console.error('Error message:', error.message);
+  console.error('All errors:', error.errors);
+
+  // Inspect individual errors
+  error.errors.forEach((err) => {
+    if (isGraphQLError(err)) {
+      console.error('GraphQL error:', err.message, err.path);
+    } else if (isExchangeError(err)) {
+      console.error('Exchange error from:', err.exchangeName, err.message);
+    }
+  });
 
   return (
     <div>
@@ -177,6 +189,38 @@ if (error) {
       <button onClick={() => refetch()}>Try Again</button>
     </div>
   );
+}
+```
+
+### Error Types
+
+Mearie provides three error types:
+
+- **`GraphQLError`** - Errors from the GraphQL server with `path`, `locations`, and `extensions`
+- **`ExchangeError`** - Errors from specific exchanges with `exchangeName` and `extensions`
+- **`AggregatedError`** - Container for multiple errors with an `errors` array
+
+Use type guards to handle specific error types:
+
+```typescript
+import { isGraphQLError, isExchangeError, isAggregatedError } from '@mearie/core';
+
+if (error) {
+  // Check for specific GraphQL errors
+  const authErrors = error.errors.filter(
+    (err) => isGraphQLError(err) && err.extensions?.code === 'UNAUTHENTICATED',
+  );
+
+  // Check for exchange-specific errors
+  const networkErrors = error.errors.filter((err) => isExchangeError(err, 'httpExchange'));
+
+  if (authErrors.length > 0) {
+    // Handle authentication errors
+    redirectToLogin();
+  } else if (networkErrors.length > 0) {
+    // Handle network errors
+    showRetryButton();
+  }
 }
 ```
 

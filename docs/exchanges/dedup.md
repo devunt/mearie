@@ -99,23 +99,23 @@ await Promise.all([promise1, promise2]);
 
 This is because mutations may have side effects and should execute every time.
 
-## Link Chain Placement
+## Exchange Chain Placement
 
-Place dedupExchange early in the chain, after retry but before cache:
+Place dedupExchange early in the chain, before retry and cache:
 
 ```typescript
 export const client = createClient({
   schema,
   exchanges: [
+    dedupExchange(), // Before retry and cache
     retryExchange(),
-    dedupExchange(), // After retry, before cache
     cacheExchange(),
     httpExchange({ url: 'https://api.example.com/graphql' }),
   ],
 });
 ```
 
-This ensures deduplication happens before cache lookups.
+This ensures deduplication happens before retries and cache lookups.
 
 ## Next Steps
 

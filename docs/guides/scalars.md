@@ -39,22 +39,22 @@ export default defineConfig({
 Configure runtime transformations when creating your client:
 
 ```typescript
-import { createClient, httpExchange, cacheExchange } from '@mearie/react';
+import { createClient, httpExchange } from '@mearie/react';
 import { schema } from '$mearie';
 
 export const client = createClient({
   schema,
+  exchanges: [httpExchange({ url: 'https://api.example.com/graphql' })],
   scalars: {
     DateTime: {
-      parse: (value: string) => new Date(value),
-      serialize: (value: Date) => value.toISOString(),
+      parse: (value) => new Date(value as string),
+      serialize: (value) => value.toISOString(),
     },
     JSON: {
-      parse: (value: string) => JSON.parse(value),
-      serialize: (value: unknown) => JSON.stringify(value),
+      parse: (value) => JSON.parse(value as string),
+      serialize: (value) => JSON.stringify(value),
     },
   },
-  exchanges: [cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 ```
 
@@ -133,17 +133,17 @@ export default defineConfig({
 
 // Client config
 export const client = createClient({
+  // ...
   scalars: {
     DateTime: {
-      parse: (value: string) => new Date(value),
-      serialize: (value: Date) => value.toISOString(),
+      parse: (value) => new Date(value as string),
+      serialize: (value) => value.toISOString(),
     },
     Date: {
-      parse: (value: string) => new Date(value),
-      serialize: (value: Date) => value.toISOString().split('T')[0],
+      parse: (value) => new Date(value as string),
+      serialize: (value) => value.toISOString().split('T')[0],
     },
   },
-  // ...
 });
 ```
 
@@ -159,31 +159,14 @@ export default defineConfig({
 
 // Client config
 export const client = createClient({
+  // ...
   scalars: {
     JSON: {
-      parse: (value: string) => JSON.parse(value),
-      serialize: (value: any) => JSON.stringify(value),
+      parse: (value) => JSON.parse(value as string),
+      serialize: (value) => JSON.stringify(value),
     },
   },
-  // ...
 });
-```
-
-### String-based Scalars
-
-For simple string types, only codegen config is needed:
-
-```typescript
-// mearie.config.ts
-export default defineConfig({
-  scalars: {
-    UUID: 'string',
-    URL: 'string',
-    EmailAddress: 'string',
-  },
-});
-
-// No client transformation needed
 ```
 
 ## Null Values

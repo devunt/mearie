@@ -130,7 +130,7 @@ export const client = createClient({
 });
 ```
 
-## Link Chain Placement
+## Exchange Chain Placement
 
 Place cacheExchange before httpExchange:
 
@@ -138,8 +138,8 @@ Place cacheExchange before httpExchange:
 export const client = createClient({
   schema,
   exchanges: [
-    retryExchange(),
     dedupExchange(),
+    retryExchange(),
     cacheExchange(), // Before HTTP
     httpExchange({ url: 'https://api.example.com/graphql' }),
   ],

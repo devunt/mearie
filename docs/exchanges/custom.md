@@ -400,8 +400,8 @@ export const client = createClient({
   exchanges: [
     loggingExchange(), // Monitoring - outermost
     performanceExchange(), // Performance tracking
-    addMetadataExchange(), // Request transformation - before cache
     dedupExchange(), // Deduplication
+    addMetadataExchange(), // Request transformation - after dedup, before cache
     cacheExchange(), // Caching
     httpExchange({ url: 'https://api.example.com/graphql' }), // Terminating
   ],
@@ -411,7 +411,8 @@ export const client = createClient({
 General guidelines:
 
 - **Monitoring/logging** - Outermost layer to see all operations
-- **Request transformation** - Before cache to affect cache keys
+- **Deduplication** - Early in the chain to filter duplicates
+- **Request transformation** - After dedup, before cache to affect cache keys
 - **Non-terminating exchanges** - Before terminating exchanges
 - **Terminating exchanges** - At the end
 

@@ -22,12 +22,14 @@ Mearie makes these patterns accessible through a more pragmatic design. It reduc
 
 ::: code-group
 
-```tsx [React]
+<!-- prettier-ignore-start -->
+
+```tsx twoslash mearie [React]
 import { graphql } from '$mearie';
 import { useQuery } from '@mearie/react';
 
 export const UserProfile = ({ userId }: { userId: string }) => {
-  const { data, loading } = useQuery(
+  const { data, loading, error } = useQuery(
     graphql(`
       query GetUser($id: ID!) {
         user(id: $id) {
@@ -41,9 +43,17 @@ export const UserProfile = ({ userId }: { userId: string }) => {
   );
 
   if (loading) return <div>Loading...</div>;
-  return <h1>{data.user.name}</h1>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <h1>
+      {data.user.name}
+      //    ^?
+    </h1>
+  );
 };
 ```
+<!-- prettier-ignore-end -->
 
 ```vue [Vue]
 <script setup lang="ts">

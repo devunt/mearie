@@ -18,6 +18,9 @@ hero:
       text: Get Started
       link: /getting-started/installation
     - theme: alt
+      text: Why Mearie?
+      link: /why
+    - theme: alt
       text: View on GitHub
       link: https://github.com/devunt/mearie
 

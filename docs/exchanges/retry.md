@@ -104,7 +104,7 @@ Default: Retries on network errors and 5xx server errors.
 
 ## How It Works
 
-1. Catches errors from downstream links
+1. Catches errors from downstream exchanges
 2. Checks if error should be retried (using `retryIf`)
 3. Waits for backoff delay
 4. Retries operation until success or max attempts reached
@@ -191,16 +191,16 @@ client.query(GetUserQuery, { id: '1' }, { signal: controller.signal });
 controller.abort();
 ```
 
-## Link Chain Placement
+## Exchange Chain Placement
 
-Place retryExchange early in the chain, before cache:
+Place retryExchange early in the chain, after dedup but before cache:
 
 ```typescript
 export const client = createClient({
   schema,
   exchanges: [
-    retryExchange(), // Outermost
     dedupExchange(),
+    retryExchange(), // After dedup
     cacheExchange(),
     httpExchange({ url: 'https://api.example.com/graphql' }),
   ],

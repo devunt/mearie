@@ -136,8 +136,8 @@ import { schema } from '$mearie';
 export const client = createClient({
   schema,
   exchanges: [
-    retryExchange(),
     dedupExchange(),
+    retryExchange(),
     cacheExchange(),
     httpExchange({ url: 'https://api.example.com/graphql' }),
     subscriptionExchange({

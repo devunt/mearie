@@ -59,7 +59,7 @@ export default defineConfig({
     logo: '/logo.svg',
 
     nav: [
-      { text: 'Why Mearie?', link: '/why-mearie' },
+      { text: 'Why Mearie?', link: '/why' },
       {
         text: 'Guides',
         items: [
@@ -89,8 +89,19 @@ export default defineConfig({
         text: 'Introduction',
         collapsed: true,
         items: [
-          { text: 'Why Mearie?', link: '/why-mearie' },
+          { text: 'Why Mearie?', link: '/why' },
           { text: 'Changelog', link: '/changelog' },
+        ],
+      },
+      {
+        text: 'Concepts',
+        collapsed: true,
+        items: [
+          { text: 'Modern GraphQL', link: '/concepts/modern-graphql' },
+          { text: 'Type Safety', link: '/concepts/type-safety' },
+          { text: 'Caching', link: '/concepts/caching' },
+          { text: 'Fragments', link: '/concepts/fragments' },
+          { text: 'Streams', link: '/concepts/streams' },
         ],
       },
       {
@@ -102,11 +113,6 @@ export default defineConfig({
           { text: 'Your First Query', link: '/getting-started/your-first-query' },
           { text: 'Using Fragments', link: '/getting-started/using-fragments' },
         ],
-      },
-      {
-        text: 'Concepts',
-        collapsed: true,
-        items: [{ text: 'Streams', link: '/concepts/streams' }],
       },
       {
         text: 'Guides',

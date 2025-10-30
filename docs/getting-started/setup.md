@@ -1,5 +1,5 @@
 ---
-description: Configure Mearie's build plugin for automatic type generation, create a GraphQL client with links, and set up the provider for your framework.
+description: Configure Mearie's build plugin for automatic type generation, create a GraphQL client with exchanges, and set up the provider for your framework.
 ---
 
 # Setup

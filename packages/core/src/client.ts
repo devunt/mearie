@@ -26,7 +26,7 @@ export type ClientOptions<T extends SchemaMeta> = {
   exchanges: Exchange[];
 } & (T['scalars'] extends Record<string, never> ? { scalars?: undefined } : { scalars: ScalarsConfig<T> });
 
-export class Client<TMeta extends SchemaMeta> {
+export class Client<TMeta extends SchemaMeta = SchemaMeta> {
   #schema: TMeta;
   #scalars?: ScalarsConfig<TMeta>;
   private operations$: Subject<Operation>;

@@ -2,11 +2,11 @@ pre-commit:
   parallel: true
   commands:
     format-js:
-      glob: "*.{js,ts,jsx,tsx,json,yml,yaml,md}"
+      glob: '*.{js,ts,jsx,tsx,json,yml,yaml,md}'
       run: pnpm prettier --write {staged_files}
       stage_fixed: true
 
     format-rust:
-      glob: "*.rs"
+      glob: '*.rs'
       run: cargo fmt
       stage_fixed: true

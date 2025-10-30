@@ -9,6 +9,8 @@ const schema: SchemaMeta = {
     Post: { keyFields: ['id'] },
     Comment: { keyFields: ['postId', 'id'] },
   },
+  inputs: {},
+  scalars: {},
 };
 
 const createArtifact = <K extends 'query' | 'fragment'>(
@@ -34,7 +36,7 @@ describe('Cache', () => {
     it('should write scalar field to cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
@@ -47,8 +49,8 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const artifact = createArtifact('query', 'GetUser', [
-        { kind: 'Field', name: 'name' },
-        { kind: 'Field', name: 'age' },
+        { kind: 'Field', name: 'name', type: 'String' },
+        { kind: 'Field', name: 'age', type: 'Int' },
       ]);
 
       cache.writeQuery(artifact, {}, { name: 'Alice', age: 30 });
@@ -61,7 +63,7 @@ describe('Cache', () => {
     it('should write null value to cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: null });
 
@@ -79,9 +81,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -102,9 +104,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -115,9 +117,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'email' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'email', type: 'String' },
           ],
         },
       ]);
@@ -140,9 +142,9 @@ describe('Cache', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -175,6 +177,7 @@ describe('Cache', () => {
         {
           kind: 'Field',
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal', value: 10 },
           },
@@ -195,6 +198,7 @@ describe('Cache', () => {
         {
           kind: 'Field',
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable', name: 'limit' },
           },
@@ -211,7 +215,7 @@ describe('Cache', () => {
     it('should trigger subscriptions when writing to cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener = vi.fn();
       cache.subscribeQuery(artifact, {}, listener);
@@ -224,7 +228,7 @@ describe('Cache', () => {
     it('should trigger multiple subscriptions when writing to cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener1 = vi.fn();
       const listener2 = vi.fn();
@@ -247,9 +251,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -267,7 +271,7 @@ describe('Cache', () => {
     it('should return null when query not in cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const result = cache.readQuery(artifact, {});
 
@@ -283,9 +287,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -304,9 +308,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -317,9 +321,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'email' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'email', type: 'String' },
           ],
         },
       ]);
@@ -334,7 +338,7 @@ describe('Cache', () => {
     it('should read scalar field from cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
@@ -346,7 +350,7 @@ describe('Cache', () => {
     it('should read null value from cache', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: null });
 
@@ -364,9 +368,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -388,9 +392,9 @@ describe('Cache', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -423,6 +427,7 @@ describe('Cache', () => {
         {
           kind: 'Field',
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal', value: 10 },
           },
@@ -433,6 +438,7 @@ describe('Cache', () => {
         {
           kind: 'Field',
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal', value: 5 },
           },
@@ -453,6 +459,7 @@ describe('Cache', () => {
         {
           kind: 'Field',
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable', name: 'limit' },
           },
@@ -471,7 +478,7 @@ describe('Cache', () => {
     it('should return unsubscribe function', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const unsubscribe = cache.subscribeQuery(artifact, {}, vi.fn());
 
@@ -481,7 +488,7 @@ describe('Cache', () => {
     it('should call listener when subscribed field is updated', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener = vi.fn();
       cache.subscribeQuery(artifact, {}, listener);
@@ -494,7 +501,7 @@ describe('Cache', () => {
     it('should not call listener after unsubscribe', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener = vi.fn();
       const unsubscribe = cache.subscribeQuery(artifact, {}, listener);
@@ -510,8 +517,8 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const artifact = createArtifact('query', 'GetUser', [
-        { kind: 'Field', name: 'name' },
-        { kind: 'Field', name: 'age' },
+        { kind: 'Field', name: 'name', type: 'String' },
+        { kind: 'Field', name: 'age', type: 'Int' },
       ]);
 
       const listener = vi.fn();
@@ -525,9 +532,9 @@ describe('Cache', () => {
     it('should not call listener when different field is updated', () => {
       const cache = new Cache(schema);
 
-      const artifact1 = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact1 = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
-      const artifact2 = createArtifact('query', 'GetAge', [{ kind: 'Field', name: 'age' }]);
+      const artifact2 = createArtifact('query', 'GetAge', [{ kind: 'Field', name: 'age', type: 'Int' }]);
 
       const listener = vi.fn();
       cache.subscribeQuery(artifact1, {}, listener);
@@ -546,9 +553,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -567,7 +574,7 @@ describe('Cache', () => {
     it('should handle multiple subscriptions to same query', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener1 = vi.fn();
       const listener2 = vi.fn();
@@ -584,7 +591,7 @@ describe('Cache', () => {
     it('should cleanup subscription when unsubscribed', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener1 = vi.fn();
       const listener2 = vi.fn();
@@ -604,10 +611,10 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -651,10 +658,10 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -663,9 +670,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread',
               name: 'UserFragment',
@@ -703,9 +710,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const artifact = createArtifact('fragment', 'UserFragment', [
-        { kind: 'Field', name: '__typename' },
-        { kind: 'Field', name: 'id' },
-        { kind: 'Field', name: 'name' },
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
       const result = cache.readFragment(artifact, {} as FragmentRefs<string>);
@@ -717,9 +724,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const artifact = createArtifact('fragment', 'UserFragment', [
-        { kind: 'Field', name: '__typename' },
-        { kind: 'Field', name: 'id' },
-        { kind: 'Field', name: 'name' },
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
       const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
@@ -733,10 +740,10 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -766,9 +773,9 @@ describe('Cache', () => {
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
-        { kind: 'Field', name: '__typename' },
-        { kind: 'Field', name: 'id' },
-        { kind: 'Field', name: 'name' },
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
       const result = cache.readFragment(fragmentArtifact, fragmentRef);
@@ -780,9 +787,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -806,9 +813,9 @@ describe('Cache', () => {
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
-        { kind: 'Field', name: '__typename' },
-        { kind: 'Field', name: 'id' },
-        { kind: 'Field', name: 'email' },
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'email', type: 'String' },
       ]);
 
       const result = cache.readFragment(fragmentArtifact, fragmentRef);
@@ -822,9 +829,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -858,9 +865,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -897,9 +904,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -938,9 +945,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact1 = createArtifact('query', 'GetUser', [
@@ -993,9 +1000,9 @@ describe('Cache', () => {
       const cache = new Cache(schema);
 
       const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const queryArtifact = createArtifact('query', 'GetUser', [
@@ -1037,7 +1044,7 @@ describe('Cache', () => {
     it('should clear all cache data', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
@@ -1057,9 +1064,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -1076,7 +1083,7 @@ describe('Cache', () => {
     it('should clear all subscriptions', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       const listener = vi.fn();
       cache.subscribeQuery(artifact, {}, listener);
@@ -1095,7 +1102,7 @@ describe('Cache', () => {
     it('should allow writing to cache after clear', () => {
       const cache = new Cache(schema);
 
-      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name' }]);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
@@ -1131,16 +1138,16 @@ describe('Cache', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
             {
               kind: 'Field',
               name: 'author',
               type: 'User',
               selections: [
-                { kind: 'Field', name: '__typename' },
-                { kind: 'Field', name: 'id' },
-                { kind: 'Field', name: 'name' },
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'name', type: 'String' },
               ],
             },
           ],
@@ -1179,9 +1186,9 @@ describe('Cache', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'name' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
           ],
         },
       ]);
@@ -1192,9 +1199,9 @@ describe('Cache', () => {
           name: 'currentUser',
           type: 'User',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'email' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'email', type: 'String' },
           ],
         },
       ]);
@@ -1223,10 +1230,10 @@ describe('Cache', () => {
           name: 'comment',
           type: 'Comment',
           selections: [
-            { kind: 'Field', name: '__typename' },
-            { kind: 'Field', name: 'postId' },
-            { kind: 'Field', name: 'id' },
-            { kind: 'Field', name: 'text' },
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'postId', type: 'ID' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'text', type: 'String' },
           ],
         },
       ]);

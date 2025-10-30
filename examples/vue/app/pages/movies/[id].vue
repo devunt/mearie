@@ -135,12 +135,11 @@ const directors = computed(() => crew.value.filter((c) => c.__typename === 'Crew
                     <Star class="w-5 h-5 fill-yellow-400 text-yellow-400" />
                     <span class="text-xl font-semibold text-neutral-950">{{ movie.rating.toFixed(1) }}</span>
                   </div>
-                  <div
-                    v-if="movie.releaseDate"
-                    class="flex items-center gap-1.5 text-sm text-neutral-500"
-                  >
+                  <div v-if="movie.releaseDate" class="flex items-center gap-1.5 text-sm text-neutral-500">
                     <Calendar class="w-4 h-4" />
-                    <span>{{ movie.releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
+                    <span>{{
+                      movie.releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                    }}</span>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <span

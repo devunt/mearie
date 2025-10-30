@@ -1,4 +1,4 @@
-import type { Artifact, ArtifactKind, VariablesOf } from '@mearie/shared';
+import type { Artifact, ArtifactKind, VariablesOf, SchemaMeta } from '@mearie/shared';
 import type { Source } from './stream/index.ts';
 import type { OperationError } from './errors.ts';
 import type { Client } from './client.ts';
@@ -31,11 +31,11 @@ export type OperationResult = {
   stale?: boolean;
 };
 
-export type ExchangeInput = {
+export type ExchangeInput<TMeta extends SchemaMeta = SchemaMeta> = {
   forward: ExchangeIO;
-  client: Client;
+  client: Client<TMeta>;
 };
 
 export type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 
-export type Exchange = (input: ExchangeInput) => ExchangeIO;
+export type Exchange = <TMeta extends SchemaMeta = SchemaMeta>(input: ExchangeInput<TMeta>) => ExchangeIO;

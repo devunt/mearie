@@ -147,7 +147,13 @@ export default function MovieDetailPage() {
                           <Show when={m().releaseDate}>
                             <div class="flex items-center gap-1.5 text-sm text-neutral-500">
                               <Calendar class="w-4 h-4" />
-                              <span>{m().releaseDate!.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                              <span>
+                                {m().releaseDate!.toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                              </span>
                             </div>
                           </Show>
                           <div class="flex flex-wrap gap-2">
@@ -251,9 +257,7 @@ export default function MovieDetailPage() {
                                     <Star class="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                                     <span class="text-sm font-medium text-neutral-950">{review.rating}</span>
                                   </div>
-                                  <span class="text-xs text-neutral-400">
-                                    {review.createdAt.toLocaleDateString()}
-                                  </span>
+                                  <span class="text-xs text-neutral-400">{review.createdAt.toLocaleDateString()}</span>
                                 </div>
                                 <Show when={review.text}>
                                   <p class="text-sm text-neutral-600 line-clamp-3">{review.text}</p>

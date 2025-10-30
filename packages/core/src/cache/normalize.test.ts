@@ -11,6 +11,8 @@ const schema: SchemaMeta = {
     Comment: { keyFields: ['postId', 'id'] },
     Profile: { keyFields: ['userId'] },
   },
+  inputs: {},
+  scalars: {},
 };
 
 const normalizeTest = (
@@ -41,7 +43,7 @@ const expectSameCalls = (actual: [StorageKey, FieldKey][], expected: [StorageKey
 describe('normalize', () => {
   describe('basic fields', () => {
     it('single scalar field', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = { name: 'Alice' };
 
@@ -55,9 +57,9 @@ describe('normalize', () => {
 
     it('multiple scalar fields', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'age' },
-        { kind: 'Field' as const, name: 'active' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'age', type: 'Int' },
+        { kind: 'Field' as const, name: 'active', type: 'Boolean' },
       ];
 
       const data = { name: 'Alice', age: 30, active: true };
@@ -79,7 +81,7 @@ describe('normalize', () => {
     });
 
     it('null value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = { name: null };
 
@@ -92,7 +94,7 @@ describe('normalize', () => {
     });
 
     it('undefined value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = {};
 
@@ -111,9 +113,10 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -143,11 +146,13 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'level1',
+          type: 'Level1',
           selections: [
             {
               kind: 'Field' as const,
               name: 'level2',
-              selections: [{ kind: 'Field' as const, name: 'value' }],
+              type: 'Level2',
+              selections: [{ kind: 'Field' as const, name: 'value', type: 'String' }],
             },
           ],
         },
@@ -180,7 +185,8 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'User',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
 
@@ -197,7 +203,7 @@ describe('normalize', () => {
 
   describe('arrays', () => {
     it('array of scalars', () => {
-      const selections = [{ kind: 'Field' as const, name: 'tags' }];
+      const selections = [{ kind: 'Field' as const, name: 'tags', type: 'String', array: true }];
 
       const data = { tags: ['typescript', 'graphql', 'cache'] };
 
@@ -214,9 +220,10 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
+          type: 'Item',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'value' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'value', type: 'Int' },
           ],
         },
       ];
@@ -246,7 +253,8 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'Item',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
 
@@ -267,7 +275,8 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'Item',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
 
@@ -282,7 +291,7 @@ describe('normalize', () => {
     });
 
     it('nested arrays', () => {
-      const selections = [{ kind: 'Field' as const, name: 'matrix' }];
+      const selections = [{ kind: 'Field' as const, name: 'matrix', type: 'Int' }];
 
       const data = {
         matrix: [
@@ -309,11 +318,13 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'data',
+          type: 'Data',
           selections: [
             {
               kind: 'Field' as const,
               name: 'items',
-              selections: [{ kind: 'Field' as const, name: 'values' }],
+              type: 'Item',
+              selections: [{ kind: 'Field' as const, name: 'values', type: 'Int', array: true }],
             },
           ],
         },
@@ -345,9 +356,9 @@ describe('normalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'tags' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'tags', type: 'String', array: true },
           ],
         },
       ];
@@ -396,9 +407,9 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -436,10 +447,10 @@ describe('normalize', () => {
           name: 'comment',
           type: 'Comment',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'postId' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'text' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'postId', type: 'ID' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'text', type: 'String' },
           ],
         },
       ];
@@ -481,9 +492,9 @@ describe('normalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -530,17 +541,17 @@ describe('normalize', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'title' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'author',
               type: 'User',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -595,9 +606,9 @@ describe('normalize', () => {
           name: 'currentUser',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
         {
@@ -605,9 +616,9 @@ describe('normalize', () => {
           name: 'author',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -659,9 +670,9 @@ describe('normalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -712,8 +723,8 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -750,9 +761,9 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -792,9 +803,9 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -832,9 +843,9 @@ describe('normalize', () => {
           name: 'comment',
           type: 'Comment',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'postId' },
-            { kind: 'Field' as const, name: 'text' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'postId', type: 'ID' },
+            { kind: 'Field' as const, name: 'text', type: 'String' },
           ],
         },
       ];
@@ -874,11 +885,12 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal' as const, value: 10 },
             offset: { kind: 'literal' as const, value: 0 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -899,11 +911,12 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
             offset: { kind: 'variable' as const, name: 'offset' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -925,20 +938,22 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           alias: 'posts1',
           args: {
             limit: { kind: 'literal' as const, value: 5 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           alias: 'posts2',
           args: {
             limit: { kind: 'literal' as const, value: 10 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -966,13 +981,14 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             filter: {
               kind: 'literal' as const,
               value: { status: 'published', tags: ['typescript', 'graphql'] },
             },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -997,6 +1013,7 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'name',
+          type: 'String',
           alias: 'userName',
         },
       ];
@@ -1020,9 +1037,9 @@ describe('normalize', () => {
           type: 'User',
           args: { id: { kind: 'literal' as const, value: '1' } },
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
         {
@@ -1032,9 +1049,9 @@ describe('normalize', () => {
           type: 'User',
           args: { id: { kind: 'literal' as const, value: '2' } },
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -1079,10 +1096,12 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'post',
+          type: 'Post',
           selections: [
             {
               kind: 'Field' as const,
               name: 'authorName',
+              type: 'String',
               alias: 'writerName',
             },
           ],
@@ -1115,8 +1134,8 @@ describe('normalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'UserFields',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -1148,9 +1167,9 @@ describe('normalize', () => {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -1188,8 +1207,9 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'ProfileFragment',
@@ -1197,7 +1217,8 @@ describe('normalize', () => {
                 {
                   kind: 'Field' as const,
                   name: 'profile',
-                  selections: [{ kind: 'Field' as const, name: 'bio' }],
+                  type: 'Profile',
+                  selections: [{ kind: 'Field' as const, name: 'bio', type: 'String' }],
                 },
               ],
             },
@@ -1235,14 +1256,14 @@ describe('normalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'BasicInfo',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
         {
           kind: 'FragmentSpread' as const,
           name: 'AgeInfo',
-          selections: [{ kind: 'Field' as const, name: 'age' }],
+          selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
         },
       ];
 
@@ -1277,12 +1298,12 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
           ],
         },
@@ -1321,17 +1342,17 @@ describe('normalize', () => {
           name: 'entity',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'Post',
-              selections: [{ kind: 'Field' as const, name: 'title' }],
+              selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
             },
           ],
         },
@@ -1370,17 +1391,18 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
                 {
                   kind: 'Field' as const,
                   name: 'profile',
-                  selections: [{ kind: 'Field' as const, name: 'bio' }],
+                  type: 'Profile',
+                  selections: [{ kind: 'Field' as const, name: 'bio', type: 'String' }],
                 },
               ],
             },
@@ -1428,17 +1450,17 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'email' }],
+              selections: [{ kind: 'Field' as const, name: 'email', type: 'String' }],
             },
           ],
         },
@@ -1482,14 +1504,14 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserDetails',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -1532,14 +1554,14 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -1582,20 +1604,20 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'BasicInfo',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'age' }],
+              selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
             },
           ],
         },
@@ -1640,20 +1662,20 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'ContactInfo',
-              selections: [{ kind: 'Field' as const, name: 'email' }],
+              selections: [{ kind: 'Field' as const, name: 'email', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'age' },
-                { kind: 'Field' as const, name: 'bio' },
+                { kind: 'Field' as const, name: 'age', type: 'String' },
+                { kind: 'Field' as const, name: 'bio', type: 'String' },
               ],
             },
           ],
@@ -1704,28 +1726,28 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'posts',
               type: 'Post',
               array: true,
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'title' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'title', type: 'String' },
                 {
                   kind: 'Field' as const,
                   name: 'comments',
                   type: 'Comment',
                   array: true,
                   selections: [
-                    { kind: 'Field' as const, name: '__typename' },
-                    { kind: 'Field' as const, name: 'postId' },
-                    { kind: 'Field' as const, name: 'id' },
-                    { kind: 'Field' as const, name: 'text' },
+                    { kind: 'Field' as const, name: '__typename', type: 'String' },
+                    { kind: 'Field' as const, name: 'postId', type: 'ID' },
+                    { kind: 'Field' as const, name: 'id', type: 'ID' },
+                    { kind: 'Field' as const, name: 'text', type: 'String' },
                   ],
                 },
               ],
@@ -1804,15 +1826,16 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'stats',
+              type: 'Stats',
               selections: [
-                { kind: 'Field' as const, name: 'followers' },
-                { kind: 'Field' as const, name: 'following' },
+                { kind: 'Field' as const, name: 'followers', type: 'String' },
+                { kind: 'Field' as const, name: 'following', type: 'String' },
               ],
             },
           ],
@@ -1862,9 +1885,9 @@ describe('normalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -1908,17 +1931,17 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'bestFriend',
               type: 'User',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -1973,21 +1996,22 @@ describe('normalize', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'metadata',
+              type: 'Metadata',
               selections: [
-                { kind: 'Field' as const, name: 'views' },
+                { kind: 'Field' as const, name: 'views', type: 'String' },
                 {
                   kind: 'Field' as const,
                   name: 'editor',
                   type: 'User',
                   selections: [
-                    { kind: 'Field' as const, name: '__typename' },
-                    { kind: 'Field' as const, name: 'id' },
-                    { kind: 'Field' as const, name: 'name' },
+                    { kind: 'Field' as const, name: '__typename', type: 'String' },
+                    { kind: 'Field' as const, name: 'id', type: 'ID' },
+                    { kind: 'Field' as const, name: 'name', type: 'String' },
                   ],
                 },
               ],
@@ -2049,20 +2073,23 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'profile',
+              type: 'Profile',
               selections: [
                 {
                   kind: 'Field' as const,
                   name: 'settings',
+                  type: 'Settings',
                   selections: [
                     {
                       kind: 'Field' as const,
                       name: 'privacy',
-                      selections: [{ kind: 'Field' as const, name: 'level' }],
+                      type: 'Privacy',
+                      selections: [{ kind: 'Field' as const, name: 'level', type: 'String' }],
                     },
                   ],
                 },
@@ -2115,7 +2142,7 @@ describe('normalize', () => {
 
   describe('edge cases', () => {
     it('null data', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = null;
 
@@ -2126,7 +2153,7 @@ describe('normalize', () => {
     });
 
     it('undefined data', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = undefined;
 
@@ -2137,7 +2164,7 @@ describe('normalize', () => {
     });
 
     it('empty object data', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
       const data = {};
 
@@ -2163,9 +2190,10 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -2192,8 +2220,8 @@ describe('normalize', () => {
   describe('falsy values', () => {
     it('should handle 0 as field value', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'count' },
-        { kind: 'Field' as const, name: 'balance' },
+        { kind: 'Field' as const, name: 'count', type: 'String' },
+        { kind: 'Field' as const, name: 'balance', type: 'String' },
       ];
 
       const data = { count: 0, balance: 0 };
@@ -2214,8 +2242,8 @@ describe('normalize', () => {
 
     it('should handle false as field value', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'active' },
-        { kind: 'Field' as const, name: 'verified' },
+        { kind: 'Field' as const, name: 'active', type: 'String' },
+        { kind: 'Field' as const, name: 'verified', type: 'String' },
       ];
 
       const data = { active: false, verified: false };
@@ -2236,8 +2264,8 @@ describe('normalize', () => {
 
     it('should handle empty string as field value', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'description' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'description', type: 'String' },
       ];
 
       const data = { name: '', description: '' };
@@ -2258,11 +2286,11 @@ describe('normalize', () => {
 
     it('should distinguish between null, undefined, 0, false, and empty string', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'nullValue' },
-        { kind: 'Field' as const, name: 'undefinedValue' },
-        { kind: 'Field' as const, name: 'zeroValue' },
-        { kind: 'Field' as const, name: 'falseValue' },
-        { kind: 'Field' as const, name: 'emptyString' },
+        { kind: 'Field' as const, name: 'nullValue', type: 'String' },
+        { kind: 'Field' as const, name: 'undefinedValue', type: 'String' },
+        { kind: 'Field' as const, name: 'zeroValue', type: 'String' },
+        { kind: 'Field' as const, name: 'falseValue', type: 'String' },
+        { kind: 'Field' as const, name: 'emptyString', type: 'String' },
       ];
 
       const data = {
@@ -2298,9 +2326,9 @@ describe('normalize', () => {
           name: 'item',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2338,9 +2366,9 @@ describe('normalize', () => {
           name: 'item',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2378,9 +2406,9 @@ describe('normalize', () => {
           name: 'item',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2412,7 +2440,7 @@ describe('normalize', () => {
     });
 
     it('should handle falsy values in arrays', () => {
-      const selections = [{ kind: 'Field' as const, name: 'values' }];
+      const selections = [{ kind: 'Field' as const, name: 'values', type: 'String' }];
 
       const data = { values: [0, false, '', null, 1, true, 'text'] };
 
@@ -2431,9 +2459,10 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'metadata',
+          type: 'Metadata',
           selections: [
-            { kind: 'Field' as const, name: 'version' },
-            { kind: 'Field' as const, name: 'timestamp' },
+            { kind: 'Field' as const, name: 'version', type: 'String' },
+            { kind: 'Field' as const, name: 'timestamp', type: 'String' },
           ],
         },
       ];
@@ -2465,9 +2494,9 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2507,14 +2536,15 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'settings',
+              type: 'Settings',
               selections: [
-                { kind: 'Field' as const, name: 'theme' },
-                { kind: 'Field' as const, name: 'language' },
+                { kind: 'Field' as const, name: 'theme', type: 'String' },
+                { kind: 'Field' as const, name: 'language', type: 'String' },
               ],
             },
           ],
@@ -2562,16 +2592,16 @@ describe('normalize', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'author',
               type: 'User',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -2625,10 +2655,11 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2650,10 +2681,11 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2675,10 +2707,11 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2700,10 +2733,11 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             filter: { kind: 'variable' as const, name: 'filter' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2737,10 +2771,11 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             ids: { kind: 'variable' as const, name: 'ids' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2762,6 +2797,7 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
             offset: { kind: 'variable' as const, name: 'offset' },
@@ -2769,7 +2805,7 @@ describe('normalize', () => {
             nullVar: { kind: 'variable' as const, name: 'nullVar' },
             undefinedVar: { kind: 'variable' as const, name: 'undefinedVar' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2799,12 +2835,13 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
             active: { kind: 'variable' as const, name: 'active' },
             search: { kind: 'variable' as const, name: 'search' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -2829,8 +2866,8 @@ describe('normalize', () => {
   describe('storage merging', () => {
     describe('root level merging', () => {
       it('should add new root field to existing storage', () => {
-        const selections1 = [{ kind: 'Field' as const, name: 'name' }];
-        const selections2 = [{ kind: 'Field' as const, name: 'email' }];
+        const selections1 = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
+        const selections2 = [{ kind: 'Field' as const, name: 'email', type: 'String' }];
 
         const { storage } = normalizeTest(selections1, { name: 'Alice' });
         normalizeTest(selections2, { email: 'alice@example.com' }, {}, storage);
@@ -2844,7 +2881,7 @@ describe('normalize', () => {
       });
 
       it('should overwrite existing root field', () => {
-        const selections = [{ kind: 'Field' as const, name: 'name' }];
+        const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
 
         const { storage } = normalizeTest(selections, { name: 'Alice' });
         normalizeTest(selections, { name: 'Bob' }, {}, storage);
@@ -2861,9 +2898,10 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'config',
+            type: 'Config',
             selections: [
-              { kind: 'Field' as const, name: 'theme' },
-              { kind: 'Field' as const, name: 'language' },
+              { kind: 'Field' as const, name: 'theme', type: 'String' },
+              { kind: 'Field' as const, name: 'language', type: 'String' },
             ],
           },
         ];
@@ -2893,9 +2931,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -2906,9 +2944,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'email' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'email', type: 'String' },
             ],
           },
         ];
@@ -2937,9 +2975,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -2967,9 +3005,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3003,9 +3041,9 @@ describe('normalize', () => {
             type: 'User',
             array: true,
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3046,7 +3084,7 @@ describe('normalize', () => {
 
     describe('array field merging', () => {
       it('should replace scalar array completely', () => {
-        const selections = [{ kind: 'Field' as const, name: 'tags' }];
+        const selections = [{ kind: 'Field' as const, name: 'tags', type: 'String', array: true }];
 
         const { storage } = normalizeTest(selections, { tags: ['typescript', 'graphql'] });
         normalizeTest(selections, { tags: ['react', 'vue'] }, {}, storage);
@@ -3066,9 +3104,9 @@ describe('normalize', () => {
             type: 'User',
             array: true,
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3116,9 +3154,10 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'items',
+            type: 'Item',
             selections: [
-              { kind: 'Field' as const, name: 'name' },
-              { kind: 'Field' as const, name: 'value' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
+              { kind: 'Field' as const, name: 'value', type: 'String' },
             ],
           },
         ];
@@ -3148,9 +3187,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3180,9 +3219,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3208,9 +3247,10 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'item',
+            type: 'Item',
             selections: [
-              { kind: 'Field' as const, name: 'name' },
-              { kind: 'Field' as const, name: 'value' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
+              { kind: 'Field' as const, name: 'value', type: 'String' },
             ],
           },
         ];
@@ -3221,9 +3261,9 @@ describe('normalize', () => {
             name: 'item',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3253,9 +3293,9 @@ describe('normalize', () => {
             name: 'item',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3264,9 +3304,10 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'item',
+            type: 'Item',
             selections: [
-              { kind: 'Field' as const, name: 'name' },
-              { kind: 'Field' as const, name: 'value' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
+              { kind: 'Field' as const, name: 'value', type: 'String' },
             ],
           },
         ];
@@ -3301,9 +3342,9 @@ describe('normalize', () => {
             name: 'currentUser',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3336,17 +3377,17 @@ describe('normalize', () => {
             name: 'post',
             type: 'Post',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'title' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'title', type: 'String' },
               {
                 kind: 'Field' as const,
                 name: 'author',
                 type: 'User',
                 selections: [
-                  { kind: 'Field' as const, name: '__typename' },
-                  { kind: 'Field' as const, name: 'id' },
-                  { kind: 'Field' as const, name: 'name' },
+                  { kind: 'Field' as const, name: '__typename', type: 'String' },
+                  { kind: 'Field' as const, name: 'id', type: 'ID' },
+                  { kind: 'Field' as const, name: 'name', type: 'String' },
                 ],
               },
             ],
@@ -3400,11 +3441,18 @@ describe('normalize', () => {
 
     describe('complex merging scenarios', () => {
       it('should handle multiple sequential normalizations', () => {
-        const { storage } = normalizeTest([{ kind: 'Field' as const, name: 'name' }], { name: 'Alice' });
+        const { storage } = normalizeTest([{ kind: 'Field' as const, name: 'name', type: 'String' }], {
+          name: 'Alice',
+        });
 
-        normalizeTest([{ kind: 'Field' as const, name: 'email' }], { email: 'alice@example.com' }, {}, storage);
+        normalizeTest(
+          [{ kind: 'Field' as const, name: 'email', type: 'String' }],
+          { email: 'alice@example.com' },
+          {},
+          storage,
+        );
 
-        normalizeTest([{ kind: 'Field' as const, name: 'age' }], { age: 30 }, {}, storage);
+        normalizeTest([{ kind: 'Field' as const, name: 'age', type: 'String' }], { age: 30 }, {}, storage);
 
         expect(storage).toEqual({
           [RootFieldKey]: {
@@ -3422,9 +3470,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3435,9 +3483,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'email' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'email', type: 'String' },
             ],
           },
         ];
@@ -3448,9 +3496,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'age' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'age', type: 'String' },
             ],
           },
         ];
@@ -3477,29 +3525,29 @@ describe('normalize', () => {
 
       it('should handle mixed root and entity updates', () => {
         const selections1 = [
-          { kind: 'Field' as const, name: 'title' },
+          { kind: 'Field' as const, name: 'title', type: 'String' },
           {
             kind: 'Field' as const,
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
 
         const selections2 = [
-          { kind: 'Field' as const, name: 'description' },
+          { kind: 'Field' as const, name: 'description', type: 'String' },
           {
             kind: 'Field' as const,
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'email' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'email', type: 'String' },
             ],
           },
         ];
@@ -3539,8 +3587,9 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'posts',
+            type: 'Post',
             args: { limit: { kind: 'literal' as const, value: 5 } },
-            selections: [{ kind: 'Field' as const, name: 'title' }],
+            selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
           },
         ];
 
@@ -3548,8 +3597,9 @@ describe('normalize', () => {
           {
             kind: 'Field' as const,
             name: 'posts',
+            type: 'Post',
             args: { limit: { kind: 'literal' as const, value: 10 } },
-            selections: [{ kind: 'Field' as const, name: 'title' }],
+            selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
           },
         ];
 
@@ -3574,10 +3624,10 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
-              { kind: 'Field' as const, name: 'email' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
+              { kind: 'Field' as const, name: 'email', type: 'String' },
             ],
           },
         ];
@@ -3588,9 +3638,9 @@ describe('normalize', () => {
             name: 'user',
             type: 'User',
             selections: [
-              { kind: 'Field' as const, name: '__typename' },
-              { kind: 'Field' as const, name: 'id' },
-              { kind: 'Field' as const, name: 'name' },
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
             ],
           },
         ];
@@ -3621,16 +3671,16 @@ describe('normalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'BasicInfo',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
         {
           kind: 'FragmentSpread' as const,
           name: 'ContactInfo',
           selections: [
-            { kind: 'Field' as const, name: 'email' },
-            { kind: 'Field' as const, name: 'phone' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
+            { kind: 'Field' as const, name: 'phone', type: 'String' },
           ],
         },
       ];
@@ -3656,13 +3706,13 @@ describe('normalize', () => {
 
     it('should handle same field in field and fragment spread', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'FragmentSpread' as const,
           name: 'UserInfo',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -3691,17 +3741,17 @@ describe('normalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
           ],
         },
@@ -3739,19 +3789,20 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'OuterFragment',
               selections: [
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
                 {
                   kind: 'FragmentSpread' as const,
                   name: 'InnerFragment',
                   selections: [
-                    { kind: 'Field' as const, name: 'name' },
-                    { kind: 'Field' as const, name: 'email' },
+                    { kind: 'Field' as const, name: 'name', type: 'String' },
+                    { kind: 'Field' as const, name: 'email', type: 'String' },
                   ],
                 },
               ],
@@ -3785,11 +3836,12 @@ describe('normalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           alias: 'recentPosts',
           args: {
             limit: { kind: 'literal' as const, value: 5 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
         {
           kind: 'FragmentSpread' as const,
@@ -3798,11 +3850,12 @@ describe('normalize', () => {
             {
               kind: 'Field' as const,
               name: 'posts',
+              type: 'Post',
               alias: 'allPosts',
               args: {
                 limit: { kind: 'literal' as const, value: 100 },
               },
-              selections: [{ kind: 'Field' as const, name: 'title' }],
+              selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
             },
           ],
         },
@@ -3834,15 +3887,15 @@ describe('normalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserDetails',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],

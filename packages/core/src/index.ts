@@ -2,7 +2,7 @@
  * Core runtime for Mearie GraphQL client.
  */
 
-export type { Artifact, ArtifactKind, DataOf, FragmentRefs, VariablesOf } from '@mearie/shared';
+export type { Artifact, ArtifactKind, DataOf, FragmentRefs, VariablesOf, SchemaMeta } from '@mearie/shared';
 
 export type { Exchange, ExchangeIO, Operation, OperationResult, OperationMetadataMap } from './exchange.ts';
 export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';

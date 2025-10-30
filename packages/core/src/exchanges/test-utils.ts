@@ -95,7 +95,7 @@ export const testExchange = async (
   exchange: Exchange,
   forward: ExchangeIO,
   operations: Operation[],
-  client?: Pick<Client, 'schema'>,
+  client?: Pick<Client, 'schema' | 'scalars'>,
 ): Promise<OperationResult[]> => {
   const results: OperationResult[] = [];
   vi.useFakeTimers();

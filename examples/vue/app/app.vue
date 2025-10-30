@@ -7,9 +7,7 @@ import '~/assets/css/main.css';
     <header class="border-b border-neutral-200">
       <div class="max-w-7xl mx-auto px-6">
         <div class="flex items-center h-16">
-          <NuxtLink to="/" class="text-lg font-semibold text-neutral-950">
-            Mearie Examples
-          </NuxtLink>
+          <NuxtLink to="/" class="text-lg font-semibold text-neutral-950"> Mearie Examples </NuxtLink>
         </div>
       </div>
     </header>

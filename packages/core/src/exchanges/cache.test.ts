@@ -9,7 +9,8 @@ const schema: SchemaMeta = {
     User: { keyFields: ['id'] },
     Post: { keyFields: ['id'] },
   },
-  inputTypes: {},
+  inputs: {},
+  scalars: {},
 };
 
 const client = makeTestClient({ schema });
@@ -41,7 +42,7 @@ describe('cacheExchange', () => {
         });
         const operation = makeTestOperation({
           kind: 'query',
-          selections: [{ kind: 'Field', name: 'test' }],
+          selections: [{ kind: 'Field', name: 'test', type: 'Boolean' }],
         });
 
         await testExchange(exchange, forward, [operation], client);
@@ -76,7 +77,7 @@ describe('cacheExchange', () => {
         }));
         const operation = makeTestOperation({
           kind: 'query',
-          selections: [{ kind: 'Field', name: 'test' }],
+          selections: [{ kind: 'Field', name: 'test', type: 'Boolean' }],
         });
 
         const results1 = await testExchange(exchange, forward, [operation], client);
@@ -206,7 +207,7 @@ describe('cacheExchange', () => {
         const forward = makeTestForward();
         const operation = makeTestOperation({
           kind: 'query',
-          selections: [{ kind: 'Field', name: 'test' }],
+          selections: [{ kind: 'Field', name: 'test', type: 'Boolean' }],
         });
 
         const results = await testExchange(exchange, forward, [operation], client);
@@ -501,10 +502,11 @@ describe('cacheExchange', () => {
           {
             kind: 'Field',
             name: 'user',
+            type: 'User',
             selections: [
-              { kind: 'Field', name: '__typename' },
-              { kind: 'Field', name: 'id' },
-              { kind: 'Field', name: 'name' },
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
             ],
           },
         ],
@@ -518,10 +520,11 @@ describe('cacheExchange', () => {
           {
             kind: 'Field',
             name: 'updateUser',
+            type: 'User',
             selections: [
-              { kind: 'Field', name: '__typename' },
-              { kind: 'Field', name: 'id' },
-              { kind: 'Field', name: 'name' },
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
             ],
           },
         ],
@@ -572,11 +575,12 @@ describe('cacheExchange', () => {
           {
             kind: 'Field',
             name: 'user',
+            type: 'User',
             selections: [
-              { kind: 'Field', name: '__typename' },
-              { kind: 'Field', name: 'id' },
-              { kind: 'Field', name: 'name' },
-              { kind: 'Field', name: 'email' },
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
             ],
           },
         ],
@@ -589,9 +593,9 @@ describe('cacheExchange', () => {
         key: 'fragment-1',
         metadata: { fragmentRef },
         selections: [
-          { kind: 'Field', name: '__typename' },
-          { kind: 'Field', name: 'id' },
-          { kind: 'Field', name: 'email' },
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'email', type: 'String' },
         ],
       });
 
@@ -603,10 +607,11 @@ describe('cacheExchange', () => {
           {
             kind: 'Field',
             name: 'updateUser',
+            type: 'User',
             selections: [
-              { kind: 'Field', name: '__typename' },
-              { kind: 'Field', name: 'id' },
-              { kind: 'Field', name: 'email' },
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'email', type: 'String' },
             ],
           },
         ],

@@ -32,7 +32,7 @@ const expectSameCalls = (actual: [StorageKey, FieldKey][], expected: [StorageKey
 describe('denormalize', () => {
   describe('basic fields', () => {
     it('single scalar field', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'name@{}': 'Alice' },
       };
@@ -46,9 +46,9 @@ describe('denormalize', () => {
 
     it('multiple scalar fields', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'age' },
-        { kind: 'Field' as const, name: 'active' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'age', type: 'String' },
+        { kind: 'Field' as const, name: 'active', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {
@@ -74,7 +74,7 @@ describe('denormalize', () => {
     });
 
     it('null value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'name@{}': null },
       };
@@ -87,7 +87,7 @@ describe('denormalize', () => {
     });
 
     it('undefined value (missing from storage)', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
       const storage = {
         [RootFieldKey]: {},
       };
@@ -106,9 +106,10 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -138,11 +139,13 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'level1',
+          type: 'Level1',
           selections: [
             {
               kind: 'Field' as const,
               name: 'level2',
-              selections: [{ kind: 'Field' as const, name: 'value' }],
+              type: 'Level2',
+              selections: [{ kind: 'Field' as const, name: 'value', type: 'String' }],
             },
           ],
         },
@@ -175,7 +178,8 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'User',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
       const storage = {
@@ -194,9 +198,10 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -222,7 +227,7 @@ describe('denormalize', () => {
 
   describe('arrays', () => {
     it('array of scalars', () => {
-      const selections = [{ kind: 'Field' as const, name: 'tags' }];
+      const selections = [{ kind: 'Field' as const, name: 'tags', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'tags@{}': ['typescript', 'graphql', 'cache'] },
       };
@@ -239,9 +244,10 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
+          type: 'Item',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'value' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'value', type: 'String' },
           ],
         },
       ];
@@ -271,7 +277,8 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'Item',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
       const storage = {
@@ -294,7 +301,8 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
-          selections: [{ kind: 'Field' as const, name: 'name' }],
+          type: 'Item',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
         },
       ];
       const storage = {
@@ -309,7 +317,7 @@ describe('denormalize', () => {
     });
 
     it('nested arrays', () => {
-      const selections = [{ kind: 'Field' as const, name: 'matrix' }];
+      const selections = [{ kind: 'Field' as const, name: 'matrix', type: 'String' }];
       const storage = {
         [RootFieldKey]: {
           'matrix@{}': [
@@ -336,11 +344,13 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'data',
+          type: 'Data',
           selections: [
             {
               kind: 'Field' as const,
               name: 'items',
-              selections: [{ kind: 'Field' as const, name: 'values' }],
+              type: 'Item',
+              selections: [{ kind: 'Field' as const, name: 'values', type: 'String' }],
             },
           ],
         },
@@ -369,9 +379,10 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'items',
+          type: 'Item',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'value' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'value', type: 'String' },
           ],
         },
       ];
@@ -399,9 +410,9 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -439,10 +450,10 @@ describe('denormalize', () => {
           name: 'comment',
           type: 'Comment',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'postId' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'text' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'postId', type: 'ID' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'text', type: 'String' },
           ],
         },
       ];
@@ -484,9 +495,9 @@ describe('denormalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -533,17 +544,17 @@ describe('denormalize', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'title' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'author',
               type: 'User',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -598,9 +609,9 @@ describe('denormalize', () => {
           name: 'currentUser',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
         {
@@ -608,9 +619,9 @@ describe('denormalize', () => {
           name: 'author',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -662,9 +673,9 @@ describe('denormalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -715,9 +726,9 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -744,10 +755,10 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -786,11 +797,12 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal' as const, value: 10 },
             offset: { kind: 'literal' as const, value: 0 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -813,11 +825,12 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
             offset: { kind: 'variable' as const, name: 'offset' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -841,20 +854,22 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           alias: 'posts1',
           args: {
             limit: { kind: 'literal' as const, value: 5 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           alias: 'posts2',
           args: {
             limit: { kind: 'literal' as const, value: 10 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -882,13 +897,14 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             filter: {
               kind: 'literal' as const,
               value: { status: 'published', tags: ['typescript', 'graphql'] },
             },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -913,10 +929,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal' as const, value: 10 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -937,6 +954,7 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'name',
+          type: 'String',
           alias: 'userName',
         },
       ];
@@ -960,9 +978,9 @@ describe('denormalize', () => {
           type: 'User',
           args: { id: { kind: 'literal' as const, value: '1' } },
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
         {
@@ -972,9 +990,9 @@ describe('denormalize', () => {
           type: 'User',
           args: { id: { kind: 'literal' as const, value: '2' } },
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -1019,10 +1037,12 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'post',
+          type: 'Post',
           selections: [
             {
               kind: 'Field' as const,
               name: 'authorName',
+              type: 'String',
               alias: 'writerName',
             },
           ],
@@ -1052,6 +1072,7 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'name',
+          type: 'String',
           alias: 'userName',
         },
       ];
@@ -1074,8 +1095,8 @@ describe('denormalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'UserFields',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -1110,9 +1131,9 @@ describe('denormalize', () => {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -1143,8 +1164,9 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'ProfileFragment',
@@ -1152,7 +1174,8 @@ describe('denormalize', () => {
                 {
                   kind: 'Field' as const,
                   name: 'profile',
-                  selections: [{ kind: 'Field' as const, name: 'bio' }],
+                  type: 'Profile',
+                  selections: [{ kind: 'Field' as const, name: 'bio', type: 'String' }],
                 },
               ],
             },
@@ -1190,14 +1213,14 @@ describe('denormalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'BasicInfo',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
         {
           kind: 'FragmentSpread' as const,
           name: 'AgeInfo',
-          selections: [{ kind: 'Field' as const, name: 'age' }],
+          selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
         },
       ];
       const storage = {
@@ -1229,8 +1252,8 @@ describe('denormalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'UserFields',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -1261,12 +1284,12 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
           ],
         },
@@ -1305,17 +1328,17 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'Post',
-              selections: [{ kind: 'Field' as const, name: 'title' }],
+              selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
             },
           ],
         },
@@ -1354,17 +1377,18 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
                 {
                   kind: 'Field' as const,
                   name: 'profile',
-                  selections: [{ kind: 'Field' as const, name: 'bio' }],
+                  type: 'Profile',
+                  selections: [{ kind: 'Field' as const, name: 'bio', type: 'String' }],
                 },
               ],
             },
@@ -1412,17 +1436,17 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'name' }],
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'email' }],
+              selections: [{ kind: 'Field' as const, name: 'email', type: 'String' }],
             },
           ],
         },
@@ -1464,14 +1488,14 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -1514,14 +1538,14 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserDetails',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -1561,14 +1585,14 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -1611,20 +1635,20 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'BasicInfo',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'age' }],
+              selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
             },
           ],
         },
@@ -1666,20 +1690,20 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'ContactInfo',
-              selections: [{ kind: 'Field' as const, name: 'email' }],
+              selections: [{ kind: 'Field' as const, name: 'email', type: 'String' }],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
               selections: [
-                { kind: 'Field' as const, name: 'age' },
-                { kind: 'Field' as const, name: 'bio' },
+                { kind: 'Field' as const, name: 'age', type: 'String' },
+                { kind: 'Field' as const, name: 'bio', type: 'String' },
               ],
             },
           ],
@@ -1727,20 +1751,20 @@ describe('denormalize', () => {
           name: 'entity',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'BasicInfo',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
             {
               kind: 'InlineFragment' as const,
               on: 'User',
-              selections: [{ kind: 'Field' as const, name: 'age' }],
+              selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
             },
           ],
         },
@@ -1781,28 +1805,28 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'posts',
               type: 'Post',
               array: true,
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'title' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'title', type: 'String' },
                 {
                   kind: 'Field' as const,
                   name: 'comments',
                   type: 'Comment',
                   array: true,
                   selections: [
-                    { kind: 'Field' as const, name: '__typename' },
-                    { kind: 'Field' as const, name: 'postId' },
-                    { kind: 'Field' as const, name: 'id' },
-                    { kind: 'Field' as const, name: 'text' },
+                    { kind: 'Field' as const, name: '__typename', type: 'String' },
+                    { kind: 'Field' as const, name: 'postId', type: 'ID' },
+                    { kind: 'Field' as const, name: 'id', type: 'ID' },
+                    { kind: 'Field' as const, name: 'text', type: 'String' },
                   ],
                 },
               ],
@@ -1881,15 +1905,16 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'stats',
+              type: 'Stats',
               selections: [
-                { kind: 'Field' as const, name: 'followers' },
-                { kind: 'Field' as const, name: 'following' },
+                { kind: 'Field' as const, name: 'followers', type: 'String' },
+                { kind: 'Field' as const, name: 'following', type: 'String' },
               ],
             },
           ],
@@ -1939,9 +1964,9 @@ describe('denormalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -1985,17 +2010,17 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'bestFriend',
               type: 'User',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -2050,18 +2075,18 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'posts',
               type: 'Post',
               array: true,
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'title' },
-                { kind: 'Field' as const, name: 'content' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'title', type: 'String' },
+                { kind: 'Field' as const, name: 'content', type: 'String' },
               ],
             },
           ],
@@ -2126,8 +2151,8 @@ describe('denormalize', () => {
 
     it('denormalize result is empty object', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {},
@@ -2145,9 +2170,9 @@ describe('denormalize', () => {
 
     it('all fields missing', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
-        { kind: 'Field' as const, name: 'age' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+        { kind: 'Field' as const, name: 'age', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {},
@@ -2167,7 +2192,7 @@ describe('denormalize', () => {
 
   describe('falsy values', () => {
     it('0 as field value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'count' }];
+      const selections = [{ kind: 'Field' as const, name: 'count', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'count@{}': 0 },
       };
@@ -2180,7 +2205,7 @@ describe('denormalize', () => {
     });
 
     it('false as field value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'active' }];
+      const selections = [{ kind: 'Field' as const, name: 'active', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'active@{}': false },
       };
@@ -2193,7 +2218,7 @@ describe('denormalize', () => {
     });
 
     it('empty string as field value', () => {
-      const selections = [{ kind: 'Field' as const, name: 'bio' }];
+      const selections = [{ kind: 'Field' as const, name: 'bio', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'bio@{}': '' },
       };
@@ -2207,11 +2232,11 @@ describe('denormalize', () => {
 
     it('distinguish between null, undefined, 0, false, and empty string', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'nullValue' },
-        { kind: 'Field' as const, name: 'undefinedValue' },
-        { kind: 'Field' as const, name: 'zeroValue' },
-        { kind: 'Field' as const, name: 'falseValue' },
-        { kind: 'Field' as const, name: 'emptyString' },
+        { kind: 'Field' as const, name: 'nullValue', type: 'String' },
+        { kind: 'Field' as const, name: 'undefinedValue', type: 'String' },
+        { kind: 'Field' as const, name: 'zeroValue', type: 'String' },
+        { kind: 'Field' as const, name: 'falseValue', type: 'String' },
+        { kind: 'Field' as const, name: 'emptyString', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {
@@ -2241,7 +2266,7 @@ describe('denormalize', () => {
     });
 
     it('falsy values in arrays', () => {
-      const selections = [{ kind: 'Field' as const, name: 'values' }];
+      const selections = [{ kind: 'Field' as const, name: 'values', type: 'String' }];
       const storage = {
         [RootFieldKey]: { 'values@{}': [0, false, '', null] },
       };
@@ -2266,9 +2291,9 @@ describe('denormalize', () => {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -2301,9 +2326,9 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2339,13 +2364,14 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
             {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -2380,8 +2406,8 @@ describe('denormalize', () => {
           name: 'post',
           type: 'Post',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'author',
@@ -2391,9 +2417,9 @@ describe('denormalize', () => {
                   kind: 'FragmentSpread' as const,
                   name: 'UserFields',
                   selections: [
-                    { kind: 'Field' as const, name: '__typename' },
-                    { kind: 'Field' as const, name: 'id' },
-                    { kind: 'Field' as const, name: 'name' },
+                    { kind: 'Field' as const, name: '__typename', type: 'String' },
+                    { kind: 'Field' as const, name: 'id', type: 'ID' },
+                    { kind: 'Field' as const, name: 'name', type: 'String' },
                   ],
                 },
               ],
@@ -2446,15 +2472,15 @@ describe('denormalize', () => {
               kind: 'FragmentSpread' as const,
               name: 'BasicInfo',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
             {
               kind: 'FragmentSpread' as const,
               name: 'ContactInfo',
-              selections: [{ kind: 'Field' as const, name: 'email' }],
+              selections: [{ kind: 'Field' as const, name: 'email', type: 'String' }],
             },
           ],
         },
@@ -2491,9 +2517,9 @@ describe('denormalize', () => {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
               ],
             },
           ],
@@ -2523,10 +2549,10 @@ describe('denormalize', () => {
   describe('denormalize starting from entity (fragment-like)', () => {
     it('should denormalize entity fields when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
 
       const storage = {
@@ -2559,17 +2585,17 @@ describe('denormalize', () => {
 
     it('should denormalize nested entity reference when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'title' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'author',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2616,18 +2642,18 @@ describe('denormalize', () => {
 
     it('should denormalize array of entities when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'posts',
           type: 'Post',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'title' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
           ],
         },
       ];
@@ -2681,15 +2707,16 @@ describe('denormalize', () => {
 
     it('should handle embedded non-entity object when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'settings',
+          type: 'Settings',
           selections: [
-            { kind: 'Field' as const, name: 'theme' },
-            { kind: 'Field' as const, name: 'language' },
+            { kind: 'Field' as const, name: 'theme', type: 'String' },
+            { kind: 'Field' as const, name: 'language', type: 'String' },
           ],
         },
       ];
@@ -2734,10 +2761,10 @@ describe('denormalize', () => {
           kind: 'FragmentSpread' as const,
           name: 'UserFields',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -2764,14 +2791,14 @@ describe('denormalize', () => {
 
     it('should handle inline fragment when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
         {
           kind: 'InlineFragment' as const,
           on: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
       ];
@@ -2806,11 +2833,11 @@ describe('denormalize', () => {
 
     it('should handle missing field when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
-        { kind: 'Field' as const, name: 'age' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+        { kind: 'Field' as const, name: 'age', type: 'String' },
       ];
 
       const storage = {
@@ -2844,17 +2871,17 @@ describe('denormalize', () => {
 
     it('should handle missing nested entity reference when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'title' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'author',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -2890,9 +2917,9 @@ describe('denormalize', () => {
 
     it('should return null and partial when entity does not exist in storage', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
       ];
 
       const storage = {
@@ -2909,28 +2936,28 @@ describe('denormalize', () => {
 
     it('should handle deeply nested structure when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'posts',
           type: 'Post',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'title' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'comments',
               type: 'Comment',
               array: true,
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'postId' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'text' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'postId', type: 'ID' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'text', type: 'String' },
               ],
             },
           ],
@@ -3001,16 +3028,17 @@ describe('denormalize', () => {
 
     it('should handle field arguments when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'literal' as const, value: 5 },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -3044,16 +3072,17 @@ describe('denormalize', () => {
 
     it('should handle variable arguments when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'name' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
 
@@ -3088,20 +3117,20 @@ describe('denormalize', () => {
 
     it('should handle mixed fragment spreads and fields when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
         {
           kind: 'FragmentSpread' as const,
           name: 'UserBasicInfo',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
-            { kind: 'Field' as const, name: 'email' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'email', type: 'String' },
           ],
         },
         {
           kind: 'InlineFragment' as const,
           on: 'User',
-          selections: [{ kind: 'Field' as const, name: 'age' }],
+          selections: [{ kind: 'Field' as const, name: 'age', type: 'String' }],
         },
       ];
 
@@ -3135,17 +3164,17 @@ describe('denormalize', () => {
 
     it('should handle array with null elements when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
         {
           kind: 'Field' as const,
           name: 'posts',
           type: 'Post',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'title' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
           ],
         },
       ];
@@ -3197,12 +3226,12 @@ describe('denormalize', () => {
 
     it('should handle falsy values when starting from entity', () => {
       const selections = [
-        { kind: 'Field' as const, name: '__typename' },
-        { kind: 'Field' as const, name: 'id' },
-        { kind: 'Field' as const, name: 'count' },
-        { kind: 'Field' as const, name: 'active' },
-        { kind: 'Field' as const, name: 'bio' },
-        { kind: 'Field' as const, name: 'nullField' },
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'count', type: 'String' },
+        { kind: 'Field' as const, name: 'active', type: 'String' },
+        { kind: 'Field' as const, name: 'bio', type: 'String' },
+        { kind: 'Field' as const, name: 'nullField', type: 'String' },
       ];
 
       const storage = {
@@ -3266,10 +3295,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -3293,10 +3323,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             limit: { kind: 'variable' as const, name: 'limit' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -3320,10 +3351,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             filter: { kind: 'variable' as const, name: 'filter' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -3347,10 +3379,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             tags: { kind: 'variable' as const, name: 'tags' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -3374,10 +3407,11 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'posts',
+          type: 'Post',
           args: {
             offset: { kind: 'variable' as const, name: 'offset' },
           },
-          selections: [{ kind: 'Field' as const, name: 'title' }],
+          selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
         },
       ];
       const storage = {
@@ -3400,8 +3434,8 @@ describe('denormalize', () => {
   describe('partial flag behavior', () => {
     it('all fields present', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {
@@ -3425,9 +3459,9 @@ describe('denormalize', () => {
 
     it('some fields missing', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
-        { kind: 'Field' as const, name: 'age' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+        { kind: 'Field' as const, name: 'age', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {
@@ -3455,8 +3489,8 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
           ],
         },
       ];
@@ -3481,14 +3515,16 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'Field' as const,
               name: 'profile',
+              type: 'Profile',
               selections: [
-                { kind: 'Field' as const, name: 'bio' },
-                { kind: 'Field' as const, name: 'avatar' },
+                { kind: 'Field' as const, name: 'bio', type: 'String' },
+                { kind: 'Field' as const, name: 'avatar', type: 'String' },
               ],
             },
           ],
@@ -3527,9 +3563,9 @@ describe('denormalize', () => {
           type: 'User',
           array: true,
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
           ],
         },
       ];
@@ -3569,7 +3605,7 @@ describe('denormalize', () => {
     });
 
     it('storage has extra fields not in selection', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
       const storage = {
         [RootFieldKey]: {
           'name@{}': 'Alice',
@@ -3591,8 +3627,8 @@ describe('denormalize', () => {
   describe('storage and selection mismatch', () => {
     it('selection field missing from storage', () => {
       const selections = [
-        { kind: 'Field' as const, name: 'name' },
-        { kind: 'Field' as const, name: 'email' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
       ];
       const storage = {
         [RootFieldKey]: {
@@ -3613,7 +3649,7 @@ describe('denormalize', () => {
     });
 
     it('storage field not in selection is ignored', () => {
-      const selections = [{ kind: 'Field' as const, name: 'name' }];
+      const selections = [{ kind: 'Field' as const, name: 'name', type: 'String' }];
       const storage = {
         [RootFieldKey]: {
           'name@{}': 'Alice',
@@ -3640,15 +3676,16 @@ describe('denormalize', () => {
           name: 'user',
           type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'posts',
+              type: 'Post',
               args: {
                 limit: { kind: 'literal' as const, value: 5 },
               },
-              selections: [{ kind: 'Field' as const, name: 'title' }],
+              selections: [{ kind: 'Field' as const, name: 'title', type: 'String' }],
             },
           ],
         },
@@ -3685,10 +3722,12 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
             {
               kind: 'Field' as const,
               name: 'name',
+              type: 'String',
               alias: 'userName',
             },
           ],
@@ -3720,15 +3759,16 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
             {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -3764,18 +3804,19 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserDetails',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'email' },
-                { kind: 'Field' as const, name: 'bio' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
+                { kind: 'Field' as const, name: 'bio', type: 'String' },
               ],
             },
           ],
@@ -3819,18 +3860,19 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
-            { kind: 'Field' as const, name: 'name' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' }, // overlapping
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' }, // overlapping
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],
@@ -3873,14 +3915,15 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'metadata',
+          type: 'Metadata',
           selections: [
-            { kind: 'Field' as const, name: 'version' },
+            { kind: 'Field' as const, name: 'version', type: 'String' },
             {
               kind: 'FragmentSpread' as const,
               name: 'MetadataDetails',
               selections: [
-                { kind: 'Field' as const, name: 'timestamp' },
-                { kind: 'Field' as const, name: 'author' },
+                { kind: 'Field' as const, name: 'timestamp', type: 'String' },
+                { kind: 'Field' as const, name: 'author', type: 'String' },
               ],
             },
           ],
@@ -3918,25 +3961,26 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'BasicInfo',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
             {
               kind: 'FragmentSpread' as const,
               name: 'ProfileInfo',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'bio' },
-                { kind: 'Field' as const, name: 'avatar' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'bio', type: 'String' },
+                { kind: 'Field' as const, name: 'avatar', type: 'String' },
               ],
             },
           ],
@@ -3979,23 +4023,25 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'user',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'Field' as const,
               name: 'company',
+              type: 'Company',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'id' },
-                { kind: 'Field' as const, name: 'name' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
                 {
                   kind: 'FragmentSpread' as const,
                   name: 'CompanyDetails',
                   selections: [
-                    { kind: 'Field' as const, name: '__typename' },
-                    { kind: 'Field' as const, name: 'industry' },
-                    { kind: 'Field' as const, name: 'founded' },
+                    { kind: 'Field' as const, name: '__typename', type: 'String' },
+                    { kind: 'Field' as const, name: 'industry', type: 'String' },
+                    { kind: 'Field' as const, name: 'founded', type: 'String' },
                   ],
                 },
               ],
@@ -4052,16 +4098,17 @@ describe('denormalize', () => {
         {
           kind: 'Field' as const,
           name: 'users',
+          type: 'User',
           selections: [
-            { kind: 'Field' as const, name: '__typename' },
-            { kind: 'Field' as const, name: 'id' },
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
             {
               kind: 'FragmentSpread' as const,
               name: 'UserFields',
               selections: [
-                { kind: 'Field' as const, name: '__typename' },
-                { kind: 'Field' as const, name: 'name' },
-                { kind: 'Field' as const, name: 'email' },
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+                { kind: 'Field' as const, name: 'email', type: 'String' },
               ],
             },
           ],

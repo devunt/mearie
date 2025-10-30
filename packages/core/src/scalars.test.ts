@@ -5,15 +5,16 @@ import type { Selection, VariableDef, SchemaMeta } from '@mearie/shared';
 const schemaMeta: SchemaMeta = {
   entities: {},
   inputs: {},
+  scalars: {},
 };
 
 const scalars: ScalarsConfig = {
   DateTime: {
-    parse: (value: string) => new Date(value),
-    serialize: (value: Date) => value.toISOString(),
+    parse: (value: unknown) => new Date(value as string),
+    serialize: (value: unknown) => (value as Date).toISOString(),
   },
   JSON: {
-    parse: (value: string) => JSON.parse(value),
+    parse: (value: unknown) => JSON.parse(value as string) as unknown,
     serialize: (value: unknown) => JSON.stringify(value),
   },
 };
@@ -548,9 +549,10 @@ describe('serializeScalars', () => {
 
     const result = serialize(schemaMeta, variableDefs, scalars, variables);
 
-    expect(Array.isArray((result as any).dates)).toBe(true);
-    expect((result as any).dates).toHaveLength(100);
-    expect((result as any).dates[0]).toBe('2025-01-01T10:00:00.000Z');
+    const typedResult = result as { dates: string[] };
+    expect(Array.isArray(typedResult.dates)).toBe(true);
+    expect(typedResult.dates).toHaveLength(100);
+    expect(typedResult.dates[0]).toBe('2025-01-01T10:00:00.000Z');
   });
 
   describe('object/array scalars', () => {
@@ -663,6 +665,7 @@ describe('serializeScalars', () => {
           fields: [{ name: 'posts', type: 'UpdatePostInput', array: true }],
         },
       },
+      scalars: {},
     };
 
     it('should serialize nested input object with scalars', () => {
@@ -760,6 +763,7 @@ describe('serializeScalars', () => {
             fields: [{ name: 'nested', type: 'Level2Input' }],
           },
         },
+        scalars: {},
       };
 
       const variables = {

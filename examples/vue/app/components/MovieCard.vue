@@ -66,10 +66,7 @@ const castMembers = computed(() =>
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/movies/${movie.data.id}`"
-    class="block border border-neutral-200 bg-white overflow-hidden"
-  >
+  <NuxtLink :to="`/movies/${movie.data.id}`" class="block border border-neutral-200 bg-white overflow-hidden">
     <img
       v-if="movie.data.posterUrl"
       :src="movie.data.posterUrl"

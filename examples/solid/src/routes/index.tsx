@@ -113,7 +113,7 @@ export default function HomePage() {
         }
       }
     `),
-    () => ({} as any),
+    () => ({}) as any,
     () => ({
       onData: handleReviewData,
       onError: handleReviewError,
@@ -251,7 +251,9 @@ export default function HomePage() {
                     </Show>
 
                     <Show
-                      when={moviesResult.data && !moviesResult.data.movies.pageInfo.hasNextPage && allMovies().length > 0}
+                      when={
+                        moviesResult.data && !moviesResult.data.movies.pageInfo.hasNextPage && allMovies().length > 0
+                      }
                     >
                       <Card class="text-center">
                         <p class="text-sm text-neutral-500">No more movies to load</p>
@@ -354,9 +356,7 @@ export default function HomePage() {
                   <h2 class="text-lg font-semibold text-neutral-950">Live Updates</h2>
                 </div>
                 <div class="text-neutral-600 inline-flex items-center text-xs font-medium">
-                  <div
-                    class={`w-1.5 h-1.5 rounded-full mr-1.5 ${isConnected() ? 'bg-green-500' : 'bg-red-500'}`}
-                  />
+                  <div class={`w-1.5 h-1.5 rounded-full mr-1.5 ${isConnected() ? 'bg-green-500' : 'bg-red-500'}`} />
                   {isConnected() ? 'Connected' : 'Disconnected'}
                 </div>
               </div>
@@ -401,7 +401,10 @@ export default function HomePage() {
                   <div class="space-y-2 max-h-[600px] overflow-y-auto">
                     <For each={activities()}>
                       {(activity) => (
-                        <A href={`/movies/${activity.data.movie.id}`} class="block border border-neutral-200 bg-white p-3">
+                        <A
+                          href={`/movies/${activity.data.movie.id}`}
+                          class="block border border-neutral-200 bg-white p-3"
+                        >
                           <div class="space-y-2">
                             <div class="flex items-start justify-between gap-3">
                               <p class="text-sm text-neutral-950 flex-1">{activity.data.movie.title}</p>

@@ -9,11 +9,11 @@ import { GraphQLError } from '../errors.ts';
 
 const scalars: ScalarsConfig = {
   DateTime: {
-    parse: (value: string) => new Date(value),
-    serialize: (value: Date) => value.toISOString(),
+    parse: (value: unknown) => new Date(value as string),
+    serialize: (value: unknown) => (value as Date).toISOString(),
   },
   JSON: {
-    parse: (value: string) => JSON.parse(value),
+    parse: (value: unknown) => JSON.parse(value as string) as unknown,
     serialize: (value: unknown) => JSON.stringify(value),
   },
 };
@@ -31,6 +31,7 @@ const schema: SchemaMeta = {
       ],
     },
   },
+  scalars: {},
 };
 
 const client = makeTestClient({ schema, scalars });
@@ -209,6 +210,7 @@ describe('scalarExchange', () => {
         {
           kind: 'Field',
           name: 'post',
+          type: 'Post',
           selections: [
             { kind: 'Field', name: 'createdAt', type: 'DateTime' },
             { kind: 'Field', name: 'title', type: 'String' },
@@ -335,6 +337,7 @@ describe('scalarExchange', () => {
           {
             kind: 'Field',
             name: 'createPost',
+            type: 'Post',
             selections: [
               { kind: 'Field', name: 'id', type: 'ID' },
               { kind: 'Field', name: 'createdAt', type: 'DateTime' },
@@ -439,18 +442,22 @@ describe('scalarExchange', () => {
         {
           kind: 'Field',
           name: 'level1',
+          type: 'Level1',
           selections: [
             {
               kind: 'Field',
               name: 'level2',
+              type: 'Level2',
               selections: [
                 {
                   kind: 'Field',
                   name: 'level3',
+                  type: 'Level3',
                   selections: [
                     {
                       kind: 'Field',
                       name: 'level4',
+                      type: 'Level4',
                       selections: [{ kind: 'Field', name: 'createdAt', type: 'DateTime' }],
                     },
                   ],
@@ -560,9 +567,10 @@ describe('scalarExchange', () => {
       const client = { scalars } as unknown as Client;
       const results = await testExchange(exchange, forward, [op], client);
 
-      expect(Array.isArray((results[0]!.data as any).posts)).toBe(true);
-      expect((results[0]!.data as any).posts).toHaveLength(1000);
-      expect((results[0]!.data as any).posts[0].createdAt).toBeInstanceOf(Date);
+      const data = results[0]!.data as { posts: { id: string; createdAt: Date }[] };
+      expect(Array.isArray(data.posts)).toBe(true);
+      expect(data.posts).toHaveLength(1000);
+      expect(data.posts[0].createdAt).toBeInstanceOf(Date);
     });
 
     it('should handle empty arrays in response', async () => {

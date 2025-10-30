@@ -3,7 +3,7 @@ import { makeFieldKey, isEntityLink, isNullish } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
 
-const typenameFieldKey = makeFieldKey({ kind: 'Field', name: '__typename' }, {});
+const typenameFieldKey = makeFieldKey({ kind: 'Field', name: '__typename', type: 'String' }, {});
 
 export const denormalize = (
   selections: readonly Selection[],

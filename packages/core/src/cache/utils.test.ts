@@ -119,6 +119,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'user',
+      type: 'User',
     };
 
     const key = makeFieldKey(selection, {});
@@ -130,6 +131,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'literal', value: 10 },
         offset: { kind: 'literal', value: 0 },
@@ -145,6 +147,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         zLimit: { kind: 'literal', value: 10 },
         aOffset: { kind: 'literal', value: 0 },
@@ -161,6 +164,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'variable', name: 'limit' },
         offset: { kind: 'variable', name: 'offset' },
@@ -176,6 +180,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'literal', value: 10 },
         offset: { kind: 'variable', name: 'offset' },
@@ -192,6 +197,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       alias: 'myPosts',
       args: {
         limit: { kind: 'literal', value: 5 },
@@ -207,6 +213,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         filter: {
           kind: 'literal',
@@ -224,6 +231,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'literal', value: null },
       },
@@ -238,6 +246,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'variable', name: 'limit' },
       },
@@ -252,6 +261,7 @@ describe('makeFieldKey', () => {
     const selection: FieldSelection = {
       kind: 'Field',
       name: 'posts',
+      type: 'Post',
       args: {
         limit: { kind: 'literal', value: 0 },
         active: { kind: 'literal', value: false },

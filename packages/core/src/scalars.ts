@@ -10,7 +10,11 @@ export type ScalarsConfig<TMeta extends SchemaMeta = SchemaMeta> = {
   [K in keyof TMeta['scalars']]: ScalarTransformer<TMeta['scalars'][K], unknown>;
 };
 
-export const parse = (selections: readonly Selection[], scalars: ScalarsConfig, value: unknown): unknown => {
+export const parse = <TMeta extends SchemaMeta = SchemaMeta>(
+  selections: readonly Selection[],
+  scalars: ScalarsConfig<TMeta>,
+  value: unknown,
+): unknown => {
   const parseValue = (selection: FieldSelection, value: unknown): unknown => {
     if (isNullish(value)) {
       return value;
@@ -60,10 +64,10 @@ export const parse = (selections: readonly Selection[], scalars: ScalarsConfig, 
   return parseField(selections, value);
 };
 
-export const serialize = (
-  schemaMeta: SchemaMeta,
+export const serialize = <TMeta extends SchemaMeta = SchemaMeta>(
+  schemaMeta: TMeta,
   variableDefs: readonly VariableDef[],
-  scalars: ScalarsConfig,
+  scalars: ScalarsConfig<TMeta>,
   variables: unknown,
 ): unknown => {
   const serializeValue = (variableDef: VariableDef, value: unknown): unknown => {
@@ -82,7 +86,7 @@ export const serialize = (
 
     const transformer = scalars[variableDef.type];
     if (transformer) {
-      return transformer.serialize(value);
+      return transformer.serialize(value as never);
     }
 
     return value;

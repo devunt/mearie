@@ -1,4 +1,4 @@
-import { ref, watchEffect, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
+import { ref, watchEffect, toValue, type MaybeRefOrGetter } from 'vue';
 import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
@@ -41,7 +41,7 @@ export const useFragment = <T extends Artifact<'fragment'>>(
 
   return {
     get data() {
-      return data.value;
+      return data.value as DataOf<T>;
     },
   };
 };

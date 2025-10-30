@@ -53,6 +53,7 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png', sizes: '32x32' }],
     ['meta', { property: 'og:image', content: 'https://mearie.dev/opengraph.png' }],
     ['meta', { property: 'twitter:card', content: 'summary_large_image' }],
+    ['script', { src: 'https://plausible.io/js/script.js', defer: 'defer', 'data-domain': 'mearie.dev' }],
   ],
 
   themeConfig: {

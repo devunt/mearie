@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@mearie/react": "workspace:*",
-    "@tanstack/react-router": "^1.133.32",
-    "@tanstack/react-start": "^1.133.32",
+    "@tanstack/react-router": "^1.133.36",
+    "@tanstack/react-start": "^1.134.0",
     "graphql-sse": "^2.6.0",
     "lucide-react": "^0.548.0",
     "react": "^19.2.0",

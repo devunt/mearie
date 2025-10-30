@@ -7,6 +7,9 @@ packages:
   - fixture
 
 catalog:
-  '@types/node': ^24.9.1
-  tsdown: ^0.15.10
+  '@types/node': ^24.9.2
+  tsdown: ^0.15.12
   typescript: ^5.9.3
+
+onlyBuiltDependencies:
+  - lefthook

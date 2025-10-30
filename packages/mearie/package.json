@@ -8,6 +8,9 @@
     "./types": "./src/types.ts",
     "./vite": "./src/vite.ts"
   },
+  "bin": {
+    "mearie": "./src/cli.ts"
+  },
   "files": [
     "dist",
     "package.json",
@@ -29,6 +32,9 @@
   },
   "publishConfig": {
     "access": "public",
+    "bin": {
+      "mearie": "./dist/cli.js"
+    },
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",

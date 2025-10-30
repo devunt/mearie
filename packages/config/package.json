@@ -1,6 +1,6 @@
 {
   "name": "@mearie/config",
-  "version": "0.0.1-next.4",
+  "version": "0.0.1-next.5",
   "sideEffects": false,
   "type": "module",
   "exports": {

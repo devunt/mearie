@@ -23,6 +23,7 @@
     "@mearie/shared": "0.0.1-next.3"
   },
   "changesets": [
+    "eager-candies-feel",
     "long-lions-feel"
   ]
 }

@@ -1,5 +1,15 @@
 # @mearie/codegen
 
+## 0.0.1-next.4
+
+### Patch Changes
+
+- 0c3c786: Version packages
+- Updated dependencies [0c3c786]
+  - @mearie/native@0.0.1-next.4
+  - @mearie/config@0.0.1-next.4
+  - @mearie/shared@0.0.1-next.4
+
 ## 0.0.1-next.3
 
 ### Patch Changes

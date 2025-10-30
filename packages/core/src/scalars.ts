@@ -6,7 +6,9 @@ export type ScalarTransformer<TExternal = unknown, TInternal = unknown> = {
   serialize: (value: TExternal) => TInternal;
 };
 
-export type ScalarsConfig = Record<string, ScalarTransformer<unknown, unknown>>;
+export type ScalarsConfig<TMeta extends SchemaMeta = SchemaMeta> = {
+  [K in keyof TMeta['scalars']]: ScalarTransformer<TMeta['scalars'][K], unknown>;
+};
 
 export const parse = (selections: readonly Selection[], scalars: ScalarsConfig, value: unknown): unknown => {
   const parseValue = (selection: FieldSelection, value: unknown): unknown => {

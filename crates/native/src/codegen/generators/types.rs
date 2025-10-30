@@ -136,8 +136,52 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn export_schema(&self) -> Statement<'b> {
-        let schema_meta_type = self.type_ref("$SchemaMeta");
-        self.stmt_export_type("$Schema", schema_meta_type)
+        let mut properties = self.ast.vec();
+
+        let scalar_map = &self.ctx.config().scalar_map;
+        let scalars_type_literal = if scalar_map.is_empty() {
+            self.type_empty_object()
+        } else {
+            let scalars_properties = self
+                .ast
+                .vec_from_iter(scalar_map.iter().map(|(scalar_name, type_name)| {
+                    let typ = self.type_ref(type_name);
+                    self.ast.ts_signature_property_signature(
+                        SPAN,
+                        false,
+                        false,
+                        false,
+                        self.ast.property_key_static_identifier(SPAN, scalar_name.as_str()),
+                        Some(self.ast.ts_type_annotation(SPAN, typ)),
+                    )
+                }));
+
+            self.ast.ts_type_type_literal(SPAN, scalars_properties)
+        };
+
+        properties.push(self.ast.ts_signature_property_signature(
+            SPAN,
+            false,
+            false,
+            false,
+            self.ast.property_key_static_identifier(SPAN, "scalars"),
+            Some(self.ast.ts_type_annotation(SPAN, scalars_type_literal)),
+        ));
+
+        let type_literal = self.ast.ts_type_type_literal(SPAN, properties);
+
+        let params = self
+            .ast
+            .ts_type_parameter_instantiation(SPAN, self.ast.vec1(type_literal));
+
+        let type_name_str = self.ast.allocator.alloc_str("$SchemaMeta");
+        let schema_type = self.ast.ts_type_type_reference(
+            SPAN,
+            self.ast.ts_type_name_identifier_reference(SPAN, type_name_str),
+            Some(params),
+        );
+
+        self.stmt_export_type("$Schema", schema_type)
     }
 
     fn export_enum(&self, enum_def: &EnumTypeDefinition<'b>) -> Statement<'b> {

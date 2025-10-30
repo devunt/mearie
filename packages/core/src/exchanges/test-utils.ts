@@ -81,10 +81,10 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
     );
 };
 
-export const makeTestClient = (config: {
-  schema: SchemaMeta;
-  scalars?: ScalarsConfig;
-}): Pick<Client, 'schema' | 'scalars'> => {
+export const makeTestClient = <TMeta extends SchemaMeta = SchemaMeta>(config: {
+  schema: TMeta;
+  scalars?: ScalarsConfig<TMeta>;
+}): Pick<Client<TMeta>, 'schema' | 'scalars'> => {
   return {
     schema: config.schema,
     scalars: config.scalars,

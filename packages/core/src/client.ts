@@ -21,19 +21,18 @@ export type SubscriptionOptions = {};
 export type FragmentOptions = {};
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
-export type ClientOptions = {
-  schema: SchemaMeta;
+export type ClientOptions<T extends SchemaMeta> = {
+  schema: T;
   exchanges: Exchange[];
-  scalars?: ScalarsConfig;
-};
+} & (T['scalars'] extends Record<string, never> ? { scalars?: undefined } : { scalars: ScalarsConfig<T> });
 
-export class Client {
-  #schema: SchemaMeta;
-  #scalars?: ScalarsConfig;
+export class Client<TMeta extends SchemaMeta> {
+  #schema: TMeta;
+  #scalars?: ScalarsConfig<TMeta>;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
-  constructor(config: ClientOptions) {
+  constructor(config: ClientOptions<TMeta>) {
     this.#schema = config.schema;
     this.#scalars = config.scalars;
 
@@ -45,11 +44,11 @@ export class Client {
     this.results$ = exchange({ forward: never, client: this })(this.operations$.source);
   }
 
-  get schema(): SchemaMeta {
+  get schema(): TMeta {
     return this.#schema;
   }
 
-  get scalars(): ScalarsConfig | undefined {
+  get scalars(): ScalarsConfig<TMeta> | undefined {
     return this.#scalars;
   }
 
@@ -138,6 +137,6 @@ export class Client {
   }
 }
 
-export const createClient = (config: ClientOptions): Client => {
+export const createClient = <T extends SchemaMeta>(config: ClientOptions<T>): Client<T> => {
   return new Client(config);
 };

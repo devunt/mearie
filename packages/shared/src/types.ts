@@ -6,9 +6,16 @@ export type List<T> = readonly T[];
 
 export type Opaque<T> = T & { readonly ' $opaque'?: unique symbol };
 
-export type SchemaMeta = {
+export type ScalarMeta = Record<string, unknown>;
+
+export type SchemaMetaProps = {
+  scalars: ScalarMeta;
+};
+
+export type SchemaMeta<T extends SchemaMetaProps = SchemaMetaProps> = {
   entities: Record<string, EntityMeta>;
   inputs: Record<string, InputMeta>;
+  scalars: T['scalars'];
 };
 
 export type EntityMeta = {

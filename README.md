@@ -60,6 +60,10 @@ function UserProfile({ userId }: { userId: string }) {
 
 Full documentation is available at <https://mearie.dev/>.
 
+## Acknowledgments
+
+Mearie's stream-based exchange system and core implementation are derived from [urql](https://github.com/urql-graphql/urql) and [Wonka](https://github.com/0no-co/wonka). The exchange architecture and stream utilities closely follow the original work by the urql team, adapted and extended for Mearie's specific goals. See [ACKNOWLEDGMENTS](./ACKNOWLEDGMENTS) for detailed attribution.
+
 ## Etymology
 
 The name _Mearie_ (pronounced /meh-ah-ree/) comes from the Korean word

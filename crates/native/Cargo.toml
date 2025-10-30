@@ -22,12 +22,12 @@ serde_json = "1.0"
 logos = "0.15"
 napi = { version = "3", features = ["serde-json"], optional = true }
 napi-derive = { version = "3", optional = true }
-oxc_allocator = "0.95"
-oxc_ast = "0.95"
-oxc_ast_visit = "0.95"
-oxc_codegen = "0.95"
-oxc_parser = "0.95"
-oxc_span = "0.95"
+oxc_allocator = "0.96"
+oxc_ast = "0.96"
+oxc_ast_visit = "0.96"
+oxc_codegen = "0.96"
+oxc_parser = "0.96"
+oxc_span = "0.96"
 
 [build-dependencies]
 napi-build = { version = "2", optional = true }

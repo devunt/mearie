@@ -3,6 +3,7 @@
   "tag": "next",
   "initialVersions": {
     "@mearie/native": "0.0.0",
+    "@mearie/cli": "0.0.0",
     "@mearie/codegen": "0.0.0",
     "@mearie/config": "0.0.0",
     "@mearie/core": "0.0.0",
@@ -13,9 +14,5 @@
     "@mearie/vite": "0.0.0",
     "@mearie/vue": "0.0.0"
   },
-  "changesets": [
-    "busy-shoes-listen",
-    "full-bats-joke",
-    "strong-games-warn"
-  ]
+  "changesets": []
 }

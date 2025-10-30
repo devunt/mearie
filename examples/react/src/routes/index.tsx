@@ -121,7 +121,7 @@ function HomePage() {
         }
       }
     `),
-    {} as any,
+    undefined,
     {
       onData: handleReviewData,
       onError: handleReviewError,

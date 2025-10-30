@@ -30,7 +30,7 @@ export type UseQueryOptions = QueryOptions & {
 
 export const useQuery = <T extends Artifact<'query'>>(
   query: T,
-  ...[variables, options]: VariablesOf<T> extends undefined
+  ...[variables, options]: VariablesOf<T> extends Record<string, never>
     ? [undefined?, UseQueryOptions?]
     : [VariablesOf<T>, UseQueryOptions?]
 ): Query<T> => {

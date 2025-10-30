@@ -28,7 +28,7 @@ export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = Subs
 
 export const createSubscription = <T extends Artifact<'subscription'>>(
   subscription: T,
-  ...[variables, options]: VariablesOf<T> extends undefined
+  ...[variables, options]: VariablesOf<T> extends Record<string, never>
     ? [undefined?, (() => CreateSubscriptionOptions<T>)?]
     : [() => VariablesOf<T>, (() => CreateSubscriptionOptions<T>)?]
 ): Subscription<T> => {

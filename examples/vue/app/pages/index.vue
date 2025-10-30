@@ -112,7 +112,7 @@ const reviewSub = useSubscription(
       }
     }
   `),
-  {} as any,
+  undefined,
   () => ({
     onData: handleReviewData,
     onError: handleReviewError,

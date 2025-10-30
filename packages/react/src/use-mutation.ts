@@ -25,7 +25,7 @@ export type UseMutationOptions = MutationOptions;
 
 export type Mutation<T extends Artifact<'mutation'>> = [
   (
-    ...[variables, options]: VariablesOf<T> extends undefined
+    ...[variables, options]: VariablesOf<T> extends Record<string, never>
       ? [undefined?, UseMutationOptions?]
       : [VariablesOf<T>, UseMutationOptions?]
   ) => Promise<DataOf<T>>,
@@ -78,15 +78,11 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
   );
 
   return [
-    execute as (
-      ...[variables, options]: VariablesOf<T> extends undefined
-        ? [undefined?, UseMutationOptions?]
-        : [VariablesOf<T>, UseMutationOptions?]
-    ) => Promise<DataOf<T>>,
+    execute,
     {
       data,
       loading,
       error,
-    } as MutationResult<T>,
-  ];
+    },
+  ] as Mutation<T>;
 };

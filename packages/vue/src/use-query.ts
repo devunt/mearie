@@ -30,7 +30,7 @@ export type Query<T extends Artifact<'query'>> =
 
 export const useQuery = <T extends Artifact<'query'>>(
   query: T,
-  ...[variables, options]: VariablesOf<T> extends undefined
+  ...[variables, options]: VariablesOf<T> extends Record<string, never>
     ? [undefined?, MaybeRefOrGetter<UseQueryOptions>?]
     : [MaybeRefOrGetter<VariablesOf<T>>, MaybeRefOrGetter<UseQueryOptions>?]
 ): Query<T> => {

@@ -119,7 +119,7 @@
 				}
 			}
 		`),
-		{} as any,
+		undefined,
 		() => ({
 			onData: handleReviewData,
 			onError: handleReviewError,

@@ -165,7 +165,7 @@ interface Props {
 let { userId }: Props = $props()
 let name = $state('')
 
-const mutation = createMutation(
+const [updateUser, mutation] = createMutation(
   graphql(`
     mutation UpdateUserMutation($id: ID!, $name: String!) {
       updateUser(id: $id, input: { name: $name }) {
@@ -178,7 +178,7 @@ const mutation = createMutation(
 
 const handleSubmit = async (e: SubmitEvent) => {
   e.preventDefault()
-  await mutation.mutate({ id: userId, name })
+  await updateUser({ id: userId, name })
 }
 </script>
 
@@ -206,7 +206,7 @@ interface Props {
 
 let { user }: Props = $props()
 
-const data = createFragment(
+const fragment = createFragment(
   graphql(`
     fragment UserCard_user on User {
       id
@@ -220,9 +220,9 @@ const data = createFragment(
 </script>
 
 <div class="card">
-  <img src={data().avatar} alt={data().name} />
-  <h3>{data().name}</h3>
-  <p>{data().email}</p>
+  <img src={fragment.data.avatar} alt={fragment.data.name} />
+  <h3>{fragment.data.name}</h3>
+  <p>{fragment.data.email}</p>
 </div>
 ```
 

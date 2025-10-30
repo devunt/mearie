@@ -35,7 +35,7 @@ import { useFragment } from '@mearie/react';
 import type { UserCard_user$key } from '$mearie';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserCard_user on User {
         id
@@ -49,9 +49,9 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 
   return (
     <div className="card">
-      <img src={data.avatar} alt={data.name} />
-      <h3>{data.name}</h3>
-      <p>{data.email}</p>
+      <img src={fragment.data.avatar} alt={fragment.data.name} />
+      <h3>{fragment.data.name}</h3>
+      <p>{fragment.data.email}</p>
     </div>
   );
 };
@@ -66,7 +66,7 @@ import type { UserCard_user$key } from '$mearie';
 
 const props = defineProps<{ user: UserCard_user$key }>();
 
-const data = useFragment(
+const fragment = useFragment(
   graphql(`
     fragment UserCard_user on User {
       id
@@ -81,9 +81,9 @@ const data = useFragment(
 
 <template>
   <div class="card">
-    <img :src="data.avatar" :alt="data.name" />
-    <h3>{{ data.name }}</h3>
-    <p>{{ data.email }}</p>
+    <img :src="fragment.data.avatar" :alt="fragment.data.name" />
+    <h3>{{ fragment.data.name }}</h3>
+    <p>{{ fragment.data.email }}</p>
   </div>
 </template>
 ```
@@ -101,7 +101,7 @@ interface Props {
 
 let { user }: Props = $props();
 
-const data = createFragment(
+const fragment = createFragment(
   graphql(`
     fragment UserCard_user on User {
       id
@@ -115,9 +115,9 @@ const data = createFragment(
 </script>
 
 <div class="card">
-  <img src={data.avatar} alt={data.name} />
-  <h3>{data.name}</h3>
-  <p>{data.email}</p>
+  <img src={fragment.data.avatar} alt={fragment.data.name} />
+  <h3>{fragment.data.name}</h3>
+  <p>{fragment.data.email}</p>
 </div>
 ```
 
@@ -133,7 +133,7 @@ interface UserCardProps {
 }
 
 export const UserCard: Component<UserCardProps> = (props) => {
-  const data = createFragment(
+  const fragment = createFragment(
     graphql(`
       fragment UserCard_user on User {
         id
@@ -147,9 +147,9 @@ export const UserCard: Component<UserCardProps> = (props) => {
 
   return (
     <div class="card">
-      <img src={data().avatar} alt={data().name} />
-      <h3>{data().name}</h3>
-      <p>{data().email}</p>
+      <img src={fragment.data.avatar} alt={fragment.data.name} />
+      <h3>{fragment.data.name}</h3>
+      <p>{fragment.data.email}</p>
     </div>
   );
 };

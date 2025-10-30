@@ -203,7 +203,7 @@ import { useFragment } from '@mearie/react';
 import type { UserCard_user$key } from '$mearie';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserCard_user on User {
         id
@@ -217,9 +217,9 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 
   return (
     <div className="card">
-      <img src={data.avatar} alt={data.name} />
-      <h3>{data.name}</h3>
-      <p>{data.email}</p>
+      <img src={fragment.data.avatar} alt={fragment.data.name} />
+      <h3>{fragment.data.name}</h3>
+      <p>{fragment.data.email}</p>
     </div>
   );
 };

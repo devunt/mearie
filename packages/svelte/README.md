@@ -22,10 +22,12 @@ First, create a client and set it up in your app:
 ```svelte
 <!-- src/App.svelte -->
 <script lang="ts">
-import { createClient, httpLink, cacheLink, setClient } from '@mearie/svelte';
+import { createClient, httpExchange, cacheExchange, dedupExchange, setClient } from '@mearie/svelte';
+import { schema } from '$mearie';
 
 const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [dedupExchange(), cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 
 setClient(client);

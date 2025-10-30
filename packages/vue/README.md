@@ -22,11 +22,13 @@ First, create a client and set up the plugin in your app:
 ```typescript
 // src/main.ts
 import { createApp } from 'vue';
-import { createClient, httpLink, cacheLink, ClientPlugin } from '@mearie/vue';
+import { createClient, httpExchange, cacheExchange, dedupExchange, ClientPlugin } from '@mearie/vue';
+import { schema } from '$mearie';
 import App from './App.vue';
 
 const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [dedupExchange(), cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 
 const app = createApp(App);

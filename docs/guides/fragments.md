@@ -54,7 +54,7 @@ const UserProfile = ({ userId }: { userId: string }) => {
 ```typescript
 // UserHeader.tsx - Component declares its own needs
 export const UserHeader = ({ user }: { user: UserHeader_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserHeader_user on User {
         id
@@ -64,7 +64,7 @@ export const UserHeader = ({ user }: { user: UserHeader_user$key }) => {
     `),
     user,
   );
-  return <h1>{data.name}</h1>;
+  return <h1>{fragment.data.name}</h1>;
 };
 
 // UserProfile.tsx - Parent just spreads fragments
@@ -107,7 +107,7 @@ import { useFragment } from '@mearie/react';
 import type { UserCard_user$key } from '$mearie';
 
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserCard_user on User {
         id
@@ -121,9 +121,9 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 
   return (
     <div className="card">
-      <img src={data.avatar} alt={data.name} />
-      <h3>{data.name}</h3>
-      <p>{data.email}</p>
+      <img src={fragment.data.avatar} alt={fragment.data.name} />
+      <h3>{fragment.data.name}</h3>
+      <p>{fragment.data.email}</p>
     </div>
   );
 };
@@ -165,7 +165,7 @@ Fragments can include other fragments:
 ```typescript
 // UserAvatar.tsx
 export const UserAvatar = ({ user }: { user: UserAvatar_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserAvatar_user on User {
         id
@@ -175,12 +175,12 @@ export const UserAvatar = ({ user }: { user: UserAvatar_user$key }) => {
     `),
     user,
   );
-  return <img src={data.avatar} alt={data.name} />;
+  return <img src={fragment.data.avatar} alt={fragment.data.name} />;
 };
 
 // UserCard.tsx - Reuses UserAvatar_user
 export const UserCard = ({ user }: { user: UserCard_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment UserCard_user on User {
         id
@@ -194,9 +194,9 @@ export const UserCard = ({ user }: { user: UserCard_user$key }) => {
 
   return (
     <div>
-      <UserAvatar user={data} />
-      <h3>{data.name}</h3>
-      <p>{data.email}</p>
+      <UserAvatar user={fragment.data} />
+      <h3>{fragment.data.name}</h3>
+      <p>{fragment.data.email}</p>
     </div>
   );
 };
@@ -207,7 +207,7 @@ Fragments work with nested data:
 ```typescript
 // PostAuthor.tsx
 export const PostAuthor = ({ author }: { author: PostAuthor_user$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment PostAuthor_user on User {
         id
@@ -217,12 +217,12 @@ export const PostAuthor = ({ author }: { author: PostAuthor_user$key }) => {
     `),
     author,
   );
-  return <div>{data.name}</div>;
+  return <div>{fragment.data.name}</div>;
 };
 
 // PostItem.tsx - Nested fragment
 export const PostItem = ({ post }: { post: PostItem_post$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment PostItem_post on Post {
         id
@@ -238,9 +238,9 @@ export const PostItem = ({ post }: { post: PostItem_post$key }) => {
 
   return (
     <article>
-      <h2>{data.title}</h2>
-      <p>{data.content}</p>
-      <PostAuthor author={data.author} />
+      <h2>{fragment.data.title}</h2>
+      <p>{fragment.data.content}</p>
+      <PostAuthor author={fragment.data.author} />
     </article>
   );
 };
@@ -252,7 +252,7 @@ Use inline fragments for unions and interfaces:
 
 ```typescript
 export const SearchResultItem = ({ result }: { result: SearchResultItem_result$key }) => {
-  const data = useFragment(
+  const fragment = useFragment(
     graphql(`
       fragment SearchResultItem_result on SearchResult {
         ... on User {
@@ -270,12 +270,12 @@ export const SearchResultItem = ({ result }: { result: SearchResultItem_result$k
     result,
   );
 
-  if (data.__typename === 'User') {
-    return <UserCard user={data} />;
+  if (fragment.data.__typename === 'User') {
+    return <UserCard user={fragment.data} />;
   }
 
-  if (data.__typename === 'Post') {
-    return <PostCard post={data} />;
+  if (fragment.data.__typename === 'Post') {
+    return <PostCard post={fragment.data} />;
   }
 
   return null;

@@ -22,10 +22,12 @@ First, create a client and wrap your app with the provider:
 ```tsx
 // src/App.tsx
 import { type Component } from 'solid-js';
-import { createClient, httpLink, cacheLink, ClientProvider } from '@mearie/solid';
+import { createClient, httpExchange, cacheExchange, dedupExchange, ClientProvider } from '@mearie/solid';
+import { schema } from '$mearie';
 
 const client = createClient({
-  links: [cacheLink(), httpLink({ url: 'https://api.example.com/graphql' })],
+  schema,
+  exchanges: [dedupExchange(), cacheExchange(), httpExchange({ url: 'https://api.example.com/graphql' })],
 });
 
 const App: Component = () => {

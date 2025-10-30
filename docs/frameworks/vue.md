@@ -152,7 +152,7 @@ import { useMutation } from '@mearie/vue';
 const props = defineProps<{ userId: string }>();
 const name = ref('');
 
-const { mutate, loading } = useMutation(
+const [updateUser, { loading }] = useMutation(
   graphql(`
     mutation UpdateUserMutation($id: ID!, $name: String!) {
       updateUser(id: $id, input: { name: $name }) {
@@ -164,7 +164,7 @@ const { mutate, loading } = useMutation(
 );
 
 const handleSubmit = async () => {
-  await mutate({ id: props.userId, name: name.value });
+  await updateUser({ id: props.userId, name: name.value });
 };
 </script>
 
@@ -188,7 +188,7 @@ import type { UserCard_user$key } from '$mearie';
 
 const props = defineProps<{ user: UserCard_user$key }>();
 
-const data = useFragment(
+const fragment = useFragment(
   graphql(`
     fragment UserCard_user on User {
       id
@@ -203,9 +203,9 @@ const data = useFragment(
 
 <template>
   <div class="card">
-    <img :src="data.avatar" :alt="data.name" />
-    <h3>{{ data.name }}</h3>
-    <p>{{ data.email }}</p>
+    <img :src="fragment.data.avatar" :alt="fragment.data.name" />
+    <h3>{{ fragment.data.name }}</h3>
+    <p>{{ fragment.data.email }}</p>
   </div>
 </template>
 ```

@@ -1,5 +1,11 @@
 # @mearie/core
 
+## 0.1.2
+
+### Patch Changes
+
+- bcdaaf5: fix(core): tsdown build output path for stream entry point
+
 ## 0.1.0
 
 ### Minor Changes

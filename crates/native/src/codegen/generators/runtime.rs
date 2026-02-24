@@ -779,7 +779,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             if let Some(fragment) = self.document.get_fragment(fragment_name) {
                 let fragment_source = self
                     .document
-                    .get_fragment_source(fragment)
+                    .get_transformed_fragment_source(fragment)
                     .ok_or_else(|| MearieError::codegen("Fragment source not found"))?
                     .trim();
 

@@ -119,3 +119,54 @@ impl<'a> Pipeline<'a> {
         PipelineOutput { sources, errors }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_required_directive_stripped_from_fragment_in_operation_body() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { name: String, email: String }
+        "#;
+
+        let fragment_code = r#"
+            fragment UserFields on User {
+                name @required
+                email
+            }
+        "#;
+
+        let operation_code = r#"
+            query GetUser {
+                user {
+                    ...UserFields
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(fragment_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let runtime_file = output.sources.iter().find(|s| s.file_path == "graphql.js").unwrap();
+
+        for line in runtime_file.code.lines() {
+            if line.trim_start().starts_with("body:") {
+                assert!(
+                    !line.contains("@required"),
+                    "Artifact body should not contain @required directive, but got:\n{}",
+                    line
+                );
+            }
+        }
+    }
+}

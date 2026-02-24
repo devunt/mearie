@@ -1,5 +1,5 @@
 import type { Selection, VariableDef, SchemaMeta, FieldSelection } from '@mearie/shared';
-import { isNullish } from './utils.ts';
+import { isNullish, deepAssign } from './utils.ts';
 
 export type ScalarTransformer<TExternal = unknown, TInternal = unknown> = {
   parse: (value: TInternal) => TExternal;
@@ -54,7 +54,7 @@ export const parse = <TMeta extends SchemaMeta = SchemaMeta>(
         selection.kind === 'FragmentSpread' ||
         (selection.kind === 'InlineFragment' && selection.on === data.__typename)
       ) {
-        Object.assign(fields, parseField(selection.selections, value));
+        deepAssign(fields, parseField(selection.selections, value) as Record<string, unknown>);
       }
     }
 

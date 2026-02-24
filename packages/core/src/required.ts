@@ -1,4 +1,5 @@
 import type { Selection, Directive } from '@mearie/shared';
+import { deepAssign } from './utils.ts';
 
 type RequiredAction = 'THROW' | 'CASCADE';
 
@@ -83,7 +84,7 @@ const validateRequiredInner = (selections: readonly Selection[], data: unknown, 
         return CASCADE_NULL;
       }
 
-      Object.assign(result, fragmentResult as Record<string, unknown>);
+      deepAssign(result, fragmentResult as Record<string, unknown>);
     }
   }
 

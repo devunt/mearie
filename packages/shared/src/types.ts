@@ -65,9 +65,16 @@ export type FieldSelection = {
   name: string;
   type: string;
   array?: boolean;
+  nullable?: boolean;
   alias?: string;
   args?: Record<string, Argument>;
   selections?: Selection[];
+  directives?: Directive[];
+};
+
+export type Directive = {
+  name: string;
+  args?: Record<string, unknown>;
 };
 
 export type FragmentSpreadSelection = {

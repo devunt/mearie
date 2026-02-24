@@ -485,9 +485,11 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                 name,
                 type_name,
                 array,
+                nullable,
                 alias,
                 args,
                 selections,
+                directives,
             } => {
                 let mut properties = self.ast.vec();
 
@@ -500,6 +502,10 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
                 if array.unwrap_or(false) {
                     properties.push(self.prop_object("array", self.expr_boolean(true)));
+                }
+
+                if nullable.unwrap_or(false) {
+                    properties.push(self.prop_object("nullable", self.expr_boolean(true)));
                 }
 
                 if let Some(alias) = alias {
@@ -518,6 +524,12 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
                 if let Some(selections) = selections {
                     properties.push(self.prop_object("selections", self.expr_selections_array(selections)));
+                }
+
+                if let Some(directives) = directives {
+                    if !directives.is_empty() {
+                        properties.push(self.prop_object("directives", self.expr_directives_array(directives)));
+                    }
                 }
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
@@ -548,6 +560,33 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             self.prop_object("kind", self.expr_string("variable")),
             self.prop_object("name", self.expr_string(name)),
         ]);
+        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
+    }
+
+    fn expr_directives_array(&self, directives: &[crate::graphql::ast::Directive<'b>]) -> Expression<'b> {
+        let elements = self.ast.vec_from_iter(
+            directives
+                .iter()
+                .map(|directive| ArrayExpressionElement::from(self.expr_directive(directive))),
+        );
+        Expression::ArrayExpression(self.ast.alloc(self.ast.array_expression(SPAN, elements)))
+    }
+
+    fn expr_directive(&self, directive: &crate::graphql::ast::Directive<'b>) -> Expression<'b> {
+        let mut properties = self.ast.vec();
+        properties.push(self.prop_object("name", self.expr_string(directive.name.as_str())));
+
+        if !directive.arguments.is_empty() {
+            let args_props = self.ast.vec_from_iter(
+                directive
+                    .arguments
+                    .iter()
+                    .map(|arg| self.prop_object(arg.name.as_str(), self.expr_from_graphql_value(&arg.value))),
+            );
+            let args_expr = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, args_props)));
+            properties.push(self.prop_object("args", args_expr));
+        }
+
         Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
     }
 
@@ -633,9 +672,11 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                 name,
                 type_name: None,
                 array: None,
+                nullable: None,
                 alias,
                 args: None,
                 selections: None,
+                directives: None,
             });
         }
 
@@ -646,6 +687,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
         let type_name = field_def.typ.innermost_type().to_string();
         let is_array = field_def.typ.is_list();
+        let is_nullable = field_def.typ.is_nullable();
 
         let args = if field.arguments.is_empty() {
             None
@@ -660,13 +702,21 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             Some(nested)
         };
 
+        let directives = if field.directives.is_empty() {
+            None
+        } else {
+            Some(&field.directives[..])
+        };
+
         Ok(SelectionNodeData::Field {
             name,
             type_name: Some(type_name),
             array: Some(is_array),
+            nullable: Some(is_nullable),
             alias,
             args,
             selections,
+            directives,
         })
     }
 
@@ -793,9 +843,11 @@ enum SelectionNodeData<'b> {
         name: &'b str,
         type_name: Option<String>,
         array: Option<bool>,
+        nullable: Option<bool>,
         alias: Option<&'b str>,
         args: Option<&'b [crate::graphql::ast::Argument<'b>]>,
         selections: Option<Vec<SelectionNodeData<'b>>>,
+        directives: Option<&'b [crate::graphql::ast::Directive<'b>]>,
     },
     FragmentSpread {
         name: &'b str,

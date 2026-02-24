@@ -3,6 +3,7 @@ import type { Exchange, Operation, OperationResult } from './exchange.ts';
 import type { ScalarsConfig } from './scalars.ts';
 import { composeExchange } from './exchanges/compose.ts';
 import { fragmentExchange } from './exchanges/fragment.ts';
+import { requiredExchange } from './exchanges/required.ts';
 import { scalarExchange } from './exchanges/scalar.ts';
 import { terminalExchange } from './exchanges/terminal.ts';
 import { makeSubject, type Subject } from './stream/sources/make-subject.ts';
@@ -37,7 +38,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     this.#scalars = config.scalars;
 
     const exchange = composeExchange({
-      exchanges: [scalarExchange(), ...config.exchanges, fragmentExchange(), terminalExchange()],
+      exchanges: [requiredExchange(), scalarExchange(), ...config.exchanges, fragmentExchange(), terminalExchange()],
     });
 
     this.operations$ = makeSubject<Operation>();

@@ -21,11 +21,14 @@ export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheOptions } from './exchanges/cache.ts';
 export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
 export { fragmentExchange } from './exchanges/fragment.ts';
+export { requiredExchange } from './exchanges/required.ts';
 export {
   subscriptionExchange,
   type SubscriptionExchangeOptions,
   type SubscriptionClient,
 } from './exchanges/subscription.ts';
+
+export { RequiredFieldError, type RequiredAction } from './required.ts';
 
 export {
   Client,

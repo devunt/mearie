@@ -1,5 +1,6 @@
 use super::super::CodegenContext;
 use crate::error::{MearieError, Result};
+use crate::graphql::ast::values::Value;
 use crate::graphql::ast::*;
 use crate::schema::{DocumentIndex, SchemaIndex};
 use crate::source::SourceBuf;
@@ -291,7 +292,54 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             }
         }
 
-        self.type_combine_selections(parent_type, shared_fields, inline_fragments, fragment_refs)
+        let result_type = self.type_combine_selections(parent_type, shared_fields, inline_fragments, fragment_refs)?;
+
+        if self.cascade_escapes_selection_set(selection_set, parent_type) {
+            Ok(self.type_nullable(result_type))
+        } else {
+            Ok(result_type)
+        }
+    }
+
+    fn has_required_directive(&self, field: &Field<'b>) -> bool {
+        field.directives.iter().any(|d| d.name.as_str() == "required")
+    }
+
+    fn has_cascade_action(&self, field: &Field<'b>) -> bool {
+        field.directives.iter().any(|d| {
+            if d.name.as_str() != "required" {
+                return false;
+            }
+            if let Some(action_value) = d.get_argument("action") {
+                matches!(action_value, Value::Enum(name) if name.as_str() == "CASCADE")
+            } else {
+                false
+            }
+        })
+    }
+
+    fn cascade_escapes_selection_set(&self, selection_set: &SelectionSet<'b>, parent_type: &str) -> bool {
+        for selection in &selection_set.selections {
+            if let Selection::Field(field) = selection {
+                if self.has_cascade_action(field) {
+                    return true;
+                }
+                if !field.selection_set.is_empty() {
+                    let field_name = field.name.as_str();
+                    if let Some(field_def) = self.schema.get_field(parent_type, field_name) {
+                        let inner_type = field_def.typ.innermost_type().as_str();
+                        if self.cascade_escapes_selection_set(&field.selection_set, inner_type) {
+                            let is_nullable = field_def.typ.is_nullable();
+                            let has_required = self.has_required_directive(field);
+                            if !is_nullable || has_required {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
     }
 
     fn field_type_info(&self, field: &Field<'b>, parent_type: &'b str) -> Result<(&'b str, TSType<'b>, bool)> {
@@ -317,14 +365,15 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         })?;
 
         let graphql_type = &field_def.typ;
-        let is_optional = graphql_type.is_nullable();
+        let has_required = self.has_required_directive(field);
+        let is_optional = graphql_type.is_nullable() && !has_required;
 
         let field_type = if !field.selection_set.is_empty() {
             let inner_type_name = graphql_type.innermost_type().as_str();
             let selection_type = self.type_selection_set(&field.selection_set, inner_type_name)?;
-            self.type_from_graphql(graphql_type, Some(selection_type))
+            self.type_from_graphql(graphql_type, Some(selection_type), has_required)
         } else {
-            self.type_from_graphql(graphql_type, None)
+            self.type_from_graphql(graphql_type, None, has_required)
         };
 
         Ok((field_name, field_type, is_optional))
@@ -451,7 +500,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let is_nullable = graphql_type.is_nullable();
         let is_optional = is_nullable || has_default_value;
 
-        let typ = self.type_from_graphql(graphql_type, None);
+        let typ = self.type_from_graphql(graphql_type, None, false);
 
         self.ast.ts_signature_property_signature(
             SPAN,
@@ -463,21 +512,21 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         )
     }
 
-    fn type_from_graphql(&self, graphql_type: &Type<'b>, inner: Option<TSType<'b>>) -> TSType<'b> {
+    fn type_from_graphql(&self, graphql_type: &Type<'b>, inner: Option<TSType<'b>>, has_required: bool) -> TSType<'b> {
         match graphql_type {
             Type::Named(named) => {
                 let base = inner.unwrap_or_else(|| self.type_from_named(named));
-                self.type_nullable(base)
+                if has_required { base } else { self.type_nullable(base) }
             }
             Type::List(nested_type) => {
-                let nested = self.type_from_graphql(nested_type, inner);
+                let nested = self.type_from_graphql(nested_type, inner, false);
                 let list = self.type_list(nested);
-                self.type_nullable(list)
+                if has_required { list } else { self.type_nullable(list) }
             }
             Type::NonNull(non_null) => match non_null {
                 NonNullType::Named(named) => inner.unwrap_or_else(|| self.type_from_named(named)),
                 NonNullType::List(nested_type) => {
-                    let nested = self.type_from_graphql(nested_type, inner);
+                    let nested = self.type_from_graphql(nested_type, inner, false);
                     self.type_list(nested)
                 }
             },
@@ -972,5 +1021,242 @@ mod tests {
 
         // Verify parentheses are present: (...) & $FragmentRefs
         assert_contains!(source_buf.code, "}) & $FragmentRefs");
+    }
+
+    #[test]
+    fn test_required_makes_nullable_field_non_null() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String }
+            "#,
+            r#"query GetUser { user { name @required } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // name should be non-nullable (no $Nullable wrapper)
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+    }
+
+    #[test]
+    fn test_required_with_throw_action() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String }
+            "#,
+            r#"query GetUser { user { name @required(action: THROW) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+    }
+
+    #[test]
+    fn test_required_with_cascade_makes_parent_nullable() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { name: String }
+            "#,
+            r#"query GetUser { user { name @required(action: CASCADE) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // parent (user) should be nullable due to CASCADE
+        assert_contains!(source_buf.code, "$Nullable<{");
+    }
+
+    #[test]
+    fn test_required_does_not_affect_already_non_null_field() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser { user { name @required } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // name is already non-null, @required should not change this
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+    }
+
+    #[test]
+    fn test_required_without_directive_stays_nullable() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String }
+            "#,
+            r#"query GetUser { user { name } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        assert_contains!(source_buf.code, "$Nullable<$Scalars[\"String\"]>");
+    }
+
+    #[test]
+    fn test_required_on_nested_object_field() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { profile: Profile }
+                type Profile { bio: String! }
+            "#,
+            r#"query GetUser { user { profile @required { bio } } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // profile should be non-nullable due to @required
+        assert_contains!(source_buf.code, "profile: {");
+    }
+
+    #[test]
+    fn test_cascade_in_nested_field_makes_ancestors_nullable() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { profile: Profile! }
+                type Profile { avatar: String }
+            "#,
+            r#"query GetUser { user { profile { avatar @required(action: CASCADE) } } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // profile's selection set contains CASCADE, so it should be nullable
+        assert_contains!(source_buf.code, "$Nullable<{");
+    }
+
+    #[test]
+    fn test_required_mixed_fields() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String email: String age: Int }
+            "#,
+            r#"query GetUser { user { name @required email age } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // name: non-nullable, email/age: nullable
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+        assert_contains!(source_buf.code, "$Nullable<$Scalars[\"String\"]>");
+        assert_contains!(source_buf.code, "$Nullable<$Scalars[\"Int\"]>");
+    }
+
+    #[test]
+    fn test_cascade_stops_at_nullable_ancestor() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String }
+            "#,
+            r#"query GetUser { user { name @required(action: CASCADE) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // user is nullable → cascade from name is absorbed at user
+        // The query data type should NOT be $Nullable<{ user: ... }>
+        // user's type is already nullable from schema
+        assert!(!source_buf.code.starts_with("export type GetUser$data = $Nullable<"));
+    }
+
+    #[test]
+    fn test_cascade_passes_through_non_null_chain() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { profile: Profile! }
+                type Profile { avatar: String }
+            "#,
+            r#"query GetUser { user { profile { avatar @required(action: CASCADE) } } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // All fields are non-null → cascade reaches root → query data type is nullable
+        assert_contains!(source_buf.code, "export type GetUser$data = $Nullable<{");
+    }
+
+    #[test]
+    fn test_cascade_stops_at_nullable_intermediate() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { profile: Profile }
+                type Profile { avatar: String }
+            "#,
+            r#"query GetUser { user { profile { avatar @required(action: CASCADE) } } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // profile is nullable → cascade absorbed at profile
+        // user's selection set should NOT be nullable from cascade
+        assert!(!source_buf.code.contains("export type GetUser$data = $Nullable<{"));
+    }
+
+    #[test]
+    fn test_cascade_passes_through_required_nullable_field() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User! }
+                type User { profile: Profile }
+                type Profile { avatar: String }
+            "#,
+            r#"query GetUser { user { profile @required { avatar @required(action: CASCADE) } } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // profile is nullable in schema but has @required → effectively non-null
+        // cascade passes through profile and user (non-null) → reaches root
+        assert_contains!(source_buf.code, "export type GetUser$data = $Nullable<{");
     }
 }

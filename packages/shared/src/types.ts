@@ -92,7 +92,7 @@ export type InlineFragmentSelection = {
 export type Argument = { kind: 'literal'; value: unknown } | { kind: 'variable'; name: string };
 
 export type FragmentRefs<T extends string> = {
-  readonly ' $fragmentRefs': T;
+  readonly ' $fragmentRefs': Record<T, true>;
 };
 
 export type DataOf<T extends Artifact> = NonNullable<T[' $data']>;

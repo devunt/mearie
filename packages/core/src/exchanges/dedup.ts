@@ -12,7 +12,7 @@ const makeDedupKey = (op: RequestOperation): string => {
   return `${op.artifact.name}:${stringify(op.variables)}`;
 };
 
-declare module '../exchange.ts' {
+declare module '@mearie/core' {
   interface OperationMetadataMap {
     dedup?: {
       skip?: boolean;

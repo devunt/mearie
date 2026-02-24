@@ -5,7 +5,7 @@ import { filter } from '../stream/operators/filter.ts';
 import { map } from '../stream/operators/map.ts';
 import { merge } from '../stream/operators/merge.ts';
 
-declare module '../exchange.ts' {
+declare module '@mearie/core' {
   interface OperationMetadataMap {
     fragmentRef?: unknown;
   }

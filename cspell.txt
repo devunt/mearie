@@ -1,4 +1,5 @@
 bumpalo
+cdylib
 clippy
 dedup
 devunt
@@ -12,7 +13,9 @@ napi
 nums
 pife
 rfind
+rlib
 rustc
+serde
 shikijs
 tmdb
 vitepress

@@ -16,7 +16,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@logtape/logtape": "^1.1.2",
+    "@logtape/logtape": "^2.0.2",
     "@mearie/config": "workspace:*",
     "@mearie/native": "workspace:*",
     "@mearie/shared": "workspace:*",
@@ -27,8 +27,8 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/picomatch": "^4.0.2",
-    "@vue/compiler-sfc": "^3.5.22",
-    "svelte": "^5.43.0",
+    "@vue/compiler-sfc": "^3.5.29",
+    "svelte": "^5.53.3",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

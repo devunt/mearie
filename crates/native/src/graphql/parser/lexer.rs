@@ -40,7 +40,7 @@ fn parse_block_string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<&'a str> {
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 #[logos(skip r"[ \t\n\r,]+")]
-#[logos(skip r"#[^\n]*")]
+#[logos(skip(r"#[^\n]*", allow_greedy = true))]
 pub enum Token<'a> {
     #[token("!")]
     Bang,

@@ -2,6 +2,8 @@
 description: Learn how type safety prevents bugs by catching errors at compile time rather than runtime, and how it improves developer experience across your entire stack.
 ---
 
+<!-- cspell:ignore nmae emial -->
+
 # Type Safety
 
 Type safety catches errors before your code runs, turning runtime bugs into compile-time errors.
@@ -143,7 +145,7 @@ Rename a field in your schema and TypeScript shows every usage that needs updati
 Hover over any field to see its type and documentation from your schema:
 
 ```typescript
-data.user.createdAt
+data.user.createdAt;
 ```
 
 Tooltip shows: `createdAt: DateTime - The date this user was created`
@@ -268,9 +270,7 @@ type Post implements Node {
 Generated types use `__typename` for discrimination:
 
 ```typescript
-type Node =
-  | { __typename: 'User'; id: string; name: string }
-  | { __typename: 'Post'; id: string; title: string };
+type Node = { __typename: 'User'; id: string; name: string } | { __typename: 'Post'; id: string; title: string };
 ```
 
 TypeScript narrows types based on `__typename`:

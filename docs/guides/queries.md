@@ -207,9 +207,7 @@ import { isGraphQLError, isExchangeError, isAggregatedError } from '@mearie/core
 
 if (error) {
   // Check for specific GraphQL errors
-  const authErrors = error.errors.filter(
-    (err) => isGraphQLError(err) && err.extensions?.code === 'UNAUTHENTICATED',
-  );
+  const authErrors = error.errors.filter((err) => isGraphQLError(err) && err.extensions?.code === 'UNAUTHENTICATED');
 
   // Check for exchange-specific errors
   const networkErrors = error.errors.filter((err) => isExchangeError(err, 'httpExchange'));

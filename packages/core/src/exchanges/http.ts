@@ -31,10 +31,12 @@ export type HttpOptions = {
   headers?: HeadersInit;
   mode?: RequestMode;
   credentials?: RequestCredentials;
+  fetch?: typeof globalThis.fetch;
 };
 
 type ExecuteFetchOptions = {
   url: string;
+  fetchFn: typeof globalThis.fetch;
   fetchOptions: { mode?: RequestMode; credentials?: RequestCredentials; headers?: HeadersInit };
   operation: RequestOperation;
   signal: AbortSignal;
@@ -42,6 +44,7 @@ type ExecuteFetchOptions = {
 
 const executeFetch = async ({
   url,
+  fetchFn,
   fetchOptions,
   operation,
   signal,
@@ -52,7 +55,7 @@ const executeFetch = async ({
   try {
     await Promise.resolve();
 
-    response = await fetch(url, {
+    response = await fetchFn(url, {
       method: 'POST',
       mode: fetchOptions.mode,
       credentials: fetchOptions.credentials,
@@ -124,7 +127,7 @@ const executeFetch = async ({
 };
 
 export const httpExchange = (options: HttpOptions): Exchange => {
-  const { url, headers, mode, credentials } = options;
+  const { url, headers, mode, credentials, fetch: fetchFn = globalThis.fetch } = options;
 
   return ({ forward }) => {
     return (ops$) => {
@@ -145,6 +148,7 @@ export const httpExchange = (options: HttpOptions): Exchange => {
           return fromPromise(
             executeFetch({
               url,
+              fetchFn,
               fetchOptions: { mode, credentials, headers },
               operation: op,
               signal: controller.signal,

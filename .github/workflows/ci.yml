@@ -33,7 +33,7 @@ jobs:
             command: pnpm lint:rust
             rust: true
           - name: cargo test
-            command: cargo test --workspace
+            command: cargo test --workspace --no-default-features
             rust: true
 
     steps:

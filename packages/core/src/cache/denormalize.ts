@@ -1,5 +1,5 @@
 import type { Selection } from '@mearie/shared';
-import { makeFieldKey, isEntityLink, isNullish } from './utils.ts';
+import { makeFieldKey, isEntityLink, isNullish, mergeFields } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
 
@@ -66,10 +66,10 @@ export const denormalize = (
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
         } else {
-          Object.assign(fields, denormalizeField(storageKey, selection.selections, value));
+          mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
         }
       } else if (selection.kind === 'InlineFragment' && selection.on === data[typenameFieldKey]) {
-        Object.assign(fields, denormalizeField(storageKey, selection.selections, value));
+        mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
       }
     }
 

@@ -110,6 +110,35 @@ export const isNullish = (value: unknown): value is null | undefined => {
 };
 
 /**
+ * Deeply merges source fields into target. Plain object values are recursively merged
+ * instead of overwritten, while arrays, entity links, and primitives use last-write-wins.
+ * @internal
+ */
+export const mergeFields = (target: Record<string, unknown>, source: unknown): void => {
+  if (isNullish(source) || typeof source !== 'object' || Array.isArray(source)) {
+    return;
+  }
+  for (const key of Object.keys(source)) {
+    const existing = target[key];
+    const incoming = (source as Record<string, unknown>)[key];
+    if (
+      !isNullish(existing) &&
+      typeof existing === 'object' &&
+      !Array.isArray(existing) &&
+      !isEntityLink(existing) &&
+      !isNullish(incoming) &&
+      typeof incoming === 'object' &&
+      !Array.isArray(incoming) &&
+      !isEntityLink(incoming)
+    ) {
+      mergeFields(existing as Record<string, unknown>, incoming);
+    } else {
+      target[key] = incoming;
+    }
+  }
+};
+
+/**
  * Creates a FieldKey from a raw field name and optional arguments.
  * @internal
  * @param field - The field name.

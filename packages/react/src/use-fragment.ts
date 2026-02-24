@@ -13,6 +13,10 @@ export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
 };
 
+export type OptionalFragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T> | null;
+};
+
 type UseFragmentFn = {
   <T extends Artifact<'fragment'>>(
     fragment: T,
@@ -24,11 +28,16 @@ type UseFragmentFn = {
     fragmentRef: FragmentRefs<T['name']>,
     options?: UseFragmentOptions,
   ): Fragment<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: FragmentRefs<T['name']> | null | undefined,
+    options?: UseFragmentOptions,
+  ): OptionalFragment<T>;
 };
 
 export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: FragmentRefs<T['name']> | FragmentRefs<T['name']>[],
+  fragmentRef: FragmentRefs<T['name']> | FragmentRefs<T['name']>[] | null | undefined,
   options?: UseFragmentOptions,
 ) => {
   const client = useClient();
@@ -36,6 +45,11 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
 
   const subscribe_ = useCallback(
     (onChange: () => void) => {
+      if (fragmentRef == null) {
+        dataRef.current = null;
+        return () => {};
+      }
+
       return pipe(
         client.executeFragment(fragment, fragmentRef, options),
         subscribe({
@@ -54,6 +68,10 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   );
 
   const snapshot = useCallback(() => {
+    if (fragmentRef == null) {
+      return null;
+    }
+
     if (dataRef.current === undefined) {
       const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 

@@ -12,6 +12,10 @@ export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
 };
 
+export type OptionalFragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T> | null;
+};
+
 type CreateFragmentFn = {
   <T extends Artifact<'fragment'>>(
     fragment: T,
@@ -23,31 +27,51 @@ type CreateFragmentFn = {
     fragmentRef: () => FragmentRefs<T['name']>,
     options?: () => CreateFragmentOptions,
   ): Fragment<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: () => FragmentRefs<T['name']> | null | undefined,
+    options?: () => CreateFragmentOptions,
+  ): OptionalFragment<T>;
 };
 
 export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: () => FragmentRefs<T['name']> | FragmentRefs<T['name']>[],
+  fragmentRef: () => FragmentRefs<T['name']> | FragmentRefs<T['name']>[] | null | undefined,
   options?: () => CreateFragmentOptions,
 ) => {
   const client = getClient();
 
   const ref = fragmentRef();
-  const result = pipe(client.executeFragment(fragment, ref, options?.()), peek);
 
-  if (result.data === undefined) {
-    throw new Error('Fragment data not found');
+  let data: unknown;
+  if (ref == null) {
+    data = null;
+  } else {
+    const result = pipe(
+      client.executeFragment(fragment, ref, options?.()),
+      peek,
+    );
+    if (result.data === undefined) {
+      throw new Error('Fragment data not found');
+    }
+    data = result.data;
   }
 
-  let data = $state(result.data);
+  let state = $state(data);
 
   $effect(() => {
+    const currentRef = fragmentRef();
+    if (currentRef == null) {
+      state = null;
+      return;
+    }
+
     const unsubscribe = pipe(
-      client.executeFragment(fragment, fragmentRef(), options?.()),
+      client.executeFragment(fragment, currentRef, options?.()),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {
-            data = result.data;
+            state = result.data;
           }
         },
       }),
@@ -60,7 +84,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 
   return {
     get data() {
-      return data;
+      return state;
     },
   };
 }) as unknown as CreateFragmentFn;

@@ -13,6 +13,10 @@ export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
 };
 
+export type OptionalFragment<T extends Artifact<'fragment'>> = {
+  data: DataOf<T> | null;
+};
+
 type CreateFragmentFn = {
   <T extends Artifact<'fragment'>>(
     fragment: T,
@@ -24,26 +28,46 @@ type CreateFragmentFn = {
     fragmentRef: Accessor<FragmentRefs<T['name']>>,
     options?: Accessor<CreateFragmentOptions>,
   ): Fragment<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: Accessor<FragmentRefs<T['name']> | null | undefined>,
+    options?: Accessor<CreateFragmentOptions>,
+  ): OptionalFragment<T>;
 };
 
 export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: Accessor<FragmentRefs<T['name']> | FragmentRefs<T['name']>[]>,
+  fragmentRef: Accessor<FragmentRefs<T['name']> | FragmentRefs<T['name']>[] | null | undefined>,
   options?: Accessor<CreateFragmentOptions>,
 ) => {
   const client = useClient();
 
-  const result = pipe(client.executeFragment(fragment, fragmentRef(), options?.()), peek);
-
-  if (result.data === undefined) {
-    throw new Error('Fragment data not found');
+  const initialRef = fragmentRef();
+  let initialData: unknown;
+  if (initialRef == null) {
+    initialData = null;
+  } else {
+    const result = pipe(
+      client.executeFragment(fragment, initialRef, options?.()),
+      peek,
+    );
+    if (result.data === undefined) {
+      throw new Error('Fragment data not found');
+    }
+    initialData = result.data;
   }
 
-  const [data, setData] = createSignal(result.data);
+  const [data, setData] = createSignal(initialData);
 
   createEffect(() => {
+    const currentRef = fragmentRef();
+    if (currentRef == null) {
+      setData(() => null);
+      return;
+    }
+
     const unsubscribe = pipe(
-      client.executeFragment(fragment, fragmentRef(), options?.()),
+      client.executeFragment(fragment, currentRef, options?.()),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {

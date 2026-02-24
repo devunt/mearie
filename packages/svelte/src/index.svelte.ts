@@ -12,5 +12,6 @@ export {
   createFragment,
   type Fragment,
   type FragmentList,
+  type OptionalFragment,
   type CreateFragmentOptions,
 } from './create-fragment.svelte.ts';

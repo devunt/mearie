@@ -4160,4 +4160,56 @@ describe('denormalize', () => {
       ]);
     });
   });
+
+  describe('fragment cache collision (#82)', () => {
+    it('should not lose fields when multiple root fragments select same nested object with different sub-fields', () => {
+      // query test { ...fragment1 ...fragment2 }
+      // fragment fragment1 on Query { account { field1 } }
+      // fragment fragment2 on Query { account { field2 } }
+      const selections = [
+        {
+          kind: 'FragmentSpread' as const,
+          name: 'fragment1',
+          selections: [
+            {
+              kind: 'Field' as const,
+              name: 'account',
+              type: 'Account',
+              selections: [{ kind: 'Field' as const, name: 'field1', type: 'String' }],
+            },
+          ],
+        },
+        {
+          kind: 'FragmentSpread' as const,
+          name: 'fragment2',
+          selections: [
+            {
+              kind: 'Field' as const,
+              name: 'account',
+              type: 'Account',
+              selections: [{ kind: 'Field' as const, name: 'field2', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage = {
+        [RootFieldKey]: {
+          'account@{}': {
+            'field1@{}': 'value1',
+            'field2@{}': 'value2',
+          },
+        },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage);
+
+      expect(data).toEqual({
+        account: {
+          field1: 'value1',
+          field2: 'value2',
+        },
+      });
+      expect(partial).toBe(false);
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import type { Selection, SchemaMeta } from '@mearie/shared';
-import { makeEntityKey, makeFieldKey, isEntityLink, isNullish } from './utils.ts';
+import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, mergeFields } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
@@ -50,7 +50,7 @@ export const normalize = (
       ) {
         const inner = normalizeField(storageKey, selection.selections, value);
         if (!isEntityLink(inner)) {
-          Object.assign(fields, inner);
+          mergeFields(fields, inner);
         }
       }
     }

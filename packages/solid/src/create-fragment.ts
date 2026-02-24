@@ -9,11 +9,28 @@ export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
 };
 
-export const createFragment = <T extends Artifact<'fragment'>>(
+export type FragmentList<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>[];
+};
+
+type CreateFragmentFn = {
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: Accessor<FragmentRefs<T['name']>[]>,
+    options?: Accessor<CreateFragmentOptions>,
+  ): FragmentList<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: Accessor<FragmentRefs<T['name']>>,
+    options?: Accessor<CreateFragmentOptions>,
+  ): Fragment<T>;
+};
+
+export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: Accessor<FragmentRefs<T['name']>>,
+  fragmentRef: Accessor<FragmentRefs<T['name']> | FragmentRefs<T['name']>[]>,
   options?: Accessor<CreateFragmentOptions>,
-): Fragment<T> => {
+) => {
   const client = useClient();
 
   const result = pipe(client.executeFragment(fragment, fragmentRef(), options?.()), peek);
@@ -22,7 +39,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
     throw new Error('Fragment data not found');
   }
 
-  const [data, setData] = createSignal<DataOf<T>>(result.data as DataOf<T>);
+  const [data, setData] = createSignal(result.data);
 
   createEffect(() => {
     const unsubscribe = pipe(
@@ -30,7 +47,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {
-            setData(() => result.data as DataOf<T>);
+            setData(() => result.data);
           }
         },
       }),
@@ -46,4 +63,4 @@ export const createFragment = <T extends Artifact<'fragment'>>(
       return data();
     },
   };
-};
+}) as unknown as CreateFragmentFn;

@@ -90,6 +90,16 @@ export const isFragmentRef = (value: unknown): value is FragmentRefs<string> => 
 };
 
 /**
+ * Type guard to check if a value is an array of fragment references.
+ * @internal
+ * @param value - Value to check.
+ * @returns True if the value is a FragmentRef array.
+ */
+export const isFragmentRefArray = (value: unknown): value is FragmentRefs<string>[] => {
+  return Array.isArray(value) && value.length > 0 && isFragmentRef(value[0]);
+};
+
+/**
  * Type guard to check if a value is nullish.
  * @internal
  * @param value - Value to check.

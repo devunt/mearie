@@ -9,13 +9,30 @@ export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
 };
 
-export const useFragment = <T extends Artifact<'fragment'>>(
+export type FragmentList<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>[];
+};
+
+type UseFragmentFn = {
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: FragmentRefs<T['name']>[],
+    options?: UseFragmentOptions,
+  ): FragmentList<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: FragmentRefs<T['name']>,
+    options?: UseFragmentOptions,
+  ): Fragment<T>;
+};
+
+export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: FragmentRefs<T['name']>,
+  fragmentRef: FragmentRefs<T['name']> | FragmentRefs<T['name']>[],
   options?: UseFragmentOptions,
-): Fragment<T> => {
+) => {
   const client = useClient();
-  const dataRef = useRef<DataOf<T> | undefined>(undefined);
+  const dataRef = useRef<unknown>(undefined);
 
   const subscribe_ = useCallback(
     (onChange: () => void) => {
@@ -27,7 +44,7 @@ export const useFragment = <T extends Artifact<'fragment'>>(
               throw new AggregatedError(result.errors);
             }
 
-            dataRef.current = result.data as DataOf<T>;
+            dataRef.current = result.data;
             onChange();
           },
         }),
@@ -36,7 +53,7 @@ export const useFragment = <T extends Artifact<'fragment'>>(
     [client, fragment, fragmentRef, options],
   );
 
-  const snapshot = useCallback((): DataOf<T> => {
+  const snapshot = useCallback(() => {
     if (dataRef.current === undefined) {
       const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 
@@ -44,7 +61,7 @@ export const useFragment = <T extends Artifact<'fragment'>>(
         throw new AggregatedError(result.errors);
       }
 
-      dataRef.current = result.data as DataOf<T>;
+      dataRef.current = result.data;
     }
 
     return dataRef.current;
@@ -57,4 +74,4 @@ export const useFragment = <T extends Artifact<'fragment'>>(
       return data;
     },
   };
-};
+}) as unknown as UseFragmentFn;

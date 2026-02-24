@@ -15,7 +15,7 @@ import { takeUntil } from '../stream/operators/take-until.ts';
 import { switchMap } from '../stream/operators/switch-map.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 import { empty } from '../stream/sources/empty.ts';
-import { isFragmentRef } from '../cache/utils.ts';
+import { isFragmentRef, isFragmentRefArray } from '../cache/utils.ts';
 
 declare module '../exchange.ts' {
   interface ExchangeExtensionMap {
@@ -58,6 +58,33 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                   ),
                 ],
               });
+            }
+
+            if (isFragmentRefArray(fragmentRef)) {
+              const trigger = makeSubject<void>();
+
+              const teardown$ = pipe(
+                ops$,
+                filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
+                tap(() => trigger.complete()),
+              );
+
+              return pipe(
+                // eslint-disable-next-line unicorn/no-useless-undefined
+                merge(fromValue(undefined), trigger.source),
+                switchMap(() =>
+                  fromSubscription(
+                    () => cache.readFragments(op.artifact, fragmentRef),
+                    () =>
+                      cache.subscribeFragments(op.artifact, fragmentRef, async () => {
+                        await Promise.resolve();
+                        trigger.next();
+                      }),
+                  ),
+                ),
+                takeUntil(teardown$),
+                map((data) => ({ operation: op, data, errors: [] })),
+              );
             }
 
             if (!isFragmentRef(fragmentRef)) {

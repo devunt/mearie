@@ -144,6 +144,35 @@ export class Cache {
     return this.#subscribe(dependencies, listener);
   }
 
+  readFragments<T extends Artifact<'fragment'>>(artifact: T, fragmentRefs: FragmentRefs<string>[]): DataOf<T>[] | null {
+    const results: DataOf<T>[] = [];
+    for (const ref of fragmentRefs) {
+      const data = this.readFragment(artifact, ref);
+      if (data === null) {
+        return null;
+      }
+      results.push(data);
+    }
+    return results;
+  }
+
+  subscribeFragments<T extends Artifact<'fragment'>>(
+    artifact: T,
+    fragmentRefs: FragmentRefs<string>[],
+    listener: Listener,
+  ): () => void {
+    const dependencies = new Set<DependencyKey>();
+
+    for (const ref of fragmentRefs) {
+      const entityKey = (ref as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
+      denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
+        dependencies.add(makeDependencyKey(storageKey, fieldKey));
+      });
+    }
+
+    return this.#subscribe(dependencies, listener);
+  }
+
   /**
    * Invalidates one or more cache entries and notifies affected subscribers.
    * @param targets - Cache entries to invalidate.

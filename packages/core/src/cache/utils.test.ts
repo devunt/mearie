@@ -6,9 +6,10 @@ import {
   resolveArguments,
   resolveEntityKey,
   isEntityLink,
+  isFragmentRefArray,
 } from './utils.ts';
-import { EntityLinkKey } from './constants.ts';
-import type { FieldSelection } from '@mearie/shared';
+import { EntityLinkKey, FragmentRefKey } from './constants.ts';
+import type { FieldSelection, FragmentRefs } from '@mearie/shared';
 
 describe('makeEntityKey', () => {
   it('should create key with single value', () => {
@@ -361,5 +362,40 @@ describe('isEntityLink', () => {
   it('should return false for arrays', () => {
     expect(isEntityLink([])).toBe(false);
     expect(isEntityLink([{ [EntityLinkKey]: 'User:1' }])).toBe(false);
+  });
+});
+
+describe('isFragmentRefArray', () => {
+  it('should return true for array with single fragment ref', () => {
+    const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+    expect(isFragmentRefArray([ref])).toBe(true);
+  });
+
+  it('should return true for array with multiple fragment refs', () => {
+    const ref1 = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+    const ref2 = { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<string>;
+    expect(isFragmentRefArray([ref1, ref2])).toBe(true);
+  });
+
+  it('should return false for empty array', () => {
+    expect(isFragmentRefArray([])).toBe(false);
+  });
+
+  it('should return false for a single fragment ref', () => {
+    const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+    expect(isFragmentRefArray(ref)).toBe(false);
+  });
+
+  it('should return false for array of plain objects', () => {
+    expect(isFragmentRefArray([{ id: '1' }])).toBe(false);
+  });
+
+  it('should return false for null', () => {
+    expect(isFragmentRefArray(null)).toBe(false);
+  });
+
+  it('should return false for primitives', () => {
+    expect(isFragmentRefArray('User:1')).toBe(false);
+    expect(isFragmentRefArray(123)).toBe(false);
   });
 });

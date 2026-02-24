@@ -1521,4 +1521,326 @@ describe('Cache', () => {
       });
     });
   });
+
+  describe('readFragments', () => {
+    it('should return empty array for empty fragmentRefs', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('fragment', 'UserFragment', [
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'name', type: 'String' },
+      ]);
+
+      const result = cache.readFragments(artifact, []);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should read all fragments from cache', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentRefs = queryResult.users;
+
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+      const result = cache.readFragments(fragmentArtifact, fragmentRefs);
+
+      expect(result).toEqual([
+        { __typename: 'User', id: '1', name: 'Alice' },
+        { __typename: 'User', id: '2', name: 'Bob' },
+      ]);
+    });
+
+    it('should return null if any fragment ref is not in cache', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const validRef = (cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> }).user;
+      const missingRef = { [FragmentRefKey]: 'User:999' } as unknown as FragmentRefs<string>;
+
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+      const result = cache.readFragments(fragmentArtifact, [validRef, missingRef]);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if any fragment data is partial', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentRefs = queryResult.users;
+
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'email', type: 'String' },
+      ]);
+      const result = cache.readFragments(fragmentArtifact, fragmentRefs);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('subscribeFragments', () => {
+    it('should return unsubscribe function', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+      const unsubscribe = cache.subscribeFragments(fragmentArtifact, queryResult.users, vi.fn());
+
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call listener when any fragment field is updated', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+      const listener = vi.fn();
+      cache.subscribeFragments(fragmentArtifact, queryResult.users, listener);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice Updated' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call listener when second fragment field is updated', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+      const listener = vi.fn();
+      cache.subscribeFragments(fragmentArtifact, queryResult.users, listener);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob Updated' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call listener after unsubscribe', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+      const listener = vi.fn();
+      const unsubscribe = cache.subscribeFragments(fragmentArtifact, queryResult.users, listener);
+
+      unsubscribe();
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice Updated' },
+            { __typename: 'User', id: '2', name: 'Bob Updated' },
+          ],
+        },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -132,7 +132,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
 
   executeFragment<T extends Artifact<'fragment'>>(
     artifact: T,
-    fragmentRef: FragmentRefs<T['name']>,
+    fragmentRef: FragmentRefs<T['name']> | FragmentRefs<T['name']>[],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: FragmentOptions,
   ): Source<OperationResult> {

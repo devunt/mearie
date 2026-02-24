@@ -8,11 +8,28 @@ export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
 };
 
-export const createFragment = <T extends Artifact<'fragment'>>(
+export type FragmentList<T extends Artifact<'fragment'>> = {
+  data: DataOf<T>[];
+};
+
+type CreateFragmentFn = {
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: () => FragmentRefs<T['name']>[],
+    options?: () => CreateFragmentOptions,
+  ): FragmentList<T>;
+  <T extends Artifact<'fragment'>>(
+    fragment: T,
+    fragmentRef: () => FragmentRefs<T['name']>,
+    options?: () => CreateFragmentOptions,
+  ): Fragment<T>;
+};
+
+export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
-  fragmentRef: () => FragmentRefs<T['name']>,
+  fragmentRef: () => FragmentRefs<T['name']> | FragmentRefs<T['name']>[],
   options?: () => CreateFragmentOptions,
-): Fragment<T> => {
+) => {
   const client = getClient();
 
   const ref = fragmentRef();
@@ -22,7 +39,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
     throw new Error('Fragment data not found');
   }
 
-  let data = $state<DataOf<T>>(result.data as DataOf<T>);
+  let data = $state(result.data);
 
   $effect(() => {
     const unsubscribe = pipe(
@@ -30,7 +47,7 @@ export const createFragment = <T extends Artifact<'fragment'>>(
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {
-            data = result.data as DataOf<T>;
+            data = result.data;
           }
         },
       }),
@@ -46,4 +63,4 @@ export const createFragment = <T extends Artifact<'fragment'>>(
       return data;
     },
   };
-};
+}) as unknown as CreateFragmentFn;

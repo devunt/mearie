@@ -329,6 +329,149 @@ describe('cacheExchange', () => {
     });
   });
 
+  describe('fragment array operations', () => {
+    it('should read fragment array from cache', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request' || op.artifact?.kind !== 'query') return { operation: op };
+        return {
+          operation: op,
+          data: {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        };
+      });
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUsers',
+        key: 'query-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'fragment-1',
+        metadata: { fragmentRef: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] },
+        selections: fragmentSelections,
+      });
+
+      const results = await testExchange(exchange, forward, [queryOp, fragmentOp], client);
+
+      const fragmentResult = results.find((r) => r.operation.key === 'fragment-1');
+      expect(fragmentResult).toBeDefined();
+      expect(fragmentResult!.data).toEqual([
+        { __typename: 'User', id: '1', name: 'Alice' },
+        { __typename: 'User', id: '2', name: 'Bob' },
+      ]);
+    });
+
+    it('should re-notify fragment array subscription when mutation updates an entity field', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+
+        if (op.artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              users: [
+                { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+                { __typename: 'User', id: '2', name: 'Bob', email: 'bob@example.com' },
+              ],
+            },
+          };
+        } else if (op.artifact?.kind === 'mutation') {
+          return {
+            operation: op,
+            data: { updateUser: { __typename: 'User', id: '1', email: 'alice-new@example.com' } },
+          };
+        }
+        return { operation: op };
+      });
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUsers',
+        key: 'query-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'fragment-1',
+        metadata: { fragmentRef: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] },
+        selections: fragmentSelections,
+      });
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        key: 'mutation-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'updateUser',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      const results = await testExchange(exchange, forward, [queryOp, fragmentOp, mutationOp], client);
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'fragment-1');
+      expect(fragmentResults.length).toBeGreaterThanOrEqual(2);
+      expect(fragmentResults[0]!.data).toEqual([
+        { __typename: 'User', id: '1', email: 'alice@example.com' },
+        { __typename: 'User', id: '2', email: 'bob@example.com' },
+      ]);
+      expect(fragmentResults[1]!.data).toEqual([
+        { __typename: 'User', id: '1', email: 'alice-new@example.com' },
+        { __typename: 'User', id: '2', email: 'bob@example.com' },
+      ]);
+    });
+  });
+
   describe('mutation operations', () => {
     it('should forward mutations', async () => {
       const forwardedOps: Operation[] = [];

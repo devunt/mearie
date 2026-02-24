@@ -8,4 +8,9 @@ export {
   type MutationResult,
   type CreateMutationOptions,
 } from './create-mutation.svelte.ts';
-export { createFragment, type Fragment, type CreateFragmentOptions } from './create-fragment.svelte.ts';
+export {
+  createFragment,
+  type Fragment,
+  type FragmentList,
+  type CreateFragmentOptions,
+} from './create-fragment.svelte.ts';

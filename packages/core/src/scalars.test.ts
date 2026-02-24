@@ -569,9 +569,9 @@ describe('parseScalars', () => {
     const sites = me.sites as Record<string, unknown>[];
 
     // sites[0] must have ALL fields, not just { id }
-    expect(sites[0].id).toBe('s1');
-    expect(sites[0].name).toBe('My Site');
-    expect(sites[0].fonts).toEqual([{ id: 'f1', weight: 400, url: '/font.woff2' }]);
+    expect(sites[0]!.id).toBe('s1');
+    expect(sites[0]!.name).toBe('My Site');
+    expect(sites[0]!.fonts).toEqual([{ id: 'f1', weight: 400, url: '/font.woff2' }]);
 
     // Fields from fragment must also be present
     expect(me.recentlyViewedEntities).toEqual([{ id: 'e1', slug: 'post-1' }]);

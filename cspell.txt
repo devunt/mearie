@@ -1,4 +1,5 @@
 bumpalo
+clippy
 dedup
 devunt
 iface

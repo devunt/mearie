@@ -1,12 +1,19 @@
+output: false
 pre-commit:
   parallel: true
   commands:
-    format-js:
-      glob: '*.{js,ts,jsx,tsx,json,yml,yaml,md}'
-      run: pnpm prettier --write {staged_files}
+    eslint:
+      glob: '*.{ts,tsx,js,jsx}'
+      run: pnpm eslint --fix --quiet {staged_files}
       stage_fixed: true
-
-    format-rust:
+    prettier:
+      glob: '*.{ts,tsx,js,jsx,json,yaml,yml,md,graphql}'
+      run: pnpm prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    cspell:
+      glob: '*'
+      run: pnpm cspell --no-progress --relative --no-must-find-files {staged_files}
+    rust-fmt:
       glob: '*.rs'
-      run: cargo fmt
+      run: cargo fmt -- {staged_files}
       stage_fixed: true

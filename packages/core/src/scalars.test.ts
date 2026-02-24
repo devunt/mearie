@@ -305,6 +305,278 @@ describe('parseScalars', () => {
     });
   });
 
+  it('should not overwrite nested object fields when fragment spread selects a subset', () => {
+    // Reproduces the DashboardLayout_Query bug:
+    // Direct field `me` has all fields, but root-level fragment spreads
+    // also select `me` with fewer fields. The fragment spread should merge
+    // into the existing `me` object, not replace it.
+    const data = {
+      me: {
+        id: '1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        preferences: '{"theme":"dark"}',
+        sites: [{ id: 's1', name: 'My Site' }],
+        recentlyViewedEntities: [{ id: 'e1', slug: 'post-1' }],
+      },
+      impersonation: null,
+      notes: [{ id: 'n1', content: 'hello' }],
+    };
+
+    const selections: Selection[] = [
+      {
+        kind: 'Field',
+        name: 'me',
+        type: 'User',
+        nullable: true,
+        selections: [
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+          { kind: 'Field', name: 'email', type: 'String' },
+          { kind: 'Field', name: 'preferences', type: 'JSON' },
+          {
+            kind: 'Field',
+            name: 'sites',
+            type: 'Site',
+            array: true,
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      },
+      // Fragment on Query that selects impersonation
+      {
+        kind: 'FragmentSpread',
+        name: 'AdminImpersonateBanner_query',
+        selections: [{ kind: 'Field', name: 'impersonation', type: 'Impersonation', nullable: true }],
+      },
+      // Fragment on Query that selects me { id } only
+      {
+        kind: 'FragmentSpread',
+        name: 'Shortcuts_query',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'me',
+            type: 'User',
+            nullable: true,
+            selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+          },
+        ],
+      },
+      // Fragment on Query that selects me { id, recentlyViewedEntities } and notes
+      {
+        kind: 'FragmentSpread',
+        name: 'Notes_query',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'me',
+            type: 'User',
+            nullable: true,
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'Field',
+                name: 'recentlyViewedEntities',
+                type: 'Entity',
+                array: true,
+                selections: [
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'slug', type: 'String' },
+                ],
+              },
+            ],
+          },
+          {
+            kind: 'Field',
+            name: 'notes',
+            type: 'Note',
+            array: true,
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'content', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const result = parse(selections, scalars, data) as Record<string, unknown>;
+    const me = result.me as Record<string, unknown>;
+
+    // All direct fields on me must be preserved
+    expect(me.id).toBe('1');
+    expect(me.name).toBe('Alice');
+    expect(me.email).toBe('alice@example.com');
+    expect(me.preferences).toEqual({ theme: 'dark' }); // JSON scalar parsed
+    expect(me.sites).toEqual([{ id: 's1', name: 'My Site' }]);
+
+    // Fields from fragment spreads must also be present
+    expect(me.recentlyViewedEntities).toEqual([{ id: 'e1', slug: 'post-1' }]);
+
+    // Root-level fields from fragments
+    expect(result.impersonation).toBeNull();
+    expect(result.notes).toEqual([{ id: 'n1', content: 'hello' }]);
+  });
+
+  it('should deep merge nested object from multiple fragment spreads selecting same field', () => {
+    const data = {
+      user: {
+        id: '1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        createdAt: '2025-01-15T10:00:00Z',
+        updatedAt: '2025-01-16T10:00:00Z',
+      },
+    };
+
+    const selections: Selection[] = [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+          { kind: 'Field', name: 'email', type: 'String' },
+          { kind: 'Field', name: 'createdAt', type: 'DateTime' },
+        ],
+      },
+      // Fragment 1: selects user { id, updatedAt }
+      {
+        kind: 'FragmentSpread',
+        name: 'Fragment1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'updatedAt', type: 'DateTime' },
+            ],
+          },
+        ],
+      },
+      // Fragment 2: selects user { id }
+      {
+        kind: 'FragmentSpread',
+        name: 'Fragment2',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+          },
+        ],
+      },
+    ];
+
+    const result = parse(selections, scalars, data) as Record<string, unknown>;
+    const user = result.user as Record<string, unknown>;
+
+    expect(user.id).toBe('1');
+    expect(user.name).toBe('Alice');
+    expect(user.email).toBe('alice@example.com');
+    expect(user.createdAt).toEqual(new Date('2025-01-15T10:00:00Z'));
+    expect(user.updatedAt).toEqual(new Date('2025-01-16T10:00:00Z'));
+  });
+
+  it('should element-wise merge array items when fragment spread selects fewer sub-fields', () => {
+    // Reproduces: sites[0] only has { id } because CommandPalette fragment
+    // selects sites { id } which overwrites the full sites array
+    const data = {
+      me: {
+        id: '1',
+        name: 'Alice',
+        sites: [
+          {
+            id: 's1',
+            name: 'My Site',
+            fonts: [{ id: 'f1', weight: 400, url: '/font.woff2' }],
+          },
+        ],
+        recentlyViewedEntities: [{ id: 'e1', slug: 'post-1' }],
+      },
+    };
+
+    // me has direct fields + fragment spreads on User
+    const selections: Selection[] = [
+      {
+        kind: 'Field',
+        name: 'me',
+        type: 'User',
+        nullable: true,
+        selections: [
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+          {
+            kind: 'Field',
+            name: 'sites',
+            type: 'Site',
+            array: true,
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              {
+                kind: 'Field',
+                name: 'fonts',
+                type: 'Font',
+                array: true,
+                selections: [
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'weight', type: 'Int' },
+                  { kind: 'Field', name: 'url', type: 'String' },
+                ],
+              },
+            ],
+          },
+          // Fragment on User that selects sites { id } only
+          {
+            kind: 'FragmentSpread',
+            name: 'CommandPalette_user',
+            selections: [
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'Field',
+                name: 'sites',
+                type: 'Site',
+                array: true,
+                selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+              },
+              {
+                kind: 'Field',
+                name: 'recentlyViewedEntities',
+                type: 'Entity',
+                array: true,
+                selections: [
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'slug', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const result = parse(selections, scalars, data) as Record<string, unknown>;
+    const me = result.me as Record<string, unknown>;
+    const sites = me.sites as Record<string, unknown>[];
+
+    // sites[0] must have ALL fields, not just { id }
+    expect(sites[0]!.id).toBe('s1');
+    expect(sites[0]!.name).toBe('My Site');
+    expect(sites[0]!.fonts).toEqual([{ id: 'f1', weight: 400, url: '/font.woff2' }]);
+
+    // Fields from fragment must also be present
+    expect(me.recentlyViewedEntities).toEqual([{ id: 'e1', slug: 'post-1' }]);
+  });
+
   it('should handle mixed scalar types', () => {
     const data = {
       createdAt: '2025-01-15T10:00:00Z',

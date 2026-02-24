@@ -419,6 +419,142 @@ describe('validateRequired', () => {
 
       expect(validateRequired(selections, data)).toBeNull();
     });
+
+    it('should not overwrite nested object fields when fragment spread selects a subset', () => {
+      const data = {
+        me: { id: '1', name: 'Alice', email: 'alice@example.com', sites: [{ id: 's1' }] },
+        impersonation: null,
+        notes: [{ id: 'n1' }],
+      };
+
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'me',
+          type: 'User',
+          nullable: true,
+          directives: [{ name: 'required' }],
+          selections: [
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'sites',
+              type: 'Site',
+              array: true,
+              selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+            },
+          ],
+        },
+        {
+          kind: 'FragmentSpread',
+          name: 'AdminBanner_query',
+          selections: [{ kind: 'Field', name: 'impersonation', type: 'Impersonation', nullable: true }],
+        },
+        // Fragment that selects me { id } — should NOT erase name, email, sites
+        {
+          kind: 'FragmentSpread',
+          name: 'Shortcuts_query',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'me',
+              type: 'User',
+              nullable: true,
+              selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+            },
+          ],
+        },
+        // Fragment that selects me { id, recentlyViewedEntities } — should add field, not erase others
+        {
+          kind: 'FragmentSpread',
+          name: 'Notes_query',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'me',
+              type: 'User',
+              nullable: true,
+              selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+            },
+            {
+              kind: 'Field',
+              name: 'notes',
+              type: 'Note',
+              array: true,
+              selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+            },
+          ],
+        },
+      ];
+
+      const result = validateRequired(selections, data) as Record<string, unknown>;
+      const me = result.me as Record<string, unknown>;
+
+      expect(me.id).toBe('1');
+      expect(me.name).toBe('Alice');
+      expect(me.email).toBe('alice@example.com');
+      expect(me.sites).toEqual([{ id: 's1' }]);
+      expect(result.impersonation).toBeNull();
+      expect(result.notes).toEqual([{ id: 'n1' }]);
+    });
+
+    it('should deep merge nested object from multiple fragment spreads selecting same field', () => {
+      const data = {
+        user: { id: '1', name: 'Alice', role: 'admin', avatar: { id: 'a1', url: '/img.png' } },
+      };
+
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'role', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'avatar',
+              type: 'Image',
+              selections: [
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'url', type: 'String' },
+              ],
+            },
+          ],
+        },
+        {
+          kind: 'FragmentSpread',
+          name: 'ProfileFragment',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'user',
+              type: 'User',
+              selections: [
+                { kind: 'Field', name: 'id', type: 'ID' },
+                {
+                  kind: 'Field',
+                  name: 'avatar',
+                  type: 'Image',
+                  selections: [{ kind: 'Field', name: 'id', type: 'ID' }],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const result = validateRequired(selections, data) as Record<string, unknown>;
+      const user = result.user as Record<string, unknown>;
+
+      expect(user.id).toBe('1');
+      expect(user.name).toBe('Alice');
+      expect(user.role).toBe('admin');
+      expect(user.avatar).toEqual({ id: 'a1', url: '/img.png' });
+    });
   });
 
   describe('inline fragments', () => {

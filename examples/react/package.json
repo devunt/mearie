@@ -11,20 +11,20 @@
   },
   "dependencies": {
     "@mearie/react": "workspace:*",
-    "@tanstack/react-router": "^1.133.36",
-    "@tanstack/react-start": "^1.134.0",
+    "@tanstack/react-router": "^1.162.9",
+    "@tanstack/react-start": "^1.162.9",
     "graphql-sse": "^2.6.0",
-    "lucide-react": "^0.548.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.16",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
     "mearie": "workspace:*",
-    "tailwindcss": "^4.1.16",
-    "vite": "^7.1.12"
+    "tailwindcss": "^4.2.1",
+    "vite": "^7.3.1"
   }
 }

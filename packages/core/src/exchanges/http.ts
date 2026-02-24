@@ -7,7 +7,7 @@ import { fromPromise } from '../stream/sources/from-promise.ts';
 import { merge } from '../stream/operators/merge.ts';
 import { tap } from '../stream/operators/tap.ts';
 
-declare module '../errors.ts' {
+declare module '@mearie/core' {
   interface ExchangeErrorExtensionsMap {
     http?: {
       statusCode?: number;

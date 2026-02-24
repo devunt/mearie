@@ -158,16 +158,16 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     }
 
     fn stmt_export_const(&self, name: &str, init: Expression<'b>) -> Statement<'b> {
-        let id = self.ast.binding_pattern(
-            self.ast
-                .binding_pattern_kind_binding_identifier(SPAN, self.ast.atom(name)),
+        let id = self.ast.binding_pattern_binding_identifier(SPAN, self.ast.atom(name));
+
+        let declarator = self.ast.variable_declarator(
+            SPAN,
+            VariableDeclarationKind::Const,
+            id,
             None::<OxcBox<TSTypeAnnotation>>,
+            Some(init),
             false,
         );
-
-        let declarator = self
-            .ast
-            .variable_declarator(SPAN, VariableDeclarationKind::Const, id, Some(init), false);
         let declarators = self.ast.vec1(declarator);
 
         let var_decl = self
@@ -221,20 +221,25 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     }
 
     fn stmt_graphql_function(&self) -> Statement<'b> {
-        let param_pattern = self.ast.binding_pattern(
-            self.ast
-                .binding_pattern_kind_binding_identifier(SPAN, Atom::from("artifact")),
+        let param_pattern = self
+            .ast
+            .binding_pattern_binding_identifier(SPAN, Atom::from("artifact"));
+        let param = self.ast.formal_parameter(
+            SPAN,
+            self.ast.vec(),
+            param_pattern,
             None::<OxcBox<TSTypeAnnotation>>,
+            None::<OxcBox<Expression>>,
+            false,
+            None,
+            false,
             false,
         );
-        let param = self
-            .ast
-            .formal_parameter(SPAN, self.ast.vec(), param_pattern, None, false, false);
         let formal_params = self.ast.formal_parameters(
             SPAN,
             FormalParameterKind::ArrowFormalParameters,
             self.ast.vec1(param),
-            None::<OxcBox<BindingRestElement>>,
+            None::<OxcBox<FormalParameterRest>>,
         );
 
         let artifact_map_expr =
@@ -245,13 +250,13 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             .member_expression_computed(SPAN, artifact_map_expr, artifact_expr, false);
 
         let expression_body = member_expr.into();
-        let function_body = FunctionBody {
-            span: SPAN,
-            directives: self.ast.vec(),
-            statements: self.ast.vec1(Statement::ExpressionStatement(
+        let function_body = self.ast.function_body(
+            SPAN,
+            self.ast.vec(),
+            self.ast.vec1(Statement::ExpressionStatement(
                 self.ast.alloc(self.ast.expression_statement(SPAN, expression_body)),
             )),
-        };
+        );
 
         let arrow_function = self.ast.arrow_function_expression(
             SPAN,
@@ -266,12 +271,8 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let var_declarator = self.ast.variable_declarator(
             SPAN,
             VariableDeclarationKind::Const,
-            self.ast.binding_pattern(
-                self.ast
-                    .binding_pattern_kind_binding_identifier(SPAN, Atom::from("graphql")),
-                None::<OxcBox<TSTypeAnnotation>>,
-                false,
-            ),
+            self.ast.binding_pattern_binding_identifier(SPAN, Atom::from("graphql")),
+            None::<OxcBox<TSTypeAnnotation>>,
             Some(Expression::ArrowFunctionExpression(self.ast.alloc(arrow_function))),
             false,
         );

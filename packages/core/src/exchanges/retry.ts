@@ -10,7 +10,7 @@ import { merge } from '../stream/operators/merge.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 import { tap } from '../stream/operators/tap.ts';
 
-declare module '../exchange.ts' {
+declare module '@mearie/core' {
   interface OperationMetadataMap {
     retry?: {
       attempt: number;

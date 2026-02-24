@@ -9,9 +9,9 @@
   },
   "dependencies": {
     "@mearie-internal/fixture": "workspace:*",
-    "graphql-yoga": "^5.16.0"
+    "graphql-yoga": "^5.18.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251014.0"
+    "@cloudflare/workers-types": "^4.20260303.0"
   }
 }

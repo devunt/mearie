@@ -10,12 +10,12 @@
   },
   "devDependencies": {
     "@mearie/react": "workspace:*",
-    "@shikijs/vitepress-twoslash": "^3.14.0",
-    "@types/react": "^19.2.2",
+    "@shikijs/vitepress-twoslash": "^3.22.0",
+    "@types/react": "^19.2.14",
     "mearie": "workspace:*",
-    "react": "^19.2.0",
+    "react": "^19.2.4",
     "typescript": "catalog:",
     "vitepress": "2.0.0-alpha.12",
-    "vitepress-plugin-group-icons": "^1.6.5"
+    "vitepress-plugin-group-icons": "^1.7.1"
   }
 }

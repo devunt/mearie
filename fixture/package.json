@@ -11,13 +11,13 @@
     "fetch-data": "node scripts/fetch-data.ts"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.1.0",
-    "@graphql-tools/schema": "^10.0.25",
-    "graphql": "^16.11.0"
+    "@faker-js/faker": "^10.3.0",
+    "@graphql-tools/schema": "^10.0.31",
+    "graphql": "^16.13.0"
   },
   "devDependencies": {
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@types/node": "catalog:",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.3.1"
   }
 }

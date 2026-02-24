@@ -1,7 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import unicornPlugin from 'eslint-plugin-unicorn';
 import globals from 'globals';
 import { defineConfig } from 'eslint/config';
@@ -46,16 +46,16 @@ export default defineConfig(
       },
     },
     settings: {
-      'import/resolver': {
+      'import-x/resolver': {
         typescript: {},
       },
-      'import/ignore': ['prettier'],
+      'import-x/ignore': ['prettier'],
     },
     rules: {
       'func-style': ['error', 'expression'],
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/no-empty-function': 'off',
-      'import/newline-after-import': ['error', { considerComments: true }],
+      'import-x/newline-after-import': ['error', { considerComments: true }],
       'unicorn/catch-error-name': 'off',
       'unicorn/consistent-function-scoping': 'off',
       'unicorn/no-null': 'off',

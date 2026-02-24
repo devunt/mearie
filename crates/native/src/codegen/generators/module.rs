@@ -182,16 +182,18 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         let schema_type = self.type_import("$Schema");
         let type_annotation = self.ast.ts_type_annotation(SPAN, schema_type);
 
-        let id = self.ast.binding_pattern(
-            self.ast
-                .binding_pattern_kind_binding_identifier(SPAN, self.ast.atom("schema")),
+        let id = self
+            .ast
+            .binding_pattern_binding_identifier(SPAN, self.ast.atom("schema"));
+
+        let declarator = self.ast.variable_declarator(
+            SPAN,
+            VariableDeclarationKind::Const,
+            id,
             Some(self.ast.alloc(type_annotation)),
+            None,
             false,
         );
-
-        let declarator = self
-            .ast
-            .variable_declarator(SPAN, VariableDeclarationKind::Const, id, None, false);
 
         let declarators = self.ast.vec1(declarator);
         let var_decl = self
@@ -272,22 +274,19 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         return_type_annotation: TSTypeAnnotation<'b>,
         body: Option<OxcBox<'b, FunctionBody<'b>>>,
     ) -> Declaration<'b> {
-        let function = Function {
-            span: SPAN,
-            r#type: FunctionType::FunctionDeclaration,
-            id: Some(self.create_binding_identifier(name)),
-            generator: false,
-            r#async: false,
-            declare: false,
-            type_parameters: None,
-            this_param: None,
+        let function = self.ast.function(
+            SPAN,
+            FunctionType::FunctionDeclaration,
+            Some(self.create_binding_identifier(name)),
+            false,
+            false,
+            false,
+            None::<OxcBox<TSTypeParameterDeclaration>>,
+            None::<OxcBox<TSThisParameter>>,
             params,
-            return_type: Some(self.ast.alloc(return_type_annotation)),
+            Some(self.ast.alloc(return_type_annotation)),
             body,
-            scope_id: std::cell::Cell::new(None),
-            pife: false,
-            pure: false,
-        };
+        );
 
         Declaration::FunctionDeclaration(self.ast.alloc(function))
     }
@@ -298,10 +297,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
         self.ast.ts_type_import_type(
             SPAN,
-            self.ast.ts_type_literal_type(
-                SPAN,
-                self.ast.ts_literal_string_literal(SPAN, "./types.d.ts", None::<Atom>),
-            ),
+            self.ast.string_literal(SPAN, "./types.d.ts", None::<Atom>),
             None::<OxcBox<ObjectExpression>>,
             Some(qualifier),
             None::<OxcBox<TSTypeParameterInstantiation>>,
@@ -322,16 +318,8 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         self.ast.binding_identifier(SPAN, name_str)
     }
 
-    fn create_binding_pattern(
-        &self,
-        name: &'b str,
-        type_annotation: Option<TSTypeAnnotation<'b>>,
-    ) -> BindingPattern<'b> {
-        self.ast.binding_pattern(
-            self.ast.binding_pattern_kind_binding_identifier(SPAN, Atom::from(name)),
-            type_annotation.map(|t| self.ast.alloc(t)),
-            false,
-        )
+    fn create_binding_pattern(&self, name: &'b str) -> BindingPattern<'b> {
+        self.ast.binding_pattern_binding_identifier(SPAN, Atom::from(name))
     }
 
     fn create_formal_parameter(
@@ -339,9 +327,18 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
         name: &'b str,
         type_annotation: Option<TSTypeAnnotation<'b>>,
     ) -> FormalParameter<'b> {
-        let pattern = self.create_binding_pattern(name, type_annotation);
-        self.ast
-            .formal_parameter(SPAN, self.ast.vec(), pattern, None, false, false)
+        let pattern = self.create_binding_pattern(name);
+        self.ast.formal_parameter(
+            SPAN,
+            self.ast.vec(),
+            pattern,
+            type_annotation.map(|t| self.ast.alloc(t)),
+            None::<OxcBox<Expression>>,
+            false,
+            None,
+            false,
+            false,
+        )
     }
 
     fn create_formal_parameters(&self, param: FormalParameter<'b>) -> OxcBox<'b, FormalParameters<'b>> {
@@ -351,7 +348,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
             SPAN,
             FormalParameterKind::Signature,
             params,
-            None::<OxcBox<BindingRestElement>>,
+            None::<OxcBox<FormalParameterRest>>,
         ))
     }
 }

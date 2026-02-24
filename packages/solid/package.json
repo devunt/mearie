@@ -19,7 +19,7 @@
     "@mearie/core": "workspace:*"
   },
   "devDependencies": {
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.11",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

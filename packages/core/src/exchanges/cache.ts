@@ -17,7 +17,7 @@ import { makeSubject } from '../stream/sources/make-subject.ts';
 import { empty } from '../stream/sources/empty.ts';
 import { isFragmentRef, isFragmentRefArray } from '../cache/utils.ts';
 
-declare module '../exchange.ts' {
+declare module '@mearie/core' {
   interface ExchangeExtensionMap {
     cache: CacheOperations;
   }

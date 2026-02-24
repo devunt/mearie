@@ -11,16 +11,16 @@
   "dependencies": {
     "@mearie/solid": "workspace:*",
     "@solidjs/meta": "^0.29.4",
-    "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "^1.2.0",
+    "@solidjs/router": "^0.15.4",
+    "@solidjs/start": "^1.3.1",
     "graphql-sse": "^2.6.0",
-    "lucide-solid": "^0.548.0",
-    "solid-js": "^1.9.10",
-    "vinxi": "^0.5.8"
+    "lucide-solid": "^0.575.0",
+    "solid-js": "^1.9.11",
+    "vinxi": "^0.5.11"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.16",
+    "@tailwindcss/vite": "^4.2.1",
     "mearie": "workspace:*",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.2.1"
   }
 }

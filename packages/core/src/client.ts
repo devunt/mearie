@@ -27,7 +27,9 @@ import { collect } from './stream/sinks/collect.ts';
 import { AggregatedError } from './errors.ts';
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-export type QueryOptions = {};
+export type QueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = {
+  initialData?: DataOf<T>;
+};
 export type MutationOptions = {};
 export type SubscriptionOptions = {};
 export type FragmentOptions = {};
@@ -94,8 +96,8 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     artifact: T,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ...[variables, options]: VariablesOf<T> extends undefined
-      ? [undefined?, QueryOptions?]
-      : [VariablesOf<T>, QueryOptions?]
+      ? [undefined?, QueryOptions<T>?]
+      : [VariablesOf<T>, QueryOptions<T>?]
   ): Source<OperationResult> {
     const operation = this.createOperation(artifact, variables);
     return this.executeOperation(operation);
@@ -148,8 +150,8 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     artifact: T,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ...[variables, options]: VariablesOf<T> extends undefined
-      ? [undefined?, QueryOptions?]
-      : [VariablesOf<T>, QueryOptions?]
+      ? [undefined?, QueryOptions<T>?]
+      : [VariablesOf<T>, QueryOptions<T>?]
   ): Promise<DataOf<T>> {
     const operation = this.createOperation(artifact, variables);
     const result = await pipe(this.executeOperation(operation), take(1), collect);

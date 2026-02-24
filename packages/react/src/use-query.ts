@@ -24,23 +24,24 @@ export type Query<T extends Artifact<'query'>> =
       refetch: () => void;
     };
 
-export type UseQueryOptions = QueryOptions & {
+export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
 };
 
 export const useQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends Record<string, never>
-    ? [undefined?, UseQueryOptions?]
-    : [VariablesOf<T>, UseQueryOptions?]
+    ? [undefined?, UseQueryOptions<T>?]
+    : [VariablesOf<T>, UseQueryOptions<T>?]
 ): Query<T> => {
   const client = useClient();
 
-  const [data, setData] = useState<DataOf<T> | undefined>();
-  const [loading, setLoading] = useState(!options?.skip);
+  const [data, setData] = useState<DataOf<T> | undefined>(options?.initialData);
+  const [loading, setLoading] = useState(!options?.skip && !options?.initialData);
   const [error, setError] = useState<AggregatedError | undefined>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
+  const initialized = useRef(false);
   const stableVariables = useMemo(() => stringify(variables), [variables]);
   const stableOptions = useMemo(() => options, [options?.skip]);
 
@@ -50,6 +51,12 @@ export const useQuery = <T extends Artifact<'query'>>(
     if (stableOptions?.skip) {
       return;
     }
+
+    if (!initialized.current && options?.initialData) {
+      initialized.current = true;
+      return;
+    }
+    initialized.current = true;
 
     setLoading(true);
     setError(undefined);

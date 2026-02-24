@@ -4,7 +4,7 @@ import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
-export type CreateQueryOptions = QueryOptions & {
+export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
 };
 
@@ -31,16 +31,18 @@ export type Query<T extends Artifact<'query'>> =
 export const createQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends Record<string, never>
-    ? [undefined?, Accessor<CreateQueryOptions>?]
-    : [Accessor<VariablesOf<T>>, Accessor<CreateQueryOptions>?]
+    ? [undefined?, Accessor<CreateQueryOptions<T>>?]
+    : [Accessor<VariablesOf<T>>, Accessor<CreateQueryOptions<T>>?]
 ): Query<T> => {
   const client = useClient();
 
-  const [data, setData] = createSignal<DataOf<T> | undefined>();
-  const [loading, setLoading] = createSignal<boolean>(!options?.()?.skip);
+  const initialOpts = options?.();
+  const [data, setData] = createSignal<DataOf<T> | undefined>(initialOpts?.initialData);
+  const [loading, setLoading] = createSignal<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   const [error, setError] = createSignal<AggregatedError | undefined>();
 
   let unsubscribe: (() => void) | null = null;
+  let initialized = false;
 
   const execute = () => {
     unsubscribe?.();
@@ -48,6 +50,12 @@ export const createQuery = <T extends Artifact<'query'>>(
     if (options?.()?.skip) {
       return;
     }
+
+    if (!initialized && initialOpts?.initialData) {
+      initialized = true;
+      return;
+    }
+    initialized = true;
 
     setLoading(true);
     setError(undefined);

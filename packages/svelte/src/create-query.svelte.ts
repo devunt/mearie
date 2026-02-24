@@ -4,7 +4,7 @@ import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
-export type CreateQueryOptions = QueryOptions & {
+export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
 };
 
@@ -31,16 +31,18 @@ export type Query<T extends Artifact<'query'>> =
 export const createQuery = <T extends Artifact<'query'>>(
   query: T,
   ...[variables, options]: VariablesOf<T> extends Record<string, never>
-    ? [undefined?, (() => CreateQueryOptions)?]
-    : [() => VariablesOf<T>, (() => CreateQueryOptions)?]
+    ? [undefined?, (() => CreateQueryOptions<T>)?]
+    : [() => VariablesOf<T>, (() => CreateQueryOptions<T>)?]
 ): Query<T> => {
   const client = getClient();
 
-  let data = $state<DataOf<T> | undefined>();
-  let loading = $state<boolean>(!options?.().skip);
+  const initialOpts = options?.();
+  let data = $state<DataOf<T> | undefined>(initialOpts?.initialData);
+  let loading = $state<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   let error = $state<AggregatedError | undefined>();
 
   let unsubscribe: (() => void) | null = null;
+  let initialized = false;
 
   const execute = () => {
     unsubscribe?.();
@@ -48,6 +50,12 @@ export const createQuery = <T extends Artifact<'query'>>(
     if (options?.().skip) {
       return;
     }
+
+    if (!initialized && initialOpts?.initialData) {
+      initialized = true;
+      return;
+    }
+    initialized = true;
 
     loading = true;
     error = undefined;

@@ -1,9 +1,19 @@
 import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@mearie/shared';
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
-import { makeDependencyKey } from './utils.ts';
+import { makeDependencyKey, makeFieldKeyFromArgs, resolveEntityKey } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
-import type { DependencyKey, Storage, Listener, EntityKey, Subscription } from './types.ts';
+import type {
+  DependencyKey,
+  Fields,
+  FieldKey,
+  InvalidateTarget,
+  Storage,
+  StorageKey,
+  Listener,
+  EntityKey,
+  Subscription,
+} from './types.ts';
 
 /**
  * A normalized cache that stores and manages GraphQL query results and entities.
@@ -132,6 +142,81 @@ export class Cache {
     });
 
     return this.#subscribe(dependencies, listener);
+  }
+
+  /**
+   * Invalidates one or more cache entries and notifies affected subscribers.
+   * @param targets - Cache entries to invalidate.
+   */
+  invalidate(...targets: InvalidateTarget[]): void {
+    const subscriptions = new Set<Subscription>();
+
+    for (const target of targets) {
+      if (target.__typename === 'Query') {
+        if ('field' in target) {
+          const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
+          delete this.#storage[RootFieldKey]?.[fieldKey];
+          this.#collectSubscriptions(RootFieldKey, fieldKey, subscriptions);
+        } else {
+          this.#storage[RootFieldKey] = {} as Fields;
+          this.#collectSubscriptions(RootFieldKey, undefined, subscriptions);
+        }
+      } else if ('id' in target) {
+        const entityKey = resolveEntityKey(
+          target.__typename,
+          target.id,
+          this.#schemaMeta.entities[target.__typename]?.keyFields,
+        );
+        if ('field' in target) {
+          const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
+          delete this.#storage[entityKey]?.[fieldKey];
+          this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
+        } else {
+          delete this.#storage[entityKey];
+          this.#collectSubscriptions(entityKey, undefined, subscriptions);
+        }
+      } else {
+        const prefix = `${target.__typename}:`;
+        for (const key of Object.keys(this.#storage)) {
+          if (key.startsWith(prefix)) {
+            const entityKey = key as EntityKey;
+            if ('field' in target) {
+              const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
+              delete this.#storage[entityKey]?.[fieldKey];
+              this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
+            } else {
+              delete this.#storage[entityKey];
+              this.#collectSubscriptions(entityKey, undefined, subscriptions);
+            }
+          }
+        }
+      }
+    }
+
+    for (const subscription of subscriptions) {
+      void subscription.listener();
+    }
+  }
+
+  #collectSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<Subscription>): void {
+    if (fieldKey === undefined) {
+      const prefix = `${storageKey}.`;
+      for (const [depKey, ss] of this.#subscriptions) {
+        if (depKey.startsWith(prefix)) {
+          for (const s of ss) {
+            out.add(s);
+          }
+        }
+      }
+    } else {
+      const depKey = makeDependencyKey(storageKey, fieldKey);
+      const ss = this.#subscriptions.get(depKey);
+      if (ss) {
+        for (const s of ss) {
+          out.add(s);
+        }
+      }
+    }
   }
 
   #subscribe(dependencies: Set<DependencyKey>, listener: Listener): () => void {

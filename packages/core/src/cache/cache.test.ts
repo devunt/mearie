@@ -1116,6 +1116,274 @@ describe('Cache', () => {
     });
   });
 
+  describe('invalidate', () => {
+    it('should invalidate entity by ID', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+
+    it('should invalidate entity field', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+      );
+
+      cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+
+    it('should invalidate all root queries', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+      cache.writeQuery(artifact, {}, { name: 'Alice' });
+
+      cache.invalidate({ __typename: 'Query' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+
+    it('should invalidate specific root query field', () => {
+      const cache = new Cache(schema);
+
+      const artifact1 = createArtifact('query', 'GetPosts', [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          args: {
+            limit: { kind: 'literal', value: 10 },
+          },
+        },
+      ]);
+
+      const artifact2 = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+      cache.writeQuery(artifact1, {}, { posts: ['post1', 'post2'] });
+      cache.writeQuery(artifact2, {}, { name: 'Alice' });
+
+      cache.invalidate({ __typename: 'Query', field: 'posts', args: { limit: 10 } });
+
+      const postsResult = cache.readQuery(artifact1, {});
+      const nameResult = cache.readQuery(artifact2, {});
+
+      expect(postsResult).toBeNull();
+      expect(nameResult).toEqual({ name: 'Alice' });
+    });
+
+    it('should invalidate all entities of typename', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      cache.invalidate({ __typename: 'User' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+
+    it('should invalidate field across all entities of typename', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+            { __typename: 'User', id: '2', name: 'Bob', email: 'bob@example.com' },
+          ],
+        },
+      );
+
+      cache.invalidate({ __typename: 'User', field: 'email' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+
+    it('should notify subscriptions on invalidation', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle multiple targets at once', () => {
+      const cache = new Cache(schema);
+
+      const userArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      const nameArtifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+      cache.writeQuery(userArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      cache.writeQuery(nameArtifact, {}, { name: 'Root' });
+
+      cache.invalidate({ __typename: 'User', id: '1' }, { __typename: 'Query', field: 'name' });
+
+      const userResult = cache.readQuery(userArtifact, {});
+      const nameResult = cache.readQuery(nameArtifact, {});
+
+      expect(userResult).toBeNull();
+      expect(nameResult).toBeNull();
+    });
+
+    it('should not throw when invalidating nonexistent entity', () => {
+      const cache = new Cache(schema);
+
+      expect(() => {
+        cache.invalidate({ __typename: 'User', id: '999' });
+      }).not.toThrow();
+
+      expect(() => {
+        cache.invalidate({ __typename: 'User', id: '999', field: 'name' });
+      }).not.toThrow();
+
+      expect(() => {
+        cache.invalidate({ __typename: 'NonExistent' });
+      }).not.toThrow();
+    });
+
+    it('should invalidate entity with composite key', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetComment', [
+        {
+          kind: 'Field',
+          name: 'comment',
+          type: 'Comment',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'postId', type: 'ID' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'text', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { comment: { __typename: 'Comment', postId: '1', id: '1', text: 'Great post!' } });
+
+      cache.invalidate({ __typename: 'Comment', id: { postId: '1', id: '1' } });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle empty query selections', () => {
       const cache = new Cache(schema);

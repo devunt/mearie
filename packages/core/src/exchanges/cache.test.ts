@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { cacheExchange } from './cache.ts';
 import { makeTestOperation, makeTestForward, testExchange, makeTestClient } from './test-utils.ts';
 import type { SchemaMeta } from '@mearie/shared';
-import type { Operation } from '../exchange.ts';
+import type { Operation, ExchangeIO, OperationResult } from '../exchange.ts';
+import { pipe } from '../stream/pipe.ts';
+import { subscribe } from '../stream/sinks/subscribe.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
+import { map } from '../stream/operators/map.ts';
+import { filter } from '../stream/operators/filter.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -639,6 +644,69 @@ describe('cacheExchange', () => {
         id: '1',
         email: 'bob@example.com',
       });
+    });
+  });
+
+  describe('invalidation refetch', () => {
+    it('should refetch query after cache invalidation', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results[0]!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
     });
   });
 });

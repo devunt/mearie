@@ -1,7 +1,7 @@
 import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
 import { EntityLinkKey, FragmentRefKey } from './constants.ts';
-import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
+import type { EntityId, EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
 
 /**
  * Generates a unique cache key for an entity based on its typename and key field values.
@@ -97,4 +97,32 @@ export const isFragmentRef = (value: unknown): value is FragmentRefs<string> => 
  */
 export const isNullish = (value: unknown): value is null | undefined => {
   return value === undefined || value === null;
+};
+
+/**
+ * Creates a FieldKey from a raw field name and optional arguments.
+ * @internal
+ * @param field - The field name.
+ * @param args - Optional argument values.
+ * @returns A FieldKey in "field@args" format.
+ */
+export const makeFieldKeyFromArgs = (field: string, args?: Record<string, unknown>): FieldKey => {
+  const argsStr = args && Object.keys(args).length > 0 ? stringify(args) : '{}';
+  return `${field}@${argsStr}`;
+};
+
+/**
+ * Converts an EntityId to an EntityKey.
+ * @internal
+ * @param typename - The GraphQL typename of the entity.
+ * @param id - The entity identifier (string, number, or composite key record).
+ * @param keyFields - Optional ordered list of key field names for composite keys.
+ * @returns An EntityKey.
+ */
+export const resolveEntityKey = (typename: string, id: EntityId, keyFields?: string[]): EntityKey => {
+  if (typeof id === 'string' || typeof id === 'number') {
+    return makeEntityKey(typename, [id]);
+  }
+  const values = keyFields ? keyFields.map((f) => id[f]) : Object.values(id);
+  return makeEntityKey(typename, values);
 };

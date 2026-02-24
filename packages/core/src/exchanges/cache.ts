@@ -1,4 +1,5 @@
 import type { Exchange, RequestOperation } from '../exchange.ts';
+import type { CacheOperations, InvalidateTarget } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
@@ -13,13 +14,20 @@ import { tap } from '../stream/operators/tap.ts';
 import { takeUntil } from '../stream/operators/take-until.ts';
 import { switchMap } from '../stream/operators/switch-map.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
+import { empty } from '../stream/sources/empty.ts';
 import { isFragmentRef } from '../cache/utils.ts';
+
+declare module '../exchange.ts' {
+  interface ExchangeExtensionMap {
+    cache: CacheOperations;
+  }
+}
 
 export type CacheOptions = {
   fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
 };
 
-export const cacheExchange = (options: CacheOptions = {}): Exchange => {
+export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => {
   const { fetchPolicy = 'cache-first' } = options;
 
   return ({ forward, client }) => {
@@ -27,6 +35,10 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
 
     return {
       name: 'cache',
+      extension: {
+        invalidate: (...targets: InvalidateTarget[]) => cache.invalidate(...targets),
+        clear: () => cache.clear(),
+      },
       io: (ops$) => {
         const fragment$ = pipe(
           ops$,
@@ -103,10 +115,13 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
           share(),
         );
 
+        const refetch$ = makeSubject<RequestOperation<'query'>>();
+
         const cache$ = pipe(
           query$,
           mergeMap((op) => {
             const trigger = makeSubject<void>();
+            let hasData = false;
 
             const teardown$ = pipe(
               ops$,
@@ -128,14 +143,27 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
                 ),
               ),
               takeUntil(teardown$),
-              map((data) => ({ operation: op, data, errors: [] })),
+              mergeMap((data) => {
+                if (data !== null) {
+                  hasData = true;
+                  return fromValue({ operation: op, data, errors: [] });
+                }
+
+                if (hasData) {
+                  refetch$.next(op);
+                  return empty();
+                }
+
+                if (fetchPolicy === 'cache-only') {
+                  return fromValue({ operation: op, data: null, errors: [] as never });
+                }
+
+                return empty();
+              }),
             );
           }),
           filter(
-            (result) =>
-              fetchPolicy === 'cache-only' ||
-              (fetchPolicy === 'cache-and-network' && result.data !== null) ||
-              (fetchPolicy === 'cache-first' && result.data !== null),
+            () => fetchPolicy === 'cache-only' || fetchPolicy === 'cache-and-network' || fetchPolicy === 'cache-first',
           ),
         );
 
@@ -153,7 +181,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange => {
         );
 
         const forward$ = pipe(
-          merge(nonCache$, network$, teardown$),
+          merge(nonCache$, network$, teardown$, refetch$.source),
           forward,
           tap((result) => {
             if (result.operation.variant === 'request' && result.data) {

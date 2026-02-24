@@ -76,3 +76,27 @@ export type Data = {
 export type Listener = () => MaybePromise<void>;
 
 export type Subscription = { listener: Listener };
+
+/**
+ * Identifier for a single entity, supporting simple or composite keys.
+ */
+export type EntityId = string | number | Record<string, string | number>;
+
+/**
+ * Target specification for cache invalidation operations.
+ */
+export type InvalidateTarget =
+  | { __typename: string; id: EntityId }
+  | { __typename: string; id: EntityId; field: string; args?: Record<string, unknown> }
+  | { __typename: 'Query' }
+  | { __typename: 'Query'; field: string; args?: Record<string, unknown> }
+  | { __typename: string }
+  | { __typename: string; field: string; args?: Record<string, unknown> };
+
+/**
+ * Operations available for programmatic cache manipulation.
+ */
+export type CacheOperations = {
+  invalidate(...targets: InvalidateTarget[]): void;
+  clear(): void;
+};

@@ -570,7 +570,7 @@ describe('scalarExchange', () => {
       const data = results[0]!.data as { posts: { id: string; createdAt: Date }[] };
       expect(Array.isArray(data.posts)).toBe(true);
       expect(data.posts).toHaveLength(1000);
-      expect(data.posts[0].createdAt).toBeInstanceOf(Date);
+      expect(data.posts[0]!.createdAt).toBeInstanceOf(Date);
     });
 
     it('should handle empty arrays in response', async () => {

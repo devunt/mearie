@@ -26,8 +26,9 @@ const makeArtifact = <K extends 'query' | 'mutation'>(
 });
 
 const makeMockExchange = (handler: (op: Operation) => Partial<OperationResult>): Exchange => {
-  return () => {
-    return (ops$) =>
+  return () => ({
+    name: 'mock',
+    io: (ops$) =>
       pipe(
         ops$,
         filter((op) => op.variant === 'request'),
@@ -39,8 +40,8 @@ const makeMockExchange = (handler: (op: Operation) => Partial<OperationResult>):
             } as OperationResult),
           ),
         ),
-      );
-  };
+      ),
+  });
 };
 
 describe('Client.query()', () => {

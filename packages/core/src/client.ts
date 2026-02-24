@@ -7,9 +7,9 @@ import type {
   FragmentRefs,
   SchemaMeta,
 } from '@mearie/shared';
-import type { Exchange, Operation, OperationResult } from './exchange.ts';
+import type { Exchange, ExchangeExtensionMap, Operation, OperationResult } from './exchange.ts';
 import type { ScalarsConfig } from './scalars.ts';
-import { composeExchange } from './exchanges/compose.ts';
+import { composeExchanges } from './compose.ts';
 import { fragmentExchange } from './exchanges/fragment.ts';
 import { requiredExchange } from './exchanges/required.ts';
 import { scalarExchange } from './exchanges/scalar.ts';
@@ -43,6 +43,7 @@ export type ClientOptions<T extends SchemaMeta> = {
 export class Client<TMeta extends SchemaMeta = SchemaMeta> {
   #schema: TMeta;
   #scalars?: ScalarsConfig<TMeta>;
+  #extensions: Map<string, unknown>;
   private operations$: Subject<Operation>;
   private results$: Source<OperationResult>;
 
@@ -50,12 +51,16 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     this.#schema = config.schema;
     this.#scalars = config.scalars;
 
-    const exchange = composeExchange({
-      exchanges: [requiredExchange(), scalarExchange(), ...config.exchanges, fragmentExchange(), terminalExchange()],
-    });
+    const { io, extensions } = composeExchanges(
+      {
+        exchanges: [requiredExchange(), scalarExchange(), ...config.exchanges, fragmentExchange(), terminalExchange()],
+      },
+      { forward: never, client: this as Client },
+    );
 
+    this.#extensions = extensions;
     this.operations$ = makeSubject<Operation>();
-    this.results$ = exchange({ forward: never, client: this })(this.operations$.source);
+    this.results$ = io(this.operations$.source);
   }
 
   get schema(): TMeta {
@@ -178,6 +183,21 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     }
 
     return result.data as DataOf<T>;
+  }
+
+  /**
+   * Returns the extension registered by a named exchange.
+   * @param name - The exchange name.
+   * @returns The extension object provided by the exchange.
+   */
+  extension<TName extends keyof ExchangeExtensionMap>(name: TName): ExchangeExtensionMap[TName];
+  extension(name: string): unknown;
+  extension(name: string): unknown {
+    const ext = this.#extensions.get(name);
+    if (!ext) {
+      throw new Error(`Exchange extension '${name}' is not registered. Check your exchange configuration.`);
+    }
+    return ext;
   }
 
   dispose(): void {

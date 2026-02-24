@@ -38,4 +38,17 @@ export type ExchangeInput<TMeta extends SchemaMeta = SchemaMeta> = {
 
 export type ExchangeIO = (operations: Source<Operation>) => Source<OperationResult>;
 
-export type Exchange = <TMeta extends SchemaMeta = SchemaMeta>(input: ExchangeInput<TMeta>) => ExchangeIO;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ExchangeExtensionMap {}
+
+export type ExchangeResult<TName extends keyof ExchangeExtensionMap | (string & {}) = string> = {
+  name: TName;
+  io: ExchangeIO;
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+} & (TName extends keyof ExchangeExtensionMap ? { extension: ExchangeExtensionMap[TName] } : {});
+
+export type Exchange<TName extends keyof ExchangeExtensionMap | (string & {}) = string> = <
+  TMeta extends SchemaMeta = SchemaMeta,
+>(
+  input: ExchangeInput<TMeta>,
+) => ExchangeResult<TName>;

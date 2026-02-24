@@ -104,7 +104,7 @@ export const testExchange = async (
 
   const unsubscribe = pipe(
     subject.source,
-    exchange({ forward, client: (client ?? null) as never }),
+    exchange({ forward, client: (client ?? null) as never }).io,
     subscribe({
       next: (result) => {
         results.push(result);

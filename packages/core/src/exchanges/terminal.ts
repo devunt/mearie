@@ -6,8 +6,9 @@ import { fromValue } from '../stream/sources/from-value.ts';
 import { filter } from '../stream/operators/filter.ts';
 
 export const terminalExchange = (): Exchange => {
-  return () => {
-    return (ops$) => {
+  return () => ({
+    name: 'terminal',
+    io: (ops$) => {
       return pipe(
         ops$,
         filter((op) => op.variant !== 'teardown'),
@@ -25,6 +26,6 @@ export const terminalExchange = (): Exchange => {
           }),
         ),
       );
-    };
-  };
+    },
+  });
 };

@@ -4,7 +4,15 @@
 
 export type { Artifact, ArtifactKind, DataOf, FragmentRefs, VariablesOf, SchemaMeta } from '@mearie/shared';
 
-export type { Exchange, ExchangeIO, Operation, OperationResult, OperationMetadataMap } from './exchange.ts';
+export type {
+  Exchange,
+  ExchangeExtensionMap,
+  ExchangeIO,
+  ExchangeResult,
+  Operation,
+  OperationResult,
+  OperationMetadataMap,
+} from './exchange.ts';
 export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';
 export {
   GraphQLError,
@@ -15,7 +23,6 @@ export {
   isAggregatedError,
 } from './errors.ts';
 
-export { composeExchange, type ComposeExchangeOptions } from './exchanges/compose.ts';
 export { httpExchange, type HttpOptions } from './exchanges/http.ts';
 export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheOptions } from './exchanges/cache.ts';

@@ -36,8 +36,9 @@ declare module '../exchange.ts' {
  * @returns An exchange that deduplicates in-flight operations.
  */
 export const dedupExchange = (): Exchange => {
-  return ({ forward }) => {
-    return (ops$) => {
+  return ({ forward }) => ({
+    name: 'dedup',
+    io: (ops$) => {
       const operations = new Map<string, Set<string>>();
 
       const skip$ = pipe(
@@ -105,6 +106,6 @@ export const dedupExchange = (): Exchange => {
           return fromArray([...subs].map((key) => ({ ...result, operation: { ...result.operation, key } })));
         }),
       );
-    };
-  };
+    },
+  });
 };

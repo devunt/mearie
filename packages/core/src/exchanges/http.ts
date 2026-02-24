@@ -129,8 +129,9 @@ const executeFetch = async ({
 export const httpExchange = (options: HttpOptions): Exchange => {
   const { url, headers, mode, credentials, fetch: fetchFn = globalThis.fetch } = options;
 
-  return ({ forward }) => {
-    return (ops$) => {
+  return ({ forward }) => ({
+    name: 'http',
+    io: (ops$) => {
       const inflight = new Map<string, AbortController>();
 
       const fetch$ = pipe(
@@ -178,6 +179,6 @@ export const httpExchange = (options: HttpOptions): Exchange => {
       );
 
       return merge(fetch$, forward$);
-    };
-  };
+    },
+  });
 };

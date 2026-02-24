@@ -90,7 +90,7 @@ const validateRequiredInner = (selections: readonly Selection[], data: unknown, 
   return result;
 };
 
-const validateRequired = (selections: readonly Selection[], data: unknown, fieldPath: string[] = []): unknown => {
+const validateRequired = (selections: readonly Selection[], data?: unknown, fieldPath: string[] = []): unknown => {
   const result = validateRequiredInner(selections, data, fieldPath);
   return result === CASCADE_NULL ? null : result;
 };

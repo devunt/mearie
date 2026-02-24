@@ -4,8 +4,9 @@ import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 
 export const scalarExchange = (): Exchange => {
-  return ({ forward, client }) => {
-    return (ops$) => {
+  return ({ forward, client }) => ({
+    name: 'scalar',
+    io: (ops$) => {
       return pipe(
         ops$,
         map((op) => {
@@ -30,6 +31,6 @@ export const scalarExchange = (): Exchange => {
           };
         }),
       );
-    };
-  };
+    },
+  });
 };

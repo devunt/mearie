@@ -12,8 +12,9 @@ declare module '../exchange.ts' {
 }
 
 export const fragmentExchange = (): Exchange => {
-  return ({ forward }) => {
-    return (ops$) => {
+  return ({ forward }) => ({
+    name: 'fragment',
+    io: (ops$) => {
       const fragment$ = pipe(
         ops$,
         filter((op) => op.variant === 'request' && op.artifact.kind === 'fragment'),
@@ -48,6 +49,6 @@ export const fragmentExchange = (): Exchange => {
       );
 
       return merge(fragment$, forward$);
-    };
-  };
+    },
+  });
 };

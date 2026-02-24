@@ -5,8 +5,9 @@ import { pipe } from '../stream/pipe.ts';
 import { map } from '../stream/operators/map.ts';
 
 export const requiredExchange = (): Exchange => {
-  return ({ forward }) => {
-    return (ops$) => {
+  return ({ forward }) => ({
+    name: 'required',
+    io: (ops$) => {
       return pipe(
         ops$,
         forward,
@@ -32,6 +33,6 @@ export const requiredExchange = (): Exchange => {
           }
         }),
       );
-    };
-  };
+    },
+  });
 };

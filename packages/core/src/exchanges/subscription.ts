@@ -63,8 +63,9 @@ export type SubscriptionExchangeOptions = {
 export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exchange => {
   const { client } = options;
 
-  return ({ forward }) => {
-    return (ops$) => {
+  return ({ forward }) => ({
+    name: 'subscription',
+    io: (ops$) => {
       const subscription$ = pipe(
         ops$,
         filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind === 'subscription'),
@@ -139,6 +140,6 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
       );
 
       return merge(subscription$, forward$);
-    };
-  };
+    },
+  });
 };

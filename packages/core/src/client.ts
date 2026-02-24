@@ -1,4 +1,12 @@
-import type { Artifact, ArtifactKind, OperationKind, VariablesOf, FragmentRefs, SchemaMeta } from '@mearie/shared';
+import type {
+  Artifact,
+  ArtifactKind,
+  DataOf,
+  OperationKind,
+  VariablesOf,
+  FragmentRefs,
+  SchemaMeta,
+} from '@mearie/shared';
 import type { Exchange, Operation, OperationResult } from './exchange.ts';
 import type { ScalarsConfig } from './scalars.ts';
 import { composeExchange } from './exchanges/compose.ts';
@@ -14,6 +22,9 @@ import { initialize } from './stream/operators/initialize.ts';
 import { share } from './stream/operators/share.ts';
 import { finalize } from './stream/operators/finalize.ts';
 import { never } from './stream/sources/never.ts';
+import { take } from './stream/operators/take.ts';
+import { collect } from './stream/sinks/collect.ts';
+import { AggregatedError } from './errors.ts';
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 export type QueryOptions = {};
@@ -131,6 +142,40 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     };
 
     return this.executeOperation(operation);
+  }
+
+  async query<T extends Artifact<'query'>>(
+    artifact: T,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, QueryOptions?]
+      : [VariablesOf<T>, QueryOptions?]
+  ): Promise<DataOf<T>> {
+    const operation = this.createOperation(artifact, variables);
+    const result = await pipe(this.executeOperation(operation), take(1), collect);
+
+    if (result.errors && result.errors.length > 0) {
+      throw new AggregatedError(result.errors);
+    }
+
+    return result.data as DataOf<T>;
+  }
+
+  async mutation<T extends Artifact<'mutation'>>(
+    artifact: T,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...[variables, options]: VariablesOf<T> extends undefined
+      ? [undefined?, MutationOptions?]
+      : [VariablesOf<T>, MutationOptions?]
+  ): Promise<DataOf<T>> {
+    const operation = this.createOperation(artifact, variables);
+    const result = await pipe(this.executeOperation(operation), take(1), collect);
+
+    if (result.errors && result.errors.length > 0) {
+      throw new AggregatedError(result.errors);
+    }
+
+    return result.data as DataOf<T>;
   }
 
   dispose(): void {

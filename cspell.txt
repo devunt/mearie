@@ -16,3 +16,4 @@ rustc
 shikijs
 tmdb
 vitepress
+vitest

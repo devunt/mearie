@@ -47,10 +47,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
   if (ref == null) {
     data = null;
   } else {
-    const result = pipe(
-      client.executeFragment(fragment, ref, options?.()),
-      peek,
-    );
+    const result = pipe(client.executeFragment(fragment, ref, options?.()), peek);
     if (result.data === undefined) {
       throw new Error('Fragment data not found');
     }

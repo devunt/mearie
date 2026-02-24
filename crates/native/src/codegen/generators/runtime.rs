@@ -526,10 +526,10 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                     properties.push(self.prop_object("selections", self.expr_selections_array(selections)));
                 }
 
-                if let Some(directives) = directives {
-                    if !directives.is_empty() {
-                        properties.push(self.prop_object("directives", self.expr_directives_array(directives)));
-                    }
+                if let Some(directives) = directives
+                    && !directives.is_empty()
+                {
+                    properties.push(self.prop_object("directives", self.expr_directives_array(directives)));
                 }
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))

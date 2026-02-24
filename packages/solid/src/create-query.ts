@@ -64,8 +64,8 @@ type CreateQueryFn = {
 
 export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   query: T,
-  variables?: Accessor<VariablesOf<T>>  ,
-  options?: Accessor<CreateQueryOptions<T>>  ,
+  variables?: Accessor<VariablesOf<T>>,
+  options?: Accessor<CreateQueryOptions<T>>,
 ): Query<T> => {
   const client = useClient();
 

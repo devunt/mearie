@@ -64,8 +64,8 @@ type CreateQueryFn = {
 
 export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   query: T,
-  variables?: (() => VariablesOf<T>)  ,
-  options?: (() => CreateQueryOptions<T>)  ,
+  variables?: () => VariablesOf<T>,
+  options?: () => CreateQueryOptions<T>,
 ): Query<T> => {
   const client = getClient();
 

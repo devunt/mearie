@@ -45,7 +45,7 @@
     "publish:prepare": "node scripts/prepare-publish.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck --filter=!@mearie-internal/*"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

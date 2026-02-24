@@ -64,8 +64,8 @@ type UseQueryFn = {
 
 export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   query: T,
-  variables?: VariablesOf<T>  ,
-  options?: UseQueryOptions<T>  ,
+  variables?: VariablesOf<T>,
+  options?: UseQueryOptions<T>,
 ): Query<T> => {
   const client = useClient();
 

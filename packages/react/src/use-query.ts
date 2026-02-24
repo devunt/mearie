@@ -4,6 +4,10 @@ import { AggregatedError, stringify } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
+export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
+  skip?: boolean;
+};
+
 export type Query<T extends Artifact<'query'>> =
   | {
       data: undefined;
@@ -24,15 +28,44 @@ export type Query<T extends Artifact<'query'>> =
       refetch: () => void;
     };
 
-export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
-  skip?: boolean;
+export type DefinedQuery<T extends Artifact<'query'>> =
+  | {
+      data: DataOf<T>;
+      loading: true;
+      error: undefined;
+      refetch: () => void;
+    }
+  | {
+      data: DataOf<T>;
+      loading: false;
+      error: undefined;
+      refetch: () => void;
+    }
+  | {
+      data: DataOf<T>;
+      loading: false;
+      error: AggregatedError;
+      refetch: () => void;
+    };
+
+type UseQueryFn = {
+  <T extends Artifact<'query'>>(
+    query: T,
+    variables: VariablesOf<T> | undefined,
+    options: UseQueryOptions<T> & { initialData: DataOf<T> },
+  ): DefinedQuery<T>;
+  <T extends Artifact<'query'>>(
+    query: T,
+    ...[variables, options]: VariablesOf<T> extends Record<string, never>
+      ? [undefined?, UseQueryOptions<T>?]
+      : [VariablesOf<T>, UseQueryOptions<T>?]
+  ): Query<T>;
 };
 
-export const useQuery = <T extends Artifact<'query'>>(
+export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   query: T,
-  ...[variables, options]: VariablesOf<T> extends Record<string, never>
-    ? [undefined?, UseQueryOptions<T>?]
-    : [VariablesOf<T>, UseQueryOptions<T>?]
+  variables?: VariablesOf<T>  ,
+  options?: UseQueryOptions<T>  ,
 ): Query<T> => {
   const client = useClient();
 
@@ -90,4 +123,4 @@ export const useQuery = <T extends Artifact<'query'>>(
     error,
     refetch: execute,
   } as Query<T>;
-};
+}) as unknown as UseQueryFn;

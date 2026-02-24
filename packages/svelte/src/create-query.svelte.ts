@@ -28,11 +28,44 @@ export type Query<T extends Artifact<'query'>> =
       refetch: () => void;
     };
 
-export const createQuery = <T extends Artifact<'query'>>(
+export type DefinedQuery<T extends Artifact<'query'>> =
+  | {
+      data: DataOf<T>;
+      loading: true;
+      error: undefined;
+      refetch: () => void;
+    }
+  | {
+      data: DataOf<T>;
+      loading: false;
+      error: undefined;
+      refetch: () => void;
+    }
+  | {
+      data: DataOf<T>;
+      loading: false;
+      error: AggregatedError;
+      refetch: () => void;
+    };
+
+type CreateQueryFn = {
+  <T extends Artifact<'query'>>(
+    query: T,
+    variables: (() => VariablesOf<T>) | undefined,
+    options: () => CreateQueryOptions<T> & { initialData: DataOf<T> },
+  ): DefinedQuery<T>;
+  <T extends Artifact<'query'>>(
+    query: T,
+    ...[variables, options]: VariablesOf<T> extends Record<string, never>
+      ? [undefined?, (() => CreateQueryOptions<T>)?]
+      : [() => VariablesOf<T>, (() => CreateQueryOptions<T>)?]
+  ): Query<T>;
+};
+
+export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   query: T,
-  ...[variables, options]: VariablesOf<T> extends Record<string, never>
-    ? [undefined?, (() => CreateQueryOptions<T>)?]
-    : [() => VariablesOf<T>, (() => CreateQueryOptions<T>)?]
+  variables?: (() => VariablesOf<T>)  ,
+  options?: (() => CreateQueryOptions<T>)  ,
 ): Query<T> => {
   const client = getClient();
 
@@ -101,4 +134,4 @@ export const createQuery = <T extends Artifact<'query'>>(
     },
     refetch,
   } as Query<T>;
-};
+}) as unknown as CreateQueryFn;

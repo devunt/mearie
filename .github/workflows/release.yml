@@ -17,7 +17,7 @@ jobs:
       native_updated: ${{ steps.check.outputs.native_updated }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -90,7 +90,7 @@ jobs:
 
       - name: Download native artifacts
         if: needs.detect-release.outputs.native_updated == 'true'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: crates/native/artifacts
 

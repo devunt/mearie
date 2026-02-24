@@ -1,0 +1,87 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query { users(role: type) { id } }\")"
+---
+Document {
+    source: Source {
+        code: "query { users(role: type) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 34,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 32,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "users",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 14,
+                                                end: 24,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "role",
+                                                ),
+                                            ),
+                                            value: Enum(
+                                                Name(
+                                                    "type",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 28,
+                                                        end: 32,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

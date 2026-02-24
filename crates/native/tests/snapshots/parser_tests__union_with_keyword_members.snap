@@ -1,0 +1,40 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"union input = query | mutation\")"
+---
+Document {
+    source: Source {
+        code: "union input = query | mutation",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Union(
+                    UnionTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "input",
+                            ),
+                        ),
+                        directives: [],
+                        members: [
+                            TypeName(
+                                Name(
+                                    "query",
+                                ),
+                            ),
+                            TypeName(
+                                Name(
+                                    "mutation",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,58 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"type query implements input { id: ID! }\")"
+---
+Document {
+    source: Source {
+        code: "type query implements input { id: ID! }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        TypeSystem(
+            Type(
+                Object(
+                    ObjectTypeDefinition {
+                        description: None,
+                        name: TypeName(
+                            Name(
+                                "query",
+                            ),
+                        ),
+                        implements: [
+                            TypeName(
+                                Name(
+                                    "input",
+                                ),
+                            ),
+                        ],
+                        directives: [],
+                        fields: [
+                            FieldDefinition {
+                                description: None,
+                                name: FieldName(
+                                    Name(
+                                        "id",
+                                    ),
+                                ),
+                                arguments: [],
+                                typ: NonNull(
+                                    Named(
+                                        NamedType {
+                                            name: TypeName(
+                                                Name(
+                                                    "ID",
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ),
+                                directives: [],
+                            },
+                        ],
+                    },
+                ),
+            ),
+        ),
+    ],
+}

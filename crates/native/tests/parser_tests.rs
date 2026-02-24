@@ -147,6 +147,37 @@ fn test_multiple_operations() {
     ));
 }
 
+#[test]
+fn test_query_with_keyword_field_names() {
+    assert_debug_snapshot!(parse!(
+        r#"query {
+            user {
+                type
+                interface
+                union
+                enum
+                input
+                scalar
+                schema
+                query
+                mutation
+                subscription
+                fragment
+                on
+                extend
+                implements
+                directive
+                repeatable
+            }
+        }"#
+    ));
+}
+
+#[test]
+fn test_query_with_keyword_field_alias() {
+    assert_debug_snapshot!(parse!(r#"query { user { myType: type myInput: input } }"#));
+}
+
 // =============================================================================
 // MUTATIONS
 // =============================================================================
@@ -212,6 +243,26 @@ fn test_query_with_fragment_spread() {
 #[test]
 fn test_inline_fragment() {
     assert_debug_snapshot!(parse!("query { search { ... on User { name } } }"));
+}
+
+#[test]
+fn test_inline_fragment_with_keyword_type_condition() {
+    assert_debug_snapshot!(parse!("query { node { ... on Query { name } } }"));
+}
+
+#[test]
+fn test_fragment_on_keyword_type_name() {
+    assert_debug_snapshot!(parse!("fragment F on Query { id name } query { ...F }"));
+}
+
+#[test]
+fn test_keyword_as_enum_value_in_argument() {
+    assert_debug_snapshot!(parse!("query { users(role: type) { id } }"));
+}
+
+#[test]
+fn test_variable_with_keyword_type_name() {
+    assert_debug_snapshot!(parse!("query GetNode($id: ID!, $q: Query) { node(id: $id) { id } }"));
 }
 
 #[test]
@@ -682,4 +733,35 @@ fn test_extend_input() {
     assert_debug_snapshot!(parse!(
         "input UserInput { name: String! } extend input UserInput { email: String! }"
     ));
+}
+
+// =============================================================================
+// KEYWORD NAMES (GraphQL keywords used as identifiers)
+// =============================================================================
+
+#[test]
+fn test_schema_with_keyword_type_names() {
+    assert_debug_snapshot!(parse!(
+        "schema { query: query mutation: mutation subscription: subscription }"
+    ));
+}
+
+#[test]
+fn test_type_definition_with_keyword_name() {
+    assert_debug_snapshot!(parse!("type query { id: ID! }"));
+}
+
+#[test]
+fn test_union_with_keyword_members() {
+    assert_debug_snapshot!(parse!("union input = query | mutation"));
+}
+
+#[test]
+fn test_type_implements_keyword_interface() {
+    assert_debug_snapshot!(parse!("type query implements input { id: ID! }"));
+}
+
+#[test]
+fn test_extend_type_with_keyword_name() {
+    assert_debug_snapshot!(parse!("extend type query { name: String }"));
 }

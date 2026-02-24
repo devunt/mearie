@@ -1,0 +1,101 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query { user { myType: type myInput: input } }\"#)"
+---
+Document {
+    source: Source {
+        code: "query { user { myType: type myInput: input } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 46,
+                    },
+                    operation_type: Query,
+                    name: None,
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 8,
+                                        end: 44,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 15,
+                                                        end: 35,
+                                                    },
+                                                    alias: Some(
+                                                        FieldName(
+                                                            Name(
+                                                                "myType",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                    name: FieldName(
+                                                        Name(
+                                                            "type",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 28,
+                                                        end: 44,
+                                                    },
+                                                    alias: Some(
+                                                        FieldName(
+                                                            Name(
+                                                                "myInput",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                    name: FieldName(
+                                                        Name(
+                                                            "input",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

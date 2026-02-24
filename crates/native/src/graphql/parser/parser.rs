@@ -93,6 +93,29 @@ impl<'a> Parser<'a, Parsing> {
         .at(location)
     }
 
+    fn peek_is_name_or_keyword(&mut self) -> bool {
+        matches!(
+            self.peek_token(),
+            Token::Name(_)
+                | Token::Type
+                | Token::Interface
+                | Token::Union
+                | Token::Enum
+                | Token::Input
+                | Token::Scalar
+                | Token::Schema
+                | Token::Query
+                | Token::Mutation
+                | Token::Subscription
+                | Token::Fragment
+                | Token::On
+                | Token::Extend
+                | Token::Implements
+                | Token::Directive
+                | Token::Repeatable
+        )
+    }
+
     fn next_name_or_keyword(&mut self, error_msg: &'static str) -> Result<&'a str, MearieError> {
         match self.next_token() {
             Token::Name(name) => Ok(name),
@@ -108,6 +131,10 @@ impl<'a> Parser<'a, Parsing> {
             Token::Schema => Ok("schema"),
             Token::Fragment => Ok("fragment"),
             Token::On => Ok("on"),
+            Token::Extend => Ok("extend"),
+            Token::Implements => Ok("implements"),
+            Token::Directive => Ok("directive"),
+            Token::Repeatable => Ok("repeatable"),
             _ => Err(self.error(error_msg)),
         }
     }
@@ -223,17 +250,14 @@ impl<'a> Parser<'a, Parsing> {
         while matches!(self.peek_token(), Token::At) {
             let start = self.span().start;
             self.next_token();
-            if let Token::Name(name) = self.next_token() {
-                let arguments = self.parse_arguments()?;
-                let end = self.span().end;
-                directives.push(Directive {
-                    span: Span::new(start, end),
-                    name: DirectiveName::from(name),
-                    arguments,
-                });
-            } else {
-                return Err(self.error("directive name"));
-            }
+            let name = self.next_name_or_keyword("directive name")?;
+            let arguments = self.parse_arguments()?;
+            let end = self.span().end;
+            directives.push(Directive {
+                span: Span::new(start, end),
+                name: DirectiveName::from(name),
+                arguments,
+            });
         }
         Ok(directives)
     }
@@ -256,10 +280,6 @@ impl<'a> Parser<'a, Parsing> {
                 self.next_token();
                 let name = Name::from(self.next_name_or_keyword("variable name")?);
                 Ok(Value::Variable(name))
-            }
-            Token::Name(name) => {
-                self.next_token();
-                Ok(Value::Enum(Name::from(name)))
             }
             Token::IntValue(val) => {
                 self.next_token();
@@ -303,23 +323,29 @@ impl<'a> Parser<'a, Parsing> {
                 self.next_token();
                 Ok(Value::Object(fields))
             }
+            _ if self.peek_is_name_or_keyword() => {
+                let name = self.next_name_or_keyword("enum value")?;
+                Ok(Value::Enum(Name::from(name)))
+            }
             _ => Err(self.error("value")),
         }
     }
 
     fn parse_type(&mut self) -> Result<Type<'a>, MearieError> {
-        let base_type = match self.next_token() {
-            Token::Name(name) => Type::Named(NamedType {
+        let base_type = if self.peek_is_name_or_keyword() {
+            let name = self.next_name_or_keyword("type name")?;
+            Type::Named(NamedType {
                 name: TypeName::from(name),
-            }),
-            Token::BracketOpen => {
-                let inner = self.parse_type()?;
-                if !matches!(self.next_token(), Token::BracketClose) {
-                    return Err(self.error("]"));
-                }
-                Type::List(self.allocator().alloc(inner))
+            })
+        } else if matches!(self.peek_token(), Token::BracketOpen) {
+            self.next_token();
+            let inner = self.parse_type()?;
+            if !matches!(self.next_token(), Token::BracketClose) {
+                return Err(self.error("]"));
             }
-            _ => return Err(self.error("type")),
+            Type::List(self.allocator().alloc(inner))
+        } else {
+            return Err(self.error("type"));
         };
 
         if matches!(self.peek_token(), Token::Bang) {
@@ -389,11 +415,8 @@ impl<'a> Parser<'a, Parsing> {
                 self.next_token();
                 if matches!(self.peek_token(), Token::On) {
                     self.next_token();
-                    let type_condition = if let Token::Name(name) = self.next_token() {
-                        Some(TypeName::from(name))
-                    } else {
-                        return Err(self.error("type name"));
-                    };
+                    let name = self.next_name_or_keyword("type name")?;
+                    let type_condition = Some(TypeName::from(name));
                     let directives = self.parse_directives()?;
                     let selection_set = self.parse_selection_set()?;
                     let end = self.span().end;
@@ -413,7 +436,8 @@ impl<'a> Parser<'a, Parsing> {
                         directives,
                         selection_set,
                     }))
-                } else if let Token::Name(fragment_name) = self.next_token() {
+                } else if self.peek_is_name_or_keyword() {
+                    let fragment_name = self.next_name_or_keyword("fragment name")?;
                     let directives = self.parse_directives()?;
                     let end = self.span().end;
                     Ok(Selection::FragmentSpread(FragmentSpread {
@@ -425,26 +449,19 @@ impl<'a> Parser<'a, Parsing> {
                     Err(self.error("fragment"))
                 }
             }
-            Token::Name(_) => Ok(Selection::Field(self.parse_field()?)),
+            _ if self.peek_is_name_or_keyword() => Ok(Selection::Field(self.parse_field()?)),
             _ => Err(self.error("selection")),
         }
     }
 
     fn parse_field(&mut self) -> Result<Field<'a>, MearieError> {
         let start = self.span().start;
-        let name_or_alias = if let Token::Name(name) = self.next_token() {
-            name
-        } else {
-            return Err(self.error("field name"));
-        };
+        let name_or_alias = self.next_name_or_keyword("field name")?;
 
         let (alias, name) = if matches!(self.peek_token(), Token::Colon) {
             self.next_token();
-            if let Token::Name(name) = self.next_token() {
-                (Some(FieldName::from(name_or_alias)), FieldName::from(name))
-            } else {
-                return Err(self.error("field name"));
-            }
+            let name = self.next_name_or_keyword("field name")?;
+            (Some(FieldName::from(name_or_alias)), FieldName::from(name))
         } else {
             (None, FieldName::from(name_or_alias))
         };
@@ -494,9 +511,8 @@ impl<'a> Parser<'a, Parsing> {
             _ => return Err(self.error("operation type")),
         };
 
-        let name = if let Token::Name(name) = self.peek_token() {
-            self.next_token();
-            Some(Name::from(name))
+        let name = if self.peek_is_name_or_keyword() {
+            Some(Name::from(self.next_name_or_keyword("operation name")?))
         } else {
             None
         };
@@ -531,21 +547,13 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("fragment"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            FragmentName::from(name)
-        } else {
-            return Err(self.error("fragment name"));
-        };
+        let name = FragmentName::from(self.next_name_or_keyword("fragment name")?);
 
         if !matches!(self.next_token(), Token::On) {
             return Err(self.error("on"));
         }
 
-        let type_condition = if let Token::Name(type_name) = self.next_token() {
-            TypeName::from(type_name)
-        } else {
-            return Err(self.error("type name"));
-        };
+        let type_condition = TypeName::from(self.next_name_or_keyword("type name")?);
 
         let directives = self.parse_directives()?;
         let selection_set = self.parse_selection_set()?;
@@ -656,11 +664,7 @@ impl<'a> Parser<'a, Parsing> {
     fn parse_field_definition(&mut self) -> Result<FieldDefinition<'a>, MearieError> {
         let description = self.parse_description()?;
 
-        let name = if let Token::Name(name) = self.next_token() {
-            FieldName::from(name)
-        } else {
-            return Err(self.error("field name"));
-        };
+        let name = FieldName::from(self.next_name_or_keyword("field name")?);
 
         let mut arguments = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::ParenOpen) {
@@ -724,17 +728,13 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("type"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("type name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("type name")?);
 
         let mut implements = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::Implements) {
             self.next_token();
-            while let Token::Name(iface) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let iface = self.next_name_or_keyword("interface name")?;
                 implements.push(TypeName::from(iface));
                 if !matches!(self.peek_token(), Token::Ampersand) {
                     break;
@@ -771,17 +771,13 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("interface"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("interface name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("interface name")?);
 
         let mut implements = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::Implements) {
             self.next_token();
-            while let Token::Name(iface) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let iface = self.next_name_or_keyword("interface name")?;
                 implements.push(TypeName::from(iface));
                 if !matches!(self.peek_token(), Token::Ampersand) {
                     break;
@@ -813,11 +809,7 @@ impl<'a> Parser<'a, Parsing> {
     fn parse_enum_value_definition(&mut self) -> Result<EnumValueDefinition<'a>, MearieError> {
         let description = self.parse_description()?;
 
-        let value = if let Token::Name(name) = self.next_token() {
-            Name::from(name)
-        } else {
-            return Err(self.error("enum value"));
-        };
+        let value = Name::from(self.next_name_or_keyword("enum value")?);
 
         let directives = self.parse_directives()?;
 
@@ -836,11 +828,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("enum"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("enum name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("enum name")?);
 
         let directives = self.parse_directives()?;
 
@@ -869,11 +857,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("union"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("union name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("union name")?);
 
         let directives = self.parse_directives()?;
 
@@ -883,8 +867,8 @@ impl<'a> Parser<'a, Parsing> {
             if matches!(self.peek_token(), Token::Pipe) {
                 self.next_token();
             }
-            while let Token::Name(member) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let member = self.next_name_or_keyword("union member")?;
                 members.push(TypeName::from(member));
                 if !matches!(self.peek_token(), Token::Pipe) {
                     break;
@@ -909,11 +893,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("scalar"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("scalar name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("scalar name")?);
 
         let directives = self.parse_directives()?;
 
@@ -932,11 +912,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("input"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("input name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("input name")?);
 
         let directives = self.parse_directives()?;
 
@@ -995,11 +971,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("@"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            DirectiveName::from(name)
-        } else {
-            return Err(self.error("directive name"));
-        };
+        let name = DirectiveName::from(self.next_name_or_keyword("directive name")?);
 
         let mut arguments = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::ParenOpen) {
@@ -1080,11 +1052,7 @@ impl<'a> Parser<'a, Parsing> {
                 return Err(self.error(":"));
             }
 
-            let type_name = if let Token::Name(name) = self.next_token() {
-                TypeName::from(name)
-            } else {
-                return Err(self.error("type name"));
-            };
+            let type_name = TypeName::from(self.next_name_or_keyword("type name")?);
 
             match op_type {
                 "query" => query = Some(type_name),
@@ -1110,17 +1078,13 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("type"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("type name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("type name")?);
 
         let mut implements = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::Implements) {
             self.next_token();
-            while let Token::Name(iface) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let iface = self.next_name_or_keyword("interface name")?;
                 implements.push(TypeName::from(iface));
                 if !matches!(self.peek_token(), Token::Ampersand) {
                     break;
@@ -1153,17 +1117,13 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("interface"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("interface name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("interface name")?);
 
         let mut implements = Vec::new_in(self.allocator());
         if matches!(self.peek_token(), Token::Implements) {
             self.next_token();
-            while let Token::Name(iface) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let iface = self.next_name_or_keyword("interface name")?;
                 implements.push(TypeName::from(iface));
                 if !matches!(self.peek_token(), Token::Ampersand) {
                     break;
@@ -1196,11 +1156,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("scalar"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("scalar name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("scalar name")?);
 
         let directives = self.parse_directives()?;
 
@@ -1212,11 +1168,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("union"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("union name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("union name")?);
 
         let directives = self.parse_directives()?;
 
@@ -1226,8 +1178,8 @@ impl<'a> Parser<'a, Parsing> {
             if matches!(self.peek_token(), Token::Pipe) {
                 self.next_token();
             }
-            while let Token::Name(member) = self.peek_token() {
-                self.next_token();
+            while self.peek_is_name_or_keyword() {
+                let member = self.next_name_or_keyword("union member")?;
                 members.push(TypeName::from(member));
                 if !matches!(self.peek_token(), Token::Pipe) {
                     break;
@@ -1248,11 +1200,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("enum"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("enum name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("enum name")?);
 
         let directives = self.parse_directives()?;
 
@@ -1277,11 +1225,7 @@ impl<'a> Parser<'a, Parsing> {
             return Err(self.error("input"));
         }
 
-        let name = if let Token::Name(name) = self.next_token() {
-            TypeName::from(name)
-        } else {
-            return Err(self.error("input name"));
-        };
+        let name = TypeName::from(self.next_name_or_keyword("input name")?);
 
         let directives = self.parse_directives()?;
 

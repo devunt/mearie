@@ -1,0 +1,138 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"query GetNode($id: ID!, $q: Query) { node(id: $id) { id } }\")"
+---
+Document {
+    source: Source {
+        code: "query GetNode($id: ID!, $q: Query) { node(id: $id) { id } }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 59,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetNode",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 14,
+                                end: 25,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "id",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "ID",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 24,
+                                end: 34,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "q",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "Query",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 37,
+                                        end: 57,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "node",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 42,
+                                                end: 49,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "id",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            Field(
+                                                Field {
+                                                    span: Span {
+                                                        start: 53,
+                                                        end: 57,
+                                                    },
+                                                    alias: None,
+                                                    name: FieldName(
+                                                        Name(
+                                                            "id",
+                                                        ),
+                                                    ),
+                                                    arguments: [],
+                                                    directives: [],
+                                                    selection_set: SelectionSet {
+                                                        selections: [],
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

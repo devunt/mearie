@@ -29,10 +29,11 @@ use crate::pipeline::PipelineConfig;
 /// ```
 /// use mearie_native::codegen::{CodegenContext, Generator};
 /// use mearie_native::schema::{SchemaBuilder, DocumentIndex};
+/// use mearie_native::pipeline::PipelineConfig;
 /// use mearie_native::arena::Arena;
 ///
 /// let arena = Arena::new();
-/// let ctx = CodegenContext::new();
+/// let ctx = CodegenContext::new(PipelineConfig::default());
 /// let schema = SchemaBuilder::new().build();
 /// let document = DocumentIndex::new();
 ///
@@ -78,9 +79,10 @@ impl<'a, 'b> Generator<'a, 'b> {
     /// ```
     /// # use mearie_native::codegen::{CodegenContext, Generator};
     /// # use mearie_native::schema::{SchemaBuilder, DocumentIndex};
+    /// # use mearie_native::pipeline::PipelineConfig;
     /// # use mearie_native::arena::Arena;
     /// # let arena = Arena::new();
-    /// # let ctx = CodegenContext::new();
+    /// # let ctx = CodegenContext::new(PipelineConfig::default());
     /// # let schema = SchemaBuilder::new().build();
     /// # let document = DocumentIndex::new();
     /// let builder = Generator::new(&ctx, &schema, &document);

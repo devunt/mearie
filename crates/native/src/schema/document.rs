@@ -222,11 +222,8 @@ impl<'a> DocumentIndex<'a> {
     ///
     /// # Example
     ///
-    /// ```
-    /// # use mearie_native::schema::DocumentIndex;
-    /// # let index = DocumentIndex::new();
-    /// # let operation = std::ptr::null();
-    /// if let Some(source) = index.get_operation_source(unsafe { &*operation }) {
+    /// ```ignore
+    /// if let Some(source) = index.get_operation_source(operation) {
     ///     println!("Operation source: {}", source);
     /// }
     /// ```
@@ -266,11 +263,8 @@ impl<'a> DocumentIndex<'a> {
     ///
     /// # Example
     ///
-    /// ```
-    /// # use mearie_native::schema::DocumentIndex;
-    /// # let index = DocumentIndex::new();
-    /// # let fragment = std::ptr::null();
-    /// if let Some(source) = index.get_fragment_source(unsafe { &*fragment }) {
+    /// ```ignore
+    /// if let Some(source) = index.get_fragment_source(fragment) {
     ///     println!("Fragment source: {}", source);
     /// }
     /// ```

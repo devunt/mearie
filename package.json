@@ -72,5 +72,10 @@
     "bun": ">=1.2.0",
     "deno": ">=2.2.0",
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "baseline-browser-mapping": "^2.10.0"
+    }
   }
 }

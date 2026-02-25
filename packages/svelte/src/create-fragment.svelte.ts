@@ -47,7 +47,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
   if (ref == null) {
     data = null;
   } else {
-    const result = pipe(client.executeFragment(fragment, ref, options?.()), peek);
+    const result = pipe(client.executeFragment(fragment, $state.snapshot(ref) as typeof ref, options?.()), peek);
     if (result.data === undefined) {
       throw new Error('Fragment data not found');
     }
@@ -64,7 +64,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
     }
 
     const unsubscribe = pipe(
-      client.executeFragment(fragment, currentRef, options?.()),
+      client.executeFragment(fragment, $state.snapshot(currentRef) as typeof currentRef, options?.()),
       subscribe({
         next: (result: OperationResult) => {
           if (result.data !== undefined) {

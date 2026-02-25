@@ -8,12 +8,11 @@
   },
   "files": [
     "dist",
-    "src",
     "package.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && tsc -p tsconfig.svelte.json",
     "typecheck": "tsc"
   },
   "dependencies": {
@@ -31,10 +30,7 @@
     "access": "public",
     "exports": {
       ".": {
-        "svelte": {
-          "types": "./src/index.svelte.ts",
-          "default": "./src/index.svelte.ts"
-        },
+        "svelte": "./dist/svelte/index.svelte.js",
         "import": {
           "types": "./dist/index.svelte.d.mts",
           "default": "./dist/index.svelte.mjs"

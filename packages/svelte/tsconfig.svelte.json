@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": false,
+    "outDir": "dist/svelte",
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*.svelte.ts"]
+}

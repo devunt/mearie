@@ -8,6 +8,7 @@
   },
   "files": [
     "dist",
+    "src",
     "package.json",
     "README.md"
   ],
@@ -30,6 +31,10 @@
     "access": "public",
     "exports": {
       ".": {
+        "svelte": {
+          "types": "./src/index.svelte.ts",
+          "default": "./src/index.svelte.ts"
+        },
         "import": {
           "types": "./dist/index.svelte.d.mts",
           "default": "./dist/index.svelte.mjs"

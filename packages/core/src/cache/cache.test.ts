@@ -1897,4 +1897,428 @@ describe('Cache', () => {
       expect(listener).not.toHaveBeenCalled();
     });
   });
+
+  describe('structural sharing', () => {
+    describe('readQuery', () => {
+      it('should return same reference when reading identical data', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+        cache.writeQuery(artifact, {}, { name: 'Alice' });
+
+        const result1 = cache.readQuery(artifact, {});
+        const result2 = cache.readQuery(artifact, {});
+
+        expect(result1).toBe(result2);
+      });
+
+      it('should return new reference when data actually changed', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+        cache.writeQuery(artifact, {}, { name: 'Alice' });
+        const result1 = cache.readQuery(artifact, {});
+
+        cache.writeQuery(artifact, {}, { name: 'Bob' });
+        const result2 = cache.readQuery(artifact, {});
+
+        expect(result1).not.toBe(result2);
+        expect(result2).toEqual({ name: 'Bob' });
+      });
+
+      it('should preserve unchanged entity subtree references', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const result1 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+
+        // Write same data again (simulating a re-fetch with no changes)
+        cache.writeQuery(
+          artifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const result2 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+
+        expect(result1).toBe(result2);
+        expect(result1.users).toBe(result2.users);
+        expect(result1.users[0]).toBe(result2.users[0]);
+        expect(result1.users[1]).toBe(result2.users[1]);
+      });
+
+      it('should preserve unchanged entities when only one entity changes', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const result1 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+
+        // Only change user 2's name
+        cache.writeQuery(
+          artifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bobby' },
+            ],
+          },
+        );
+
+        const result2 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+
+        expect(result2).not.toBe(result1);
+        expect(result2.users).not.toBe(result1.users);
+        expect(result2.users[0]).toBe(result1.users[0]); // Alice unchanged
+        expect(result2.users[1]).not.toBe(result1.users[1]); // Bob changed
+        expect(result2.users[1]!.name).toBe('Bobby');
+      });
+
+      it('should preserve references across different queries sharing entities', () => {
+        const cache = new Cache(schema);
+
+        const queryA = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        const queryB = createArtifact('query', 'GetPost', [
+          {
+            kind: 'Field',
+            name: 'post',
+            type: 'Post',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ]);
+
+        // Write query A
+        cache.writeQuery(queryA, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+        const resultA1 = cache.readQuery(queryA, {});
+
+        // Write unrelated query B - should not affect query A's reference
+        cache.writeQuery(queryB, {}, { post: { __typename: 'Post', id: 'p1', title: 'Hello' } });
+        const resultA2 = cache.readQuery(queryA, {});
+
+        expect(resultA1).toBe(resultA2);
+      });
+
+      it('should handle variables in structural sharing key', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            args: { id: { kind: 'variable', name: 'id' } },
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, { id: '1' }, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+        cache.writeQuery(artifact, { id: '2' }, { user: { __typename: 'User', id: '2', name: 'Bob' } });
+
+        const result1a = cache.readQuery(artifact, { id: '1' });
+        const result2a = cache.readQuery(artifact, { id: '2' });
+
+        // Re-read without changes
+        const result1b = cache.readQuery(artifact, { id: '1' });
+        const result2b = cache.readQuery(artifact, { id: '2' });
+
+        expect(result1a).toBe(result1b);
+        expect(result2a).toBe(result2b);
+        expect(result1a).not.toBe(result2a); // different variables = different results
+      });
+
+      it('should produce stable references after hydration from snapshot', () => {
+        // Simulate SSR: server writes and reads, then extracts snapshot
+        const serverCache = new Cache(schema);
+        const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+        serverCache.writeQuery(artifact, {}, { name: 'Alice' });
+        serverCache.readQuery(artifact, {}); // populates previousResults on server
+        const snapshot = serverCache.extract();
+
+        // Simulate client: hydrate from snapshot, then read repeatedly
+        const clientCache = new Cache(schema);
+        clientCache.hydrate(snapshot);
+
+        const result1 = clientCache.readQuery(artifact, {});
+        const result2 = clientCache.readQuery(artifact, {});
+
+        expect(result1).toBe(result2);
+        expect(result1).toEqual({ name: 'Alice' });
+      });
+    });
+
+    describe('readFragment', () => {
+      it('should return same reference when reading identical fragment data', () => {
+        const cache = new Cache(schema);
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'FragmentSpread', name: 'UserFragment', selections: [] },
+            ],
+          },
+        ]);
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ]);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>;
+
+        const result1 = cache.readFragment(fragmentArtifact, ref);
+        const result2 = cache.readFragment(fragmentArtifact, ref);
+
+        expect(result1).toBe(result2);
+      });
+
+      it('should return new reference when fragment entity data changed', () => {
+        const cache = new Cache(schema);
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'FragmentSpread', name: 'UserFragment', selections: [] },
+            ],
+          },
+        ]);
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ]);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+        const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>;
+        const result1 = cache.readFragment(fragmentArtifact, ref);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alicia' } });
+        const result2 = cache.readFragment(fragmentArtifact, ref);
+
+        expect(result1).not.toBe(result2);
+        expect(result2).toEqual({ __typename: 'User', id: '1', name: 'Alicia' });
+      });
+    });
+
+    describe('readFragments', () => {
+      it('should return same array reference when reading identical fragment array', () => {
+        const cache = new Cache(schema);
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'FragmentSpread', name: 'UserFragment', selections: [] },
+            ],
+          },
+        ]);
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<'UserFragment'>,
+        ];
+
+        const result1 = cache.readFragments(fragmentArtifact, refs);
+        const result2 = cache.readFragments(fragmentArtifact, refs);
+
+        expect(result1).toBe(result2);
+      });
+
+      it('should preserve unchanged elements when one fragment changes', () => {
+        const cache = new Cache(schema);
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'FragmentSpread', name: 'UserFragment', selections: [] },
+            ],
+          },
+        ]);
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<'UserFragment'>,
+        ];
+
+        const result1 = cache.readFragments(fragmentArtifact, refs)!;
+
+        // Change only user 2
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bobby' },
+            ],
+          },
+        );
+
+        const result2 = cache.readFragments(fragmentArtifact, refs)!;
+
+        expect(result2).not.toBe(result1);
+        expect(result2[0]).toBe(result1[0]); // Alice unchanged
+        expect(result2[1]).not.toBe(result1[1]); // Bob changed
+      });
+    });
+
+    describe('clear', () => {
+      it('should reset structural sharing state on clear', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+        cache.writeQuery(artifact, {}, { name: 'Alice' });
+        const result1 = cache.readQuery(artifact, {});
+
+        cache.clear();
+
+        cache.writeQuery(artifact, {}, { name: 'Alice' });
+        const result2 = cache.readQuery(artifact, {});
+
+        // After clear, even with same data, reference should be new
+        // because the previous result map was cleared
+        expect(result1).not.toBe(result2);
+        expect(result1).toEqual(result2);
+      });
+    });
+  });
 });

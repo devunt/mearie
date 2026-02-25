@@ -70,7 +70,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   const client = getClient();
 
   const initialOpts = options?.();
-  let data = $state<DataOf<T> | undefined>(initialOpts?.initialData);
+  let data = $state.raw<DataOf<T> | undefined>(initialOpts?.initialData);
   let loading = $state<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   let error = $state<AggregatedError | undefined>();
 

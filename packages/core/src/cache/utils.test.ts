@@ -7,6 +7,7 @@ import {
   resolveEntityKey,
   isEntityLink,
   isFragmentRefArray,
+  replaceEqualDeep,
 } from './utils.ts';
 import { EntityLinkKey, FragmentRefKey } from './constants.ts';
 import type { FieldSelection, FragmentRefs } from '@mearie/shared';
@@ -397,5 +398,244 @@ describe('isFragmentRefArray', () => {
   it('should return false for primitives', () => {
     expect(isFragmentRefArray('User:1')).toBe(false);
     expect(isFragmentRefArray(123)).toBe(false);
+  });
+});
+
+describe('replaceEqualDeep', () => {
+  describe('primitives', () => {
+    it('should return prev when values are identical', () => {
+      expect(replaceEqualDeep(1, 1)).toBe(1);
+      expect(replaceEqualDeep('hello', 'hello')).toBe('hello');
+      expect(replaceEqualDeep(true, true)).toBe(true);
+      expect(replaceEqualDeep(null, null)).toBe(null);
+    });
+
+    it('should return next when values differ', () => {
+      expect(replaceEqualDeep(1, 2)).toBe(2);
+      expect(replaceEqualDeep('a', 'b')).toBe('b');
+      expect(replaceEqualDeep(true, false)).toBe(false);
+    });
+
+    it('should return next when types differ', () => {
+      expect(replaceEqualDeep(1, '1')).toBe('1');
+      expect(replaceEqualDeep(null, 0)).toBe(0);
+      expect(replaceEqualDeep(undefined, null)).toBe(null);
+      expect(replaceEqualDeep({}, null)).toBe(null);
+      expect(replaceEqualDeep(null, {})).toEqual({});
+    });
+  });
+
+  describe('same reference', () => {
+    it('should return prev when same reference', () => {
+      const obj = { a: 1 };
+      expect(replaceEqualDeep(obj, obj)).toBe(obj);
+
+      const arr = [1, 2, 3];
+      expect(replaceEqualDeep(arr, arr)).toBe(arr);
+    });
+  });
+
+  describe('objects', () => {
+    it('should return prev when structurally equal', () => {
+      const prev = { a: 1, b: 'hello', c: true };
+      const next = { a: 1, b: 'hello', c: true };
+      expect(replaceEqualDeep(prev, next)).toBe(prev);
+    });
+
+    it('should return new object when a field changed', () => {
+      const prev = { a: 1, b: 2 };
+      const next = { a: 1, b: 3 };
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual({ a: 1, b: 3 });
+    });
+
+    it('should return new object when a key is added', () => {
+      const prev = { a: 1 } as Record<string, number>;
+      const next = { a: 1, b: 2 };
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual({ a: 1, b: 2 });
+    });
+
+    it('should return new object when a key is removed', () => {
+      const prev = { a: 1, b: 2 };
+      const next = { a: 1 };
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual({ a: 1 });
+    });
+
+    it('should preserve references for unchanged nested objects', () => {
+      const inner = { x: 1, y: 2 };
+      const prev = { a: inner, b: 'old' };
+      const next = { a: { x: 1, y: 2 }, b: 'new' };
+      const result = replaceEqualDeep(prev, next) as typeof prev;
+      expect(result).not.toBe(prev);
+      expect(result.a).toBe(inner); // unchanged subtree keeps reference
+      expect(result.b).toBe('new');
+    });
+
+    it('should deeply preserve references through multiple levels', () => {
+      const deep = { value: 42 };
+      const mid = { deep, name: 'mid' };
+      const prev = { top: mid, other: 'x' };
+      const next = { top: { deep: { value: 42 }, name: 'mid' }, other: 'y' };
+      const result = replaceEqualDeep(prev, next) as typeof prev;
+      expect(result).not.toBe(prev);
+      expect(result.top).toBe(mid);
+      expect(result.top.deep).toBe(deep);
+      expect(result.other).toBe('y');
+    });
+  });
+
+  describe('arrays', () => {
+    it('should return prev when structurally equal', () => {
+      const prev = [1, 2, 3];
+      const next = [1, 2, 3];
+      expect(replaceEqualDeep(prev, next)).toBe(prev);
+    });
+
+    it('should return new array when an element changed', () => {
+      const prev = [1, 2, 3];
+      const next = [1, 2, 4];
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual([1, 2, 4]);
+    });
+
+    it('should return new array when length differs', () => {
+      const prev = [1, 2];
+      const next = [1, 2, 3];
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should preserve references for unchanged array elements (objects)', () => {
+      const elem0 = { id: '1', name: 'Alice' };
+      const elem1 = { id: '2', name: 'Bob' };
+      const prev = [elem0, elem1];
+      const next = [
+        { id: '1', name: 'Alice' },
+        { id: '2', name: 'Bobby' },
+      ];
+      const result = replaceEqualDeep(prev, next) as typeof prev;
+      expect(result).not.toBe(prev);
+      expect(result[0]).toBe(elem0); // unchanged element keeps reference
+      expect(result[1]).not.toBe(elem1); // changed element is new
+      expect(result[1]).toEqual({ id: '2', name: 'Bobby' });
+    });
+
+    it('should handle empty arrays', () => {
+      const prev: unknown[] = [];
+      const next: unknown[] = [];
+      expect(replaceEqualDeep(prev, next)).toBe(prev);
+    });
+
+    it('should handle array shrinking and still share elements', () => {
+      const elem = { id: '1' };
+      const prev = [elem, { id: '2' }];
+      const next = [{ id: '1' }];
+      const result = replaceEqualDeep(prev, next) as typeof prev;
+      expect(result).not.toBe(prev);
+      expect(result[0]).toBe(elem);
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('mixed structures (GraphQL-like)', () => {
+    it('should preserve unchanged entity references in a query result', () => {
+      const user1 = { __typename: 'User', id: '1', name: 'Alice' };
+      const user2 = { __typename: 'User', id: '2', name: 'Bob' };
+      const site = { __typename: 'Site', id: 's1', name: 'MySite' };
+
+      const prev = {
+        me: {
+          ...user1,
+          sites: [site],
+        },
+        users: [user1, user2],
+      };
+
+      // Only user2's name changed
+      const next = {
+        me: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+          sites: [{ __typename: 'Site', id: 's1', name: 'MySite' }],
+        },
+        users: [
+          { __typename: 'User', id: '1', name: 'Alice' },
+          { __typename: 'User', id: '2', name: 'Bobby' },
+        ],
+      };
+
+      const result = replaceEqualDeep(prev, next) as typeof prev;
+
+      // Root changed (users[1] changed)
+      expect(result).not.toBe(prev);
+      // me subtree is unchanged
+      expect(result.me).toBe(prev.me);
+      expect(result.me.sites).toBe(prev.me.sites);
+      expect(result.me.sites[0]).toBe(site);
+      // users array changed
+      expect(result.users).not.toBe(prev.users);
+      expect(result.users[0]).toBe(user1); // unchanged
+      expect(result.users[1]).not.toBe(user2); // changed
+      expect(result.users[1]!.name).toBe('Bobby');
+    });
+
+    it('should return prev entirely when nothing changed', () => {
+      const prev = {
+        me: {
+          id: '1',
+          sites: [{ id: 's1', entities: [{ id: 'e1' }, { id: 'e2' }] }],
+        },
+      };
+
+      const next = {
+        me: {
+          id: '1',
+          sites: [{ id: 's1', entities: [{ id: 'e1' }, { id: 'e2' }] }],
+        },
+      };
+
+      expect(replaceEqualDeep(prev, next)).toBe(prev);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle undefined prev', () => {
+      const next = { a: 1 };
+      expect(replaceEqualDeep(undefined, next)).toBe(next);
+    });
+
+    it('should handle prev object vs next array', () => {
+      const prev = { '0': 'a' };
+      const next = ['a'];
+      expect(replaceEqualDeep(prev, next)).toBe(next);
+    });
+
+    it('should handle prev array vs next object', () => {
+      const prev = ['a'];
+      const next = { '0': 'a' };
+      expect(replaceEqualDeep(prev, next)).toEqual(next);
+    });
+
+    it('should handle nested null values', () => {
+      const prev = { a: null, b: { c: null } };
+      const next = { a: null, b: { c: null } };
+      expect(replaceEqualDeep(prev, next)).toBe(prev);
+    });
+
+    it('should handle nested null becoming a value', () => {
+      const prev = { a: null };
+      const next = { a: { b: 1 } };
+      const result = replaceEqualDeep(prev, next);
+      expect(result).not.toBe(prev);
+      expect(result).toEqual({ a: { b: 1 } });
+    });
   });
 });

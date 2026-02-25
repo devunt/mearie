@@ -32,6 +32,12 @@ export type Scalar = string | number | boolean | null;
 export type QueryKey = `${string}@${string}`;
 
 /**
+ * Key for tracking previous denormalized results for structural sharing.
+ * @internal
+ */
+export type MemoKey = string;
+
+/**
  * Dependency key in the format "storageKey.field" used to track field dependencies.
  * @internal
  */

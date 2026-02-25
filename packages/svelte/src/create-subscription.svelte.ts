@@ -34,7 +34,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 ): Subscription<T> => {
   const client = getClient();
 
-  let data = $state<DataOf<T> | undefined>();
+  let data = $state.raw<DataOf<T> | undefined>();
   let loading = $state<boolean>(!options?.().skip);
   let error = $state<AggregatedError | undefined>();
 

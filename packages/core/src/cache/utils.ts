@@ -1,7 +1,16 @@
 import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
 import { EntityLinkKey, FragmentRefKey } from './constants.ts';
-import type { EntityId, EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
+import type {
+  EntityId,
+  EntityKey,
+  FieldKey,
+  QueryKey,
+  DependencyKey,
+  StorageKey,
+  EntityLink,
+  MemoKey,
+} from './types.ts';
 
 /**
  * Generates a unique cache key for an entity based on its typename and key field values.
@@ -57,6 +66,16 @@ export const makeFieldKey = (selection: FieldSelection, variables: Record<string
 export const makeQueryKey = (operationName: string, variables: Record<string, unknown>): QueryKey => {
   return `${operationName}@${stringify(variables)}`;
 };
+
+/**
+ * Generates a unique key for tracking memoized denormalized results for structural sharing.
+ * @internal
+ * @param kind - The operation kind ('query', 'fragment', 'fragments').
+ * @param name - The artifact name.
+ * @param id - Serialized identifier (variables, entity key, etc.).
+ * @returns A unique memo key.
+ */
+export const makeMemoKey = (kind: string, name: string, id: string): MemoKey => `${kind}:${name}:${id}`;
 
 /**
  * Gets a unique key for tracking a field dependency.
@@ -138,6 +157,68 @@ export const isEqual = (a: unknown, b: unknown): boolean => {
   }
 
   return false;
+};
+
+/**
+ * Recursively replaces a new value tree with the previous one wherever structurally equal,
+ * preserving referential identity for unchanged subtrees.
+ *
+ * Returns `prev` (same reference) when the entire subtree is structurally equal.
+ * @internal
+ */
+export const replaceEqualDeep = (prev: unknown, next: unknown): unknown => {
+  if (prev === next) {
+    return prev;
+  }
+
+  if (typeof prev !== typeof next || prev === null || next === null || typeof prev !== 'object') {
+    return next;
+  }
+
+  if (Array.isArray(prev)) {
+    if (!Array.isArray(next)) {
+      return next;
+    }
+
+    let allSame = prev.length === next.length;
+    const result: unknown[] = [];
+
+    for (const [i, item] of (next as unknown[]).entries()) {
+      const shared = i < prev.length ? replaceEqualDeep((prev as unknown[])[i], item) : item;
+      result.push(shared);
+      if (shared !== (prev as unknown[])[i]) {
+        allSame = false;
+      }
+    }
+
+    return allSame ? prev : result;
+  }
+
+  if (Array.isArray(next)) {
+    return next;
+  }
+
+  const prevObj = prev as Record<string, unknown>;
+  const nextObj = next as Record<string, unknown>;
+  const nextKeys = Object.keys(nextObj);
+  const prevKeys = Object.keys(prevObj);
+
+  let allSame = nextKeys.length === prevKeys.length;
+  const result: Record<string, unknown> = {};
+
+  for (const key of nextKeys) {
+    if (key in prevObj) {
+      result[key] = replaceEqualDeep(prevObj[key], nextObj[key]);
+      if (result[key] !== prevObj[key]) {
+        allSame = false;
+      }
+    } else {
+      result[key] = nextObj[key];
+      allSame = false;
+    }
+  }
+
+  return allSame ? prev : result;
 };
 
 /**

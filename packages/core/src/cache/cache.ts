@@ -1,7 +1,8 @@
 import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@mearie/shared';
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
-import { makeDependencyKey, makeFieldKeyFromArgs, resolveEntityKey } from './utils.ts';
+import { stringify } from '../utils.ts';
+import { makeDependencyKey, makeFieldKeyFromArgs, makeMemoKey, replaceEqualDeep, resolveEntityKey } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
   CacheSnapshot,
@@ -24,6 +25,7 @@ export class Cache {
   #schemaMeta: SchemaMeta;
   #storage = { [RootFieldKey]: {} } as Storage;
   #subscriptions = new Map<DependencyKey, Set<Subscription>>();
+  #memo = new Map<string, unknown>();
 
   constructor(schemaMetadata: SchemaMeta) {
     this.#schemaMeta = schemaMetadata;
@@ -69,6 +71,7 @@ export class Cache {
 
   /**
    * Reads a query result from the cache, denormalizing entities if available.
+   * Uses structural sharing to preserve referential identity for unchanged subtrees.
    * @param artifact - GraphQL document artifact.
    * @param variables - Query variables.
    * @returns Denormalized query result or null if not found.
@@ -81,7 +84,16 @@ export class Cache {
       variables as Record<string, unknown>,
     );
 
-    return partial ? null : (data as DataOf<T>);
+    if (partial) {
+      return null;
+    }
+
+    const key = makeMemoKey('query', artifact.name, stringify(variables as Record<string, unknown>));
+    const prev = this.#memo.get(key);
+    const result = prev === undefined ? data : replaceEqualDeep(prev, data);
+    this.#memo.set(key, result);
+
+    return result as DataOf<T>;
   }
 
   /**
@@ -110,8 +122,7 @@ export class Cache {
 
   /**
    * Reads a fragment from the cache for a specific entity.
-   * Returns null for invalid or missing fragment references, making it safe for
-   * defensive reads. For subscriptions, use subscribeFragment which throws errors.
+   * Uses structural sharing to preserve referential identity for unchanged subtrees.
    * @param artifact - GraphQL fragment artifact.
    * @param fragmentRef - Fragment reference containing entity key.
    * @returns Denormalized fragment data or null if not found or invalid.
@@ -126,7 +137,16 @@ export class Cache {
 
     const { data, partial } = denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {});
 
-    return partial ? null : (data as DataOf<T>);
+    if (partial) {
+      return null;
+    }
+
+    const key = makeMemoKey('fragment', artifact.name, entityKey);
+    const prev = this.#memo.get(key);
+    const result = prev === undefined ? data : replaceEqualDeep(prev, data);
+    this.#memo.set(key, result);
+
+    return result as DataOf<T>;
   }
 
   subscribeFragment<T extends Artifact<'fragment'>>(
@@ -154,7 +174,14 @@ export class Cache {
       }
       results.push(data);
     }
-    return results;
+
+    const entityKeys = fragmentRefs.map((ref) => (ref as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey]);
+    const key = makeMemoKey('fragments', artifact.name, entityKeys.join(','));
+    const prev = this.#memo.get(key) as DataOf<T>[] | undefined;
+    const result = prev === undefined ? results : (replaceEqualDeep(prev, results) as DataOf<T>[]);
+    this.#memo.set(key, result);
+
+    return result;
   }
 
   subscribeFragments<T extends Artifact<'fragment'>>(
@@ -270,19 +297,30 @@ export class Cache {
   }
 
   /**
-   * Extracts a serializable snapshot of the cache storage.
+   * Extracts a serializable snapshot of the cache storage and structural sharing state.
    */
   extract(): CacheSnapshot {
-    return structuredClone(this.#storage) as unknown as CacheSnapshot;
+    return {
+      storage: structuredClone(this.#storage),
+      memo: Object.fromEntries(this.#memo),
+    } as unknown as CacheSnapshot;
   }
 
   /**
    * Hydrates the cache with a previously extracted snapshot.
    */
   hydrate(snapshot: CacheSnapshot): void {
-    const data = snapshot as unknown as Record<string, Record<string, unknown>>;
-    for (const [key, fields] of Object.entries(data)) {
+    const { storage, memo } = snapshot as unknown as {
+      storage: Record<string, Record<string, unknown>>;
+      memo: Record<string, unknown>;
+    };
+
+    for (const [key, fields] of Object.entries(storage)) {
       this.#storage[key as StorageKey] = { ...this.#storage[key as StorageKey], ...fields };
+    }
+
+    for (const [key, value] of Object.entries(memo)) {
+      this.#memo.set(key, value);
     }
   }
 
@@ -292,5 +330,6 @@ export class Cache {
   clear(): void {
     this.#storage = { [RootFieldKey]: {} };
     this.#subscriptions.clear();
+    this.#memo.clear();
   }
 }

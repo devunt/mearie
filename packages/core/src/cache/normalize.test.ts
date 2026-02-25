@@ -716,7 +716,7 @@ describe('normalize', () => {
       ]);
     });
 
-    it('entity with missing key field creates entity with empty key', () => {
+    it('entity with missing key field skips normalization', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -739,22 +739,12 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {
-          'user@{}': { [EntityLinkKey]: 'User:' },
-        },
-        'User:': {
-          '__typename@{}': 'User',
-          'name@{}': 'Alice',
-        },
+        [RootFieldKey]: {},
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-        ['User:', '__typename@{}'],
-        ['User:', 'name@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with null key field creates entity with empty key', () => {
+    it('entity with null key field skips normalization', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -779,24 +769,12 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {
-          'user@{}': { [EntityLinkKey]: 'User:' },
-        },
-        'User:': {
-          '__typename@{}': 'User',
-          'id@{}': null,
-          'name@{}': 'Alice',
-        },
+        [RootFieldKey]: {},
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-        ['User:', '__typename@{}'],
-        ['User:', 'id@{}'],
-        ['User:', 'name@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with undefined key field creates entity with empty key', () => {
+    it('entity with undefined key field skips normalization', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -820,23 +798,12 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {
-          'user@{}': { [EntityLinkKey]: 'User:' },
-        },
-        'User:': {
-          '__typename@{}': 'User',
-          'name@{}': 'Alice',
-        },
+        [RootFieldKey]: {},
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'user@{}'],
-        ['User:', '__typename@{}'],
-        ['User:', 'id@{}'],
-        ['User:', 'name@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with partial key fields creates entity with partial key', () => {
+    it('entity with partial key fields skips normalization', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -861,21 +828,9 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {
-          'comment@{}': { [EntityLinkKey]: 'Comment:post-1:' },
-        },
-        'Comment:post-1:': {
-          '__typename@{}': 'Comment',
-          'postId@{}': 'post-1',
-          'text@{}': 'Great!',
-        },
+        [RootFieldKey]: {},
       });
-      expectSameCalls(calls, [
-        [RootFieldKey, 'comment@{}'],
-        ['Comment:post-1:', '__typename@{}'],
-        ['Comment:post-1:', 'postId@{}'],
-        ['Comment:post-1:', 'text@{}'],
-      ]);
+      expectSameCalls(calls, [[RootFieldKey, 'comment@{}']]);
     });
   });
 

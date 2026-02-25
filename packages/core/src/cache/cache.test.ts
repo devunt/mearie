@@ -265,6 +265,60 @@ describe('Cache', () => {
 
       expect(listener).toHaveBeenCalledTimes(1);
     });
+
+    it('should trigger subscriptions when entity array order changes', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      // Write with reversed order
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '2', name: 'Bob' },
+            { __typename: 'User', id: '1', name: 'Alice' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      const result = cache.readQuery(artifact, {});
+      expect(result).toEqual({
+        users: [
+          { __typename: 'User', id: '2', name: 'Bob' },
+          { __typename: 'User', id: '1', name: 'Alice' },
+        ],
+      });
+    });
   });
 
   describe('readQuery', () => {

@@ -110,6 +110,37 @@ export const isNullish = (value: unknown): value is null | undefined => {
 };
 
 /**
+ * Deep equality check for normalized cache values.
+ * Handles scalars, arrays, and plain objects (entity links, value objects).
+ * @internal
+ */
+export const isEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (typeof a !== typeof b || a === null || b === null) return false;
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (const [i, item] of a.entries()) {
+      if (!isEqual(item, b[i])) return false;
+    }
+    return true;
+  }
+
+  if (typeof a === 'object') {
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const aKeys = Object.keys(aObj);
+    if (aKeys.length !== Object.keys(bObj).length) return false;
+    for (const key of aKeys) {
+      if (!isEqual(aObj[key], bObj[key])) return false;
+    }
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * Deeply merges two values. Objects are recursively merged, arrays are element-wise merged,
  * entity links and primitives use last-write-wins.
  * @internal

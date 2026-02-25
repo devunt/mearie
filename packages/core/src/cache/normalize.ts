@@ -1,7 +1,9 @@
 import type { Selection, SchemaMeta } from '@mearie/shared';
-import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, mergeFields } from './utils.ts';
+import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFields } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
+
+const SKIP = Symbol();
 
 export const normalize = (
   schemaMeta: SchemaMeta,
@@ -26,6 +28,9 @@ export const normalize = (
     const entityMeta = schemaMeta.entities[typename];
     if (entityMeta) {
       const keys = entityMeta.keyFields.map((field) => data[field]);
+      if (!keys.every((k) => k !== undefined && k !== null)) {
+        return SKIP;
+      }
       storageKey = makeEntityKey(typename, keys);
     }
 
@@ -36,20 +41,34 @@ export const normalize = (
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[selection.alias ?? selection.name];
 
-        if (storageKey !== null) {
-          const oldValue = storage[storageKey]?.[fieldKey];
-          if (!selection.selections || isNullish(oldValue) || isNullish(fieldValue)) {
-            accessor?.(storageKey, fieldKey, oldValue, fieldValue);
-          }
+        const oldValue = storageKey === null ? undefined : storage[storageKey]?.[fieldKey];
+
+        if (storageKey !== null && (!selection.selections || isNullish(oldValue) || isNullish(fieldValue))) {
+          accessor?.(storageKey, fieldKey, oldValue, fieldValue);
         }
 
-        fields[fieldKey] = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;
+        const normalized = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;
+        if (normalized === SKIP) {
+          continue;
+        }
+        fields[fieldKey] = normalized;
+
+        if (
+          storageKey !== null &&
+          selection.selections &&
+          !isNullish(oldValue) &&
+          !isNullish(fieldValue) &&
+          !isEntityLink(fields[fieldKey]) &&
+          !isEqual(oldValue, fields[fieldKey])
+        ) {
+          accessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
+        }
       } else if (
         selection.kind === 'FragmentSpread' ||
         (selection.kind === 'InlineFragment' && selection.on === typename)
       ) {
         const inner = normalizeField(storageKey, selection.selections, value);
-        if (!isEntityLink(inner)) {
+        if (inner !== SKIP && !isEntityLink(inner)) {
           mergeFields(fields, inner);
         }
       }

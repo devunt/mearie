@@ -1,5 +1,4 @@
 import type { Selection, Directive } from '@mearie/shared';
-import { deepAssign } from './utils.ts';
 
 type RequiredAction = 'THROW' | 'CASCADE';
 
@@ -28,7 +27,12 @@ const getRequiredAction = (directives?: Directive[]): RequiredAction | null => {
   return 'THROW';
 };
 
-const validateRequiredInner = (selections: readonly Selection[], data: unknown, fieldPath: string[]): unknown => {
+const validateRequiredInner = (
+  selections: readonly Selection[],
+  data: unknown,
+  fieldPath: string[],
+  validatedMap?: WeakMap<object, Set<string>>,
+): unknown => {
   if (data === null || data === undefined) {
     return data;
   }
@@ -39,56 +43,76 @@ const validateRequiredInner = (selections: readonly Selection[], data: unknown, 
 
   if (Array.isArray(data)) {
     return data.map((item, index) => {
-      const result = validateRequiredInner(selections, item, [...fieldPath, `[${index}]`]);
+      const result = validateRequiredInner(selections, item, [...fieldPath, `[${index}]`], validatedMap);
       return result === CASCADE_NULL ? null : result;
     });
   }
 
-  const result: Record<string, unknown> = {};
+  const obj = data as Record<string, unknown>;
+  validatedMap ??= new WeakMap();
+
+  let validated = validatedMap.get(obj);
+  if (!validated) {
+    validated = new Set<string>();
+    validatedMap.set(obj, validated);
+  }
 
   for (const selection of selections) {
     if (selection.kind === 'Field') {
       const fieldName = selection.alias ?? selection.name;
-      const fieldValue = (data as Record<string, unknown>)[fieldName];
+      if (!(fieldName in obj)) continue;
 
+      const fieldValue = obj[fieldName];
       const action = getRequiredAction(selection.directives);
 
-      if (action && fieldValue === null) {
-        if (action === 'THROW') {
-          throw new RequiredFieldError(fieldPath, fieldName);
-        } else if (action === 'CASCADE') {
-          return CASCADE_NULL;
-        }
-      }
-
-      if (selection.selections && fieldValue !== null && fieldValue !== undefined) {
-        const validated = validateRequiredInner(selection.selections, fieldValue, [...fieldPath, fieldName]);
-
-        if (validated === CASCADE_NULL) {
-          const isEffectivelyNullable = selection.nullable && !getRequiredAction(selection.directives);
-          if (isEffectivelyNullable) {
-            result[fieldName] = null;
-          } else {
+      if (selection.selections) {
+        if (action && fieldValue === null) {
+          if (action === 'THROW') {
+            throw new RequiredFieldError(fieldPath, fieldName);
+          } else if (action === 'CASCADE') {
             return CASCADE_NULL;
           }
-        } else {
-          result[fieldName] = validated;
+        }
+
+        if (fieldValue !== null && fieldValue !== undefined) {
+          const result = validateRequiredInner(
+            selection.selections,
+            fieldValue,
+            [...fieldPath, fieldName],
+            validatedMap,
+          );
+
+          if (result === CASCADE_NULL) {
+            const isEffectivelyNullable = selection.nullable && !getRequiredAction(selection.directives);
+            if (isEffectivelyNullable) {
+              obj[fieldName] = null;
+            } else {
+              return CASCADE_NULL;
+            }
+          }
         }
       } else {
-        result[fieldName] = fieldValue;
+        if (validated.has(fieldName)) continue;
+        validated.add(fieldName);
+
+        if (action && fieldValue === null) {
+          if (action === 'THROW') {
+            throw new RequiredFieldError(fieldPath, fieldName);
+          } else if (action === 'CASCADE') {
+            return CASCADE_NULL;
+          }
+        }
       }
     } else if (selection.kind === 'FragmentSpread' || selection.kind === 'InlineFragment') {
-      const fragmentResult = validateRequiredInner(selection.selections, data, fieldPath);
+      const result = validateRequiredInner(selection.selections, data, fieldPath, validatedMap);
 
-      if (fragmentResult === CASCADE_NULL) {
+      if (result === CASCADE_NULL) {
         return CASCADE_NULL;
       }
-
-      deepAssign(result, fragmentResult as Record<string, unknown>);
     }
   }
 
-  return result;
+  return data;
 };
 
 const validateRequired = (selections: readonly Selection[], data?: unknown, fieldPath: string[] = []): unknown => {

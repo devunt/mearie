@@ -213,6 +213,49 @@ describe('requiredExchange', () => {
     });
   });
 
+  describe('fragment spreads', () => {
+    it('should validate @required fields from multiple fragment spreads selecting same object field', async () => {
+      const exchange = requiredExchange();
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String', directives: [{ name: 'required' }] },
+          ],
+        },
+        {
+          kind: 'FragmentSpread',
+          name: 'Fragment1',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'user',
+              type: 'User',
+              selections: [
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'email', type: 'String', directives: [{ name: 'required' }] },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const forward = makeTestForward(() => ({
+        data: { user: { id: '1', name: 'Alice', email: null } },
+      }));
+      const operation = makeTestOperation({ kind: 'query', selections });
+
+      const results = await testExchange(exchange, forward, [operation]);
+
+      expect(results).toHaveLength(1);
+      expect(results[0]!.errors).toHaveLength(1);
+      expect(isExchangeError(results[0]!.errors![0]!, 'required')).toBe(true);
+    });
+  });
+
   describe('multiple operations', () => {
     it('should validate each operation independently', async () => {
       const exchange = requiredExchange();

@@ -200,6 +200,12 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     return ext;
   }
 
+  maybeExtension<TName extends keyof ExchangeExtensionMap>(name: TName): ExchangeExtensionMap[TName] | undefined;
+  maybeExtension(name: string): unknown;
+  maybeExtension(name: string): unknown {
+    return this.#extensions.get(name);
+  }
+
   dispose(): void {
     this.operations$.complete();
   }

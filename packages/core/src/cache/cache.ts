@@ -4,6 +4,7 @@ import { denormalize } from './denormalize.ts';
 import { makeDependencyKey, makeFieldKeyFromArgs, resolveEntityKey } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
+  CacheSnapshot,
   DependencyKey,
   Fields,
   FieldKey,
@@ -266,6 +267,23 @@ export class Cache {
         }
       }
     };
+  }
+
+  /**
+   * Extracts a serializable snapshot of the cache storage.
+   */
+  extract(): CacheSnapshot {
+    return structuredClone(this.#storage) as unknown as CacheSnapshot;
+  }
+
+  /**
+   * Hydrates the cache with a previously extracted snapshot.
+   */
+  hydrate(snapshot: CacheSnapshot): void {
+    const data = snapshot as unknown as Record<string, Record<string, unknown>>;
+    for (const [key, fields] of Object.entries(data)) {
+      this.#storage[key as StorageKey] = { ...this.#storage[key as StorageKey], ...fields };
+    }
   }
 
   /**

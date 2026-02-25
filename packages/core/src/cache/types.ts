@@ -94,9 +94,16 @@ export type InvalidateTarget =
   | { __typename: string; field: string; args?: Record<string, unknown> };
 
 /**
+ * Opaque type representing a serializable cache snapshot.
+ */
+export type CacheSnapshot = { readonly __brand: unique symbol };
+
+/**
  * Operations available for programmatic cache manipulation.
  */
 export type CacheOperations = {
+  extract(): CacheSnapshot;
+  hydrate(data: CacheSnapshot): void;
   invalidate(...targets: InvalidateTarget[]): void;
   clear(): void;
 };

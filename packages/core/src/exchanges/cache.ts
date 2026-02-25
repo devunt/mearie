@@ -1,5 +1,5 @@
 import type { Exchange, RequestOperation } from '../exchange.ts';
-import type { CacheOperations, InvalidateTarget } from '../cache/types.ts';
+import type { CacheOperations, CacheSnapshot, InvalidateTarget } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
@@ -36,6 +36,8 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
     return {
       name: 'cache',
       extension: {
+        extract: () => cache.extract(),
+        hydrate: (snapshot: CacheSnapshot) => cache.hydrate(snapshot),
         invalidate: (...targets: InvalidateTarget[]) => cache.invalidate(...targets),
         clear: () => cache.clear(),
       },

@@ -31,18 +31,23 @@
   "publishConfig": {
     "access": "public",
     "bin": {
-      "mearie": "./dist/cli.js"
+      "mearie": "./dist/cli.mjs"
     },
     "exports": {
       ".": {
-        "types": "./dist/cli.d.ts",
-        "import": "./dist/cli.js",
-        "require": "./dist/cli.cjs"
+        "import": {
+          "types": "./dist/cli.d.mts",
+          "default": "./dist/cli.mjs"
+        },
+        "require": {
+          "types": "./dist/cli.d.cts",
+          "default": "./dist/cli.cjs"
+        }
       },
       "./package.json": "./package.json"
     },
     "main": "./dist/cli.cjs",
-    "module": "./dist/cli.js",
-    "types": "./dist/cli.d.ts"
+    "module": "./dist/cli.mjs",
+    "types": "./dist/cli.d.mts"
   }
 }

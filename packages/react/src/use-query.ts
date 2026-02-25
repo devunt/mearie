@@ -86,12 +86,10 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     }
 
     if (!initialized.current && options?.initialData) {
-      initialized.current = true;
-      return;
+      setLoading(true);
     }
-    initialized.current = true;
 
-    setLoading(true);
+    initialized.current = true;
     setError(undefined);
 
     unsubscribe.current = pipe(

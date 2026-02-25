@@ -84,13 +84,11 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
       return;
     }
 
-    if (!initialized && initialOpts?.initialData) {
-      initialized = true;
-      return;
+    if (!initialized && !!initialOpts?.initialData) {
+      loading = true;
     }
-    initialized = true;
 
-    loading = true;
+    initialized = true;
     error = undefined;
 
     unsubscribe = pipe(

@@ -1,6 +1,6 @@
 import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
-import { pipe, collect } from '@mearie/core/stream';
+import { pipe, take, collect } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
 export type MutationResult<T extends Artifact<'mutation'>> =
@@ -46,6 +46,7 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
       const result = await pipe(
         // @ts-expect-error - conditional signature makes this hard to type correctly
         client.executeMutation(mutation, variables, options),
+        take(1),
         collect,
       );
 

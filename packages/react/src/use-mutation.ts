@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
-import { pipe, collect } from '@mearie/core/stream';
+import { pipe, take, collect } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
 export type MutationResult<T extends Artifact<'mutation'>> =
@@ -48,6 +48,7 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
         const result = await pipe(
           // @ts-expect-error - conditional signature makes this hard to type correctly
           client.executeMutation(mutation, variables, options),
+          take(1),
           collect,
         );
 

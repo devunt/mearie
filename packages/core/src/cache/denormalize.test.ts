@@ -4212,4 +4212,120 @@ describe('denormalize', () => {
       expect(partial).toBe(false);
     });
   });
+
+  describe('duplicate field selections', () => {
+    it('fragment spread followed by direct field with fewer sub-selections merges instead of overwrites', () => {
+      // A FragmentSpread selects richer sub-fields for `items`, then a direct Field
+      // for `items` with fewer sub-fields comes after. The direct Field should merge
+      // into the existing value, not overwrite it.
+      const selections = [
+        {
+          kind: 'FragmentSpread' as const,
+          name: 'RichFragment',
+          selections: [
+            {
+              kind: 'Field' as const,
+              name: 'items',
+              type: 'Item',
+              array: true,
+              selections: [
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'title', type: 'String' },
+                { kind: 'Field' as const, name: 'extra', type: 'String' },
+              ],
+            },
+          ],
+        },
+        {
+          kind: 'Field' as const,
+          name: 'items',
+          type: 'Item',
+          array: true,
+          selections: [
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
+          ],
+        },
+      ];
+      const storage = {
+        [RootFieldKey]: {
+          'items@{}': [{ 'id@{}': '1', 'title@{}': 'Hello', 'extra@{}': 'bonus' }],
+        },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage);
+
+      expect(partial).toBe(false);
+      expect((data as Record<string, unknown>).items).toEqual([{ id: '1', title: 'Hello', extra: 'bonus' }]);
+    });
+
+    it('direct field followed by fragment spread with more sub-selections merges', () => {
+      // The direct Field comes first with fewer sub-fields, then a FragmentSpread
+      // merges in more fields. Both should appear in the result.
+      const selections = [
+        {
+          kind: 'Field' as const,
+          name: 'items',
+          type: 'Item',
+          array: true,
+          selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+        },
+        {
+          kind: 'FragmentSpread' as const,
+          name: 'RichFragment',
+          selections: [
+            {
+              kind: 'Field' as const,
+              name: 'items',
+              type: 'Item',
+              array: true,
+              selections: [
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'title', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ];
+      const storage = {
+        [RootFieldKey]: {
+          'items@{}': [{ 'id@{}': '1', 'title@{}': 'Hello' }],
+        },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage);
+
+      expect(partial).toBe(false);
+      expect((data as Record<string, unknown>).items).toEqual([{ id: '1', title: 'Hello' }]);
+    });
+
+    it('two direct fields for the same key merges sub-selections', () => {
+      // Two Field selections with the same name but different sub-selections.
+      // Both sets of sub-fields should appear in the result.
+      const selections = [
+        {
+          kind: 'Field' as const,
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+        },
+        {
+          kind: 'Field' as const,
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
+        },
+      ];
+      const storage = {
+        [RootFieldKey]: {
+          'user@{}': { 'id@{}': '1', 'name@{}': 'Alice' },
+        },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage);
+
+      expect(partial).toBe(false);
+      expect((data as Record<string, unknown>).user).toEqual({ id: '1', name: 'Alice' });
+    });
+  });
 });

@@ -59,9 +59,14 @@ export const denormalize = (
           continue;
         }
 
-        fields[selection.alias ?? selection.name] = selection.selections
-          ? denormalizeField(null, selection.selections, fieldValue)
-          : fieldValue;
+        const name = selection.alias ?? selection.name;
+        const value = selection.selections ? denormalizeField(null, selection.selections, fieldValue) : fieldValue;
+
+        if (name in fields) {
+          mergeFields(fields, { [name]: value });
+        } else {
+          fields[name] = value;
+        }
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;

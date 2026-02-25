@@ -110,8 +110,40 @@ export const isNullish = (value: unknown): value is null | undefined => {
 };
 
 /**
- * Deeply merges source fields into target. Plain object values are recursively merged
- * instead of overwritten, while arrays, entity links, and primitives use last-write-wins.
+ * Deeply merges two values. Objects are recursively merged, arrays are element-wise merged,
+ * entity links and primitives use last-write-wins.
+ * @internal
+ */
+const mergeFieldValue = (existing: unknown, incoming: unknown): unknown => {
+  if (isNullish(existing) || isNullish(incoming)) {
+    return incoming;
+  }
+
+  if (typeof existing !== 'object' || typeof incoming !== 'object') {
+    return incoming;
+  }
+
+  if (isEntityLink(existing) || isEntityLink(incoming)) {
+    return incoming;
+  }
+
+  if (Array.isArray(existing) && Array.isArray(incoming)) {
+    return incoming.map((item: unknown, i: number): unknown =>
+      i < existing.length ? mergeFieldValue(existing[i], item) : item,
+    );
+  }
+
+  if (Array.isArray(existing) || Array.isArray(incoming)) {
+    return incoming;
+  }
+
+  mergeFields(existing as Record<string, unknown>, incoming);
+  return existing;
+};
+
+/**
+ * Deeply merges source fields into target. Objects are recursively merged,
+ * arrays are element-wise merged, entity links and primitives use last-write-wins.
  * @internal
  */
 export const mergeFields = (target: Record<string, unknown>, source: unknown): void => {
@@ -119,22 +151,7 @@ export const mergeFields = (target: Record<string, unknown>, source: unknown): v
     return;
   }
   for (const key of Object.keys(source)) {
-    const existing = target[key];
-    const incoming = (source as Record<string, unknown>)[key];
-    if (
-      !isNullish(existing) &&
-      typeof existing === 'object' &&
-      !Array.isArray(existing) &&
-      !isEntityLink(existing) &&
-      !isNullish(incoming) &&
-      typeof incoming === 'object' &&
-      !Array.isArray(incoming) &&
-      !isEntityLink(incoming)
-    ) {
-      mergeFields(existing as Record<string, unknown>, incoming);
-    } else {
-      target[key] = incoming;
-    }
+    target[key] = mergeFieldValue(target[key], (source as Record<string, unknown>)[key]);
   }
 };
 

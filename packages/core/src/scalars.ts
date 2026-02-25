@@ -1,5 +1,5 @@
 import type { Selection, VariableDef, SchemaMeta, FieldSelection } from '@mearie/shared';
-import { isNullish, deepAssign } from './utils.ts';
+import { isNullish } from './utils.ts';
 
 export type ScalarTransformer<TExternal = unknown, TInternal = unknown> = {
   parse: (value: TInternal) => TExternal;
@@ -15,17 +15,17 @@ export const parse = <TMeta extends SchemaMeta = SchemaMeta>(
   scalars: ScalarsConfig<TMeta>,
   value: unknown,
 ): unknown => {
-  const parseValue = (selection: FieldSelection, value: unknown): unknown => {
+  const parseValue = (selection: FieldSelection, value: unknown, parsedMap: WeakMap<object, Set<string>>): unknown => {
     if (isNullish(value)) {
       return value;
     }
 
     if (selection.array && Array.isArray(value)) {
-      return value.map((item: unknown) => parseValue({ ...selection, array: false }, item));
+      return value.map((item: unknown) => parseValue({ ...selection, array: false }, item, parsedMap));
     }
 
     if (selection.selections) {
-      return parseField(selection.selections, value);
+      return parseField(selection.selections, value, parsedMap);
     }
 
     const transformer = scalars[selection.type];
@@ -36,29 +36,45 @@ export const parse = <TMeta extends SchemaMeta = SchemaMeta>(
     return value;
   };
 
-  const parseField = (selections: readonly Selection[], value: unknown): unknown => {
+  const parseField = (
+    selections: readonly Selection[],
+    value: unknown,
+    parsedMap?: WeakMap<object, Set<string>>,
+  ): unknown => {
     if (isNullish(value)) {
       return value;
     }
 
     const data = value as Record<string, unknown>;
-    const fields: Record<string, unknown> = {};
+    parsedMap ??= new WeakMap();
+
+    let parsed = parsedMap.get(data);
+    if (!parsed) {
+      parsed = new Set<string>();
+      parsedMap.set(data, parsed);
+    }
 
     for (const selection of selections) {
       if (selection.kind === 'Field') {
         const fieldName = selection.alias ?? selection.name;
-        const fieldValue = data[fieldName];
+        if (!(fieldName in data)) continue;
 
-        fields[fieldName] = parseValue(selection, fieldValue);
+        if (selection.selections) {
+          data[fieldName] = parseValue(selection, data[fieldName], parsedMap);
+        } else {
+          if (parsed.has(fieldName)) continue;
+          parsed.add(fieldName);
+          data[fieldName] = parseValue(selection, data[fieldName], parsedMap);
+        }
       } else if (
         selection.kind === 'FragmentSpread' ||
         (selection.kind === 'InlineFragment' && selection.on === data.__typename)
       ) {
-        deepAssign(fields, parseField(selection.selections, value) as Record<string, unknown>);
+        parseField(selection.selections, value, parsedMap);
       }
     }
 
-    return fields;
+    return data;
   };
 
   return parseField(selections, value);

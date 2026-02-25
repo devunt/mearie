@@ -75,7 +75,12 @@ export const normalize = (
     }
 
     if (entityMeta && storageKey !== null) {
-      storage[storageKey] = { ...storage[storageKey], ...fields };
+      const existing = storage[storageKey];
+      if (existing) {
+        mergeFields(existing, fields);
+      } else {
+        storage[storageKey] = fields as Storage[StorageKey];
+      }
       return { [EntityLinkKey]: storageKey };
     }
 

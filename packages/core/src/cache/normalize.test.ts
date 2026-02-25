@@ -3938,5 +3938,64 @@ describe('normalize', () => {
         },
       });
     });
+
+    it('should not lose nested non-entity fields when entity has direct field and fragment selecting same nested object with different sub-fields', () => {
+      // query { user { stats { fieldA } ...Fragment } }
+      // fragment Fragment on User { stats { fieldA fieldB } }
+      const selections = [
+        {
+          kind: 'Field' as const,
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            {
+              kind: 'Field' as const,
+              name: 'stats',
+              type: 'Stats',
+              selections: [{ kind: 'Field' as const, name: 'fieldA', type: 'Int' }],
+            },
+            {
+              kind: 'FragmentSpread' as const,
+              name: 'UserStats',
+              selections: [
+                {
+                  kind: 'Field' as const,
+                  name: 'stats',
+                  type: 'Stats',
+                  selections: [
+                    { kind: 'Field' as const, name: 'fieldA', type: 'Int' },
+                    { kind: 'Field' as const, name: 'fieldB', type: 'Int' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          id: '1',
+          stats: {
+            fieldA: 100,
+            fieldB: 200,
+          },
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data);
+
+      expect(storage['User:1']).toEqual(
+        expect.objectContaining({
+          'stats@{}': {
+            'fieldA@{}': 100,
+            'fieldB@{}': 200,
+          },
+        }),
+      );
+    });
   });
 });

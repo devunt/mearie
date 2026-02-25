@@ -11,6 +11,7 @@ export type {
   ExchangeResult,
   Operation,
   OperationResult,
+  OperationMetadata,
   OperationMetadataMap,
 } from './exchange.ts';
 export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';

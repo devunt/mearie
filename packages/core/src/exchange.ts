@@ -6,6 +6,10 @@ import type { Client } from './client.ts';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface OperationMetadataMap {}
 
+export type OperationMetadata = {
+  [K in keyof OperationMetadataMap]?: OperationMetadataMap[K];
+} & Record<string, unknown>;
+
 export type BaseOperation = {
   key: string;
   metadata: OperationMetadataMap & Record<string, unknown>;

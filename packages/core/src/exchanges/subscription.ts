@@ -1,4 +1,4 @@
-import type { Exchange, OperationResult, RequestOperation } from '../exchange.ts';
+import type { Exchange, Operation, OperationResult, RequestOperation } from '../exchange.ts';
 import { ExchangeError, GraphQLError } from '../errors.ts';
 import { pipe } from '../stream/pipe.ts';
 import { filter } from '../stream/operators/filter.ts';
@@ -32,6 +32,17 @@ export interface SubscriptionClient {
 export type SubscriptionExchangeOptions = {
   client: SubscriptionClient;
 };
+
+declare module '@mearie/core' {
+  interface OperationMetadataMap {
+    subscription?: {
+      transport?: boolean;
+    };
+  }
+}
+
+const shouldHandle = (op: Operation): op is RequestOperation =>
+  op.variant === 'request' && (op.artifact.kind === 'subscription' || op.metadata.subscription?.transport === true);
 
 /**
  * Creates an exchange for handling GraphQL subscriptions using a subscription client.
@@ -68,7 +79,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
     io: (ops$) => {
       const subscription$ = pipe(
         ops$,
-        filter((op): op is RequestOperation => op.variant === 'request' && op.artifact.kind === 'subscription'),
+        filter(shouldHandle),
         mergeMap((op) => {
           const teardown$ = pipe(
             ops$,
@@ -135,7 +146,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
 
       const forward$ = pipe(
         ops$,
-        filter((op) => op.variant === 'teardown' || op.artifact.kind !== 'subscription'),
+        filter((op) => !shouldHandle(op)),
         forward,
       );
 

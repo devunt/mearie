@@ -219,7 +219,8 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             (result) =>
               result.operation.variant !== 'request' ||
               result.operation.artifact.kind !== 'query' ||
-              fetchPolicy === 'network-only',
+              fetchPolicy === 'network-only' ||
+              !!(result.errors && result.errors.length > 0),
           ),
         );
 

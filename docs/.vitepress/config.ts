@@ -180,7 +180,7 @@ export default defineConfig({
     search: {
       provider: 'algolia',
       options: {
-        appId: 'YRHCT5FEVW',
+        appId: 'YRHCT5FEVW', // cspell:disable-line
         apiKey: '65d19a2881e72c1659a79e91b1c448bd',
         indexName: 'mearie',
       },

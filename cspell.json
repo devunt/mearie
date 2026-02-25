@@ -15,7 +15,8 @@
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
     "LICENSE",
-    ".changeset"
+    ".changeset",
+    "fixture/**"
   ],
   "dictionaries": ["cspell.txt"],
   "dictionaryDefinitions": [

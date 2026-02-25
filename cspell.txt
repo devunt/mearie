@@ -1,10 +1,13 @@
 bumpalo
 cdylib
+citty
 clippy
 dedup
 devunt
+esbenp
 iface
 imdb
+impls
 insta
 itertools
 mearie
@@ -17,6 +20,11 @@ rlib
 rustc
 serde
 shikijs
+solidjs
 tmdb
+unsubscription
+urql
 vitepress
 vitest
+vinxi
+wonka

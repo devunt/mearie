@@ -43,6 +43,7 @@
     "lint:rust": "cargo clippy --all-targets --all-features -- -D warnings",
     "lint:rust:fix": "cargo clippy --all-targets --all-features --fix -- -D warnings",
     "publish:prepare": "node scripts/prepare-publish.ts",
+    "spellcheck": "cspell --no-progress \"**\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "turbo typecheck --filter=!@mearie-internal/*"

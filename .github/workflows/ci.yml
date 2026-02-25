@@ -22,6 +22,8 @@ jobs:
             command: pnpm lint
           - name: prettier
             command: pnpm format
+          - name: spellcheck
+            command: pnpm spellcheck
           - name: typecheck
             command: pnpm typecheck
           - name: vitest

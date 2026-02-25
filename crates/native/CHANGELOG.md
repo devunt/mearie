@@ -1,5 +1,11 @@
 # @mearie/native
 
+## 0.2.1
+
+### Patch Changes
+
+- c9b482b: Update macOS CI runners to `macos-latest` to fix build failures caused by the deprecated `macos-13` runner.
+
 ## 0.2.0
 
 ### Minor Changes

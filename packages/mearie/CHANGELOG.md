@@ -1,5 +1,12 @@
 # mearie
 
+## 0.1.2
+
+### Patch Changes
+
+- @mearie/cli@0.1.2
+- @mearie/vite@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

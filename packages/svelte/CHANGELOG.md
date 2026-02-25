@@ -1,5 +1,15 @@
 # @mearie/svelte
 
+## 0.2.2
+
+### Patch Changes
+
+- b840766: fix: add `svelte` export condition for proper rune compilation
+
+  Add `svelte` export condition to `publishConfig.exports` pointing to source `.svelte.ts` files.
+  This allows `vite-plugin-svelte` to compile runes (`$state`, `$effect`, etc.) directly,
+  fixing the `rune_outside_svelte` error when consuming the package in Svelte projects.
+
 ## 0.2.1
 
 ### Patch Changes

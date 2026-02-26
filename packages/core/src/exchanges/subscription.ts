@@ -20,7 +20,7 @@ type GraphQLResponse = {
 
 export interface SubscriptionClient {
   subscribe(
-    payload: { query: string; variables?: Record<string, unknown> },
+    payload: { operationName?: string; query: string; variables?: Record<string, unknown> },
     sink: {
       next: (result: unknown) => void;
       error: (error: unknown) => void;
@@ -95,6 +95,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
 
               unsubscribe = client.subscribe(
                 {
+                  operationName: op.artifact.name,
                   query: op.artifact.body,
                   variables: op.variables as Record<string, unknown>,
                 },

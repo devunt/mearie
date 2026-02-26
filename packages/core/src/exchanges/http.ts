@@ -64,6 +64,7 @@ const executeFetch = async ({
         ...fetchOptions.headers,
       },
       body: JSON.stringify({
+        operationName: artifact.name,
         query: artifact.body,
         variables,
       }),

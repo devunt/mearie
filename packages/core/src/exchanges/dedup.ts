@@ -40,6 +40,7 @@ export const dedupExchange = (): Exchange => {
     name: 'dedup',
     io: (ops$) => {
       const operations = new Map<string, Set<string>>();
+      const resolved = new Set<string>();
 
       const skip$ = pipe(
         ops$,
@@ -56,12 +57,16 @@ export const dedupExchange = (): Exchange => {
         ),
         filter((op) => {
           const dedupKey = makeDedupKey(op);
-          const isInflight = operations.has(dedupKey);
+          const isInflight = operations.has(dedupKey) && !resolved.has(dedupKey);
 
           if (isInflight) {
             operations.get(dedupKey)!.add(op.key);
           } else {
             operations.set(dedupKey, new Set([op.key]));
+          }
+
+          if (!isInflight) {
+            resolved.delete(dedupKey);
           }
 
           return (op.metadata.dedup?.skip ?? false) || !isInflight;
@@ -77,6 +82,7 @@ export const dedupExchange = (): Exchange => {
             if (subs.delete(teardown.key)) {
               if (subs.size === 0) {
                 operations.delete(dedupKey);
+                resolved.delete(dedupKey);
                 return true;
               }
 
@@ -101,6 +107,7 @@ export const dedupExchange = (): Exchange => {
           }
 
           const dedupKey = makeDedupKey(result.operation);
+          resolved.add(dedupKey);
           const subs = operations.get(dedupKey) ?? new Set<string>();
 
           return fromArray([...subs].map((key) => ({ ...result, operation: { ...result.operation, key } })));

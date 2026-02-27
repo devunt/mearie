@@ -1,7 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { dedupExchange } from './dedup.ts';
 import { makeTestOperation, makeTestForward, testExchange } from './test-utils.ts';
-import type { Operation } from '../exchange.ts';
+import type { Operation, OperationResult } from '../exchange.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
+import { pipe } from '../stream/pipe.ts';
+import { subscribe } from '../stream/sinks/subscribe.ts';
 
 describe('dedupExchange', () => {
   describe('basic deduplication', () => {
@@ -303,6 +306,53 @@ describe('dedupExchange', () => {
         (op) => op.variant === 'request' && 'artifact' in op && op.artifact.kind === 'subscription',
       );
       expect(subscriptions).toHaveLength(1);
+    });
+  });
+
+  describe('late subscriber', () => {
+    it('should deliver result to a subscriber that arrives after the first result has been delivered', async () => {
+      const exchange = dedupExchange();
+      const results: OperationResult[] = [];
+
+      vi.useFakeTimers();
+
+      const subject = makeSubject<Operation>();
+      const forward = makeTestForward((op) => ({
+        operation: op,
+        data: { user: { id: 1 } },
+      }));
+
+      const unsubscribe = pipe(
+        subject.source,
+        exchange({ forward, client: null as never }).io,
+        subscribe({
+          next: (result) => {
+            results.push(result);
+          },
+        }),
+      );
+
+      // 1. Send first operation and wait for its result
+      const op1 = makeTestOperation({ name: 'GetUser', variables: { id: 1 }, key: 'op-1' });
+      subject.next(op1);
+      await vi.runAllTimersAsync();
+
+      expect(results).toHaveLength(1);
+      expect(results[0]!.operation.key).toBe('op-1');
+      expect(results[0]!.data).toEqual({ user: { id: 1 } });
+
+      // 2. Send second operation with same dedupKey AFTER first result delivered
+      const op2 = makeTestOperation({ name: 'GetUser', variables: { id: 1 }, key: 'op-2' });
+      subject.next(op2);
+      await vi.runAllTimersAsync();
+
+      // op2 should also receive data
+      expect(results).toHaveLength(2);
+      expect(results[1]!.operation.key).toBe('op-2');
+      expect(results[1]!.data).toEqual({ user: { id: 1 } });
+
+      unsubscribe();
+      vi.useRealTimers();
     });
   });
 

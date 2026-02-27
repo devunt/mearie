@@ -1,5 +1,22 @@
 # @mearie/core
 
+## 0.2.3
+
+### Patch Changes
+
+- 0295683: fix(core): dedup exchange blocking late subscribers to resolved queries
+
+  When a new subscriber arrived for a dedupKey whose result had already been
+  delivered, the dedup exchange incorrectly treated it as in-flight and never
+  forwarded the request. Added a `resolved` Set to track keys that have
+  delivered results, so resolved keys are no longer considered in-flight.
+
+- 67df131: fix(core): include operationName in HTTP and subscription requests
+
+  `httpExchange` and `subscriptionExchange` were omitting `operationName` from
+  request payloads. Added `operationName` field using `artifact.name` to both
+  exchanges to comply with the GraphQL over HTTP spec.
+
 ## 0.2.2
 
 ### Patch Changes

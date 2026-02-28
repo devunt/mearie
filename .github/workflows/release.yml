@@ -40,10 +40,9 @@ jobs:
             echo "is_release=false" >> $GITHUB_OUTPUT
             echo "Regular commit, not a release"
 
-            new_changesets=$(git diff HEAD^ HEAD --name-only --diff-filter=A -- '.changeset/*.md')
-            if [ -n "$new_changesets" ] && echo "$new_changesets" | xargs grep -l '"@mearie/native"' 2>/dev/null | grep -q .; then
+            if grep -rl '"@mearie/native"' .changeset/*.md 2>/dev/null | grep -q .; then
               echo "native_changed=true" >> $GITHUB_OUTPUT
-              echo "Native package found in new changesets"
+              echo "Native package found in pending changesets"
             else
               echo "native_changed=false" >> $GITHUB_OUTPUT
             fi

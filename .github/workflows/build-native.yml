@@ -33,24 +33,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Cache native artifact
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: crates/native/dist/*.node
+          key: native-${{ matrix.settings.target }}-${{ hashFiles('crates/**', 'Cargo.lock') }}
+
       - name: Setup pnpm
+        if: steps.native-cache.outputs.cache-hit != 'true'
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
+        if: steps.native-cache.outputs.cache-hit != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Setup Rust
+        if: steps.native-cache.outputs.cache-hit != 'true'
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: ${{ matrix.settings.target }}
 
       - name: Install dependencies
+        if: steps.native-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: steps.native-cache.outputs.cache-hit != 'true'
         working-directory: crates/native
         run: |
           if [ "${{ matrix.settings.use-cross }}" = "true" ]; then

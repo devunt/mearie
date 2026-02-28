@@ -1,5 +1,15 @@
 # @mearie/codegen
 
+## 0.1.4
+
+### Patch Changes
+
+- 1b248b5: Add snapshot release support
+- Updated dependencies [1b248b5]
+  - @mearie/config@0.1.2
+  - @mearie/shared@0.2.2
+  - @mearie/native@0.2.2
+
 ## 0.1.3
 
 ### Patch Changes

@@ -8,8 +8,11 @@ GraphQL queries written as template literals in your code.
 ## Installation
 
 ```bash
-npm install @mearie/vite
+npm install -D @mearie/vite
 ```
+
+This package provides a Vite plugin for automatic GraphQL code generation
+during development and build.
 
 ## Usage
 

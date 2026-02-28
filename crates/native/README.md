@@ -2,10 +2,8 @@
 
 Native Rust bindings for Mearie GraphQL client.
 
-This package provides high-performance native bindings for GraphQL parsing,
-JavaScript/TypeScript analysis, and code generation. It is written in Rust and
-compiled to native code for optimal performance. This package is used internally
-by Mearie's build tools and is not intended for direct use.
+This package provides high-performance native bindings for GraphQL parsing
+and code generation. It is used internally and is not intended for direct use.
 
 ## Documentation
 

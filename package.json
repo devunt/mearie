@@ -7,10 +7,17 @@
     "graphql",
     "graphql-client",
     "typescript",
+    "type-safe",
     "codegen",
-    "cache"
+    "cache",
+    "normalized-cache",
+    "react",
+    "vue",
+    "svelte",
+    "solid",
+    "vite"
   ],
-  "homepage": "https://github.com/devunt/mearie#readme",
+  "homepage": "https://mearie.dev/",
   "bugs": {
     "url": "https://github.com/devunt/mearie/issues"
   },

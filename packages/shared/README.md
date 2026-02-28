@@ -1,5 +1,10 @@
 # @mearie/shared
 
-Common types and error classes shared across all Mearie packages.
+Shared types and error classes for Mearie GraphQL client.
 
-This package contains only TypeScript types and error class definitions, with zero runtime dependencies.
+This package contains common TypeScript types and error class definitions used
+across all Mearie packages. It is not intended for direct use.
+
+## Documentation
+
+Full documentation is available at <https://mearie.dev/>.

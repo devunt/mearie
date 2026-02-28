@@ -1,6 +1,6 @@
 # mearie
 
-Build-time codegen and tooling package for Mearie.
+Build-time codegen and tooling for Mearie GraphQL client.
 
 This package provides build plugins (Vite, Next.js) and code generation tools
 that extract GraphQL queries from your source code and generate TypeScript types
@@ -8,12 +8,12 @@ at build time.
 
 ## Installation
 
-Install as a dev dependency:
-
 ```bash
 npm install -D mearie
 ```
 
+This package provides build-time code generation and build plugins (Vite,
+Next.js) for automatic TypeScript type generation from GraphQL operations.
 For runtime functionality, install a framework-specific package like
 [@mearie/react](https://www.npmjs.com/package/@mearie/react),
 [@mearie/vue](https://www.npmjs.com/package/@mearie/vue),

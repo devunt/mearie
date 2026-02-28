@@ -1894,4 +1894,42 @@ describe('cacheExchange', () => {
       expect(forwardedOps.length).toBeGreaterThan(0);
     });
   });
+
+  describe('error handling', () => {
+    it('should emit error when cache remains partial after network response', async () => {
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+
+      const forward = makeTestForward((op) => ({
+        operation: op,
+        data: {
+          user: { __typename: 'User', id: '1', name: 'Alice' },
+        },
+      }));
+
+      const operation = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      const results = await testExchange(exchange, forward, [operation], client);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].errors).toBeDefined();
+      expect(results[0].errors!.length).toBeGreaterThan(0);
+      expect(results[0].errors![0].message).toContain('denormalize');
+    });
+  });
 });

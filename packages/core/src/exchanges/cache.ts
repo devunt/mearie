@@ -242,7 +242,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
         const forward$ = pipe(
           merge(nonCache$, network$, teardown$, refetch$.source),
           forward,
-          tap((result) => {
+          mergeMap((result) => {
             if (
               result.operation.variant === 'request' &&
               result.operation.artifact.kind === 'mutation' &&
@@ -254,14 +254,32 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             if (result.operation.variant === 'request' && result.data) {
               cache.writeQuery(result.operation.artifact, result.operation.variables, result.data);
             }
-          }),
-          filter(
-            (result) =>
+
+            if (
               result.operation.variant !== 'request' ||
               result.operation.artifact.kind !== 'query' ||
               fetchPolicy === 'network-only' ||
-              !!(result.errors && result.errors.length > 0),
-          ),
+              !!(result.errors && result.errors.length > 0)
+            ) {
+              return fromValue(result);
+            }
+
+            const { data } = cache.readQuery(result.operation.artifact, result.operation.variables);
+            if (data !== null) {
+              return empty();
+            }
+
+            return fromValue({
+              operation: result.operation,
+              data: undefined,
+              errors: [
+                new ExchangeError(
+                  'Cache failed to denormalize the network response. This is likely a bug in the cache normalizer.',
+                  { exchangeName: 'cache' },
+                ),
+              ],
+            });
+          }),
         );
 
         return merge(fragment$, cache$, forward$);

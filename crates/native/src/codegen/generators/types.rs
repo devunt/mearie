@@ -2,7 +2,7 @@ use super::super::CodegenContext;
 use crate::error::{MearieError, Result};
 use crate::graphql::ast::values::Value;
 use crate::graphql::ast::*;
-use crate::schema::{DocumentIndex, SchemaIndex};
+use crate::schema::{DocumentIndex, SchemaIndex, TypeInfo};
 use crate::source::SourceBuf;
 use itertools::chain;
 use oxc_allocator::Box as OxcBox;
@@ -169,6 +169,26 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             Some(self.ast.ts_type_annotation(SPAN, scalars_type_literal)),
         ));
 
+        let entities_type = self.build_entities_type();
+        properties.push(self.ast.ts_signature_property_signature(
+            SPAN,
+            false,
+            false,
+            false,
+            self.ast.property_key_static_identifier(SPAN, "entities"),
+            Some(self.ast.ts_type_annotation(SPAN, entities_type)),
+        ));
+
+        let query_fields_type = self.build_query_fields_type();
+        properties.push(self.ast.ts_signature_property_signature(
+            SPAN,
+            false,
+            false,
+            false,
+            self.ast.property_key_static_identifier(SPAN, "queryFields"),
+            Some(self.ast.ts_type_annotation(SPAN, query_fields_type)),
+        ));
+
         let type_literal = self.ast.ts_type_type_literal(SPAN, properties);
 
         let params = self
@@ -183,6 +203,124 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         );
 
         self.stmt_export_type("$Schema", schema_type)
+    }
+
+    fn determine_key_field(&self, type_name: &str) -> Option<(&'static str, &'b str)> {
+        const KEY_FIELD_NAMES: [&str; 3] = ["id", "_id", "uuid"];
+
+        let fields = self.schema.get_object_fields(type_name)?;
+
+        for &key_name in &KEY_FIELD_NAMES {
+            if let Some(&field_def) = fields.get(key_name) {
+                let is_nullable = field_def.typ.is_nullable();
+                let is_list = field_def.typ.is_list();
+                let innermost_type = field_def.typ.innermost_type().as_str();
+                let is_scalar = self.schema.is_scalar(innermost_type);
+
+                if !is_nullable && !is_list && is_scalar {
+                    return Some((key_name, innermost_type));
+                }
+            }
+        }
+
+        None
+    }
+
+    fn build_entities_type(&self) -> TSType<'b> {
+        let mut entity_properties = self.ast.vec();
+
+        for (type_name, type_info) in self.schema.types() {
+            if !matches!(type_info, TypeInfo::Object(_)) {
+                continue;
+            }
+
+            if Some(type_name) == self.schema.query_type()
+                || Some(type_name) == self.schema.mutation_type()
+                || Some(type_name) == self.schema.subscription_type()
+            {
+                continue;
+            }
+
+            if let Some((key_field_name, scalar_type_name)) = self.determine_key_field(type_name) {
+                let key_field_type = self.type_scalar_ref(scalar_type_name);
+                let key_fields_props = self.ast.vec1(self.ast.ts_signature_property_signature(
+                    SPAN,
+                    false,
+                    false,
+                    false,
+                    self.ast.property_key_static_identifier(SPAN, key_field_name),
+                    Some(self.ast.ts_type_annotation(SPAN, key_field_type)),
+                ));
+                let key_fields_type = self.ast.ts_type_type_literal(SPAN, key_fields_props);
+
+                let fields_type = self.build_object_fields_union_type(type_name);
+
+                let entity_meta_props = self.ast.vec_from_array([
+                    self.ast.ts_signature_property_signature(
+                        SPAN,
+                        false,
+                        false,
+                        false,
+                        self.ast.property_key_static_identifier(SPAN, "keyFields"),
+                        Some(self.ast.ts_type_annotation(SPAN, key_fields_type)),
+                    ),
+                    self.ast.ts_signature_property_signature(
+                        SPAN,
+                        false,
+                        false,
+                        false,
+                        self.ast.property_key_static_identifier(SPAN, "fields"),
+                        Some(self.ast.ts_type_annotation(SPAN, fields_type)),
+                    ),
+                ]);
+                let entity_meta_type = self.ast.ts_type_type_literal(SPAN, entity_meta_props);
+
+                entity_properties.push(self.ast.ts_signature_property_signature(
+                    SPAN,
+                    false,
+                    false,
+                    false,
+                    self.ast.property_key_static_identifier(SPAN, type_name),
+                    Some(self.ast.ts_type_annotation(SPAN, entity_meta_type)),
+                ));
+            }
+        }
+
+        self.ast.ts_type_type_literal(SPAN, entity_properties)
+    }
+
+    fn build_object_fields_union_type(&self, type_name: &str) -> TSType<'b> {
+        if let Some(fields) = self.schema.get_object_fields(type_name) {
+            let field_types: Vec<TSType<'b>> = fields
+                .keys()
+                .map(|&field_name| {
+                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
+                    self.ast.ts_type_literal_type(SPAN, string_literal)
+                })
+                .collect();
+
+            self.create_union(field_types)
+        } else {
+            self.ast.ts_type_string_keyword(SPAN)
+        }
+    }
+
+    fn build_query_fields_type(&self) -> TSType<'b> {
+        if let Some(query_type_name) = self.schema.query_type()
+            && let Some(fields) = self.schema.get_object_fields(query_type_name)
+        {
+            let field_types: Vec<TSType<'b>> = fields
+                .keys()
+                .map(|&field_name| {
+                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
+                    self.ast.ts_type_literal_type(SPAN, string_literal)
+                })
+                .collect();
+
+            return self.create_union(field_types);
+        }
+
+        self.ast.ts_type_string_keyword(SPAN)
     }
 
     fn export_enum(&self, enum_def: &EnumTypeDefinition<'b>) -> Statement<'b> {

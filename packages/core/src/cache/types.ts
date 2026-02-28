@@ -1,4 +1,4 @@
-import type { MaybePromise } from '@mearie/shared';
+import type { MaybePromise, SchemaMeta } from '@mearie/shared';
 import type { EntityLinkKey, RootFieldKey } from './constants.ts';
 
 /**
@@ -83,21 +83,29 @@ export type Listener = () => MaybePromise<void>;
 
 export type Subscription = { listener: Listener };
 
-/**
- * Identifier for a single entity, supporting simple or composite keys.
- */
-export type EntityId = string | number | Record<string, string | number>;
+type EntityTypes<TMeta extends SchemaMeta> = NonNullable<TMeta[' $entityTypes']>;
+type QueryFields<TMeta extends SchemaMeta> = NonNullable<TMeta[' $queryFields']>;
+type KeyFieldsOf<E> = E extends { keyFields: infer KF } ? KF : Record<string, unknown>;
+type FieldsOf<E> = E extends { fields: infer F extends string } ? F : string;
+
+type EntityInvalidateTarget<Entities> = {
+  [K in keyof Entities & string]:
+    | { __typename: K }
+    | ({ __typename: K } & KeyFieldsOf<Entities[K]>)
+    | { __typename: K; $field: FieldsOf<Entities[K]>; $args?: Record<string, unknown> }
+    | ({ __typename: K; $field: FieldsOf<Entities[K]>; $args?: Record<string, unknown> } & KeyFieldsOf<Entities[K]>);
+}[keyof Entities & string];
+
+type QueryInvalidateTarget<QF extends string> =
+  | { __typename: 'Query' }
+  | { __typename: 'Query'; $field: QF; $args?: Record<string, unknown> };
 
 /**
  * Target specification for cache invalidation operations.
  */
-export type InvalidateTarget =
-  | { __typename: string; id: EntityId }
-  | { __typename: string; id: EntityId; field: string; args?: Record<string, unknown> }
-  | { __typename: 'Query' }
-  | { __typename: 'Query'; field: string; args?: Record<string, unknown> }
-  | { __typename: string }
-  | { __typename: string; field: string; args?: Record<string, unknown> };
+export type InvalidateTarget<TMeta extends SchemaMeta = SchemaMeta> =
+  | EntityInvalidateTarget<EntityTypes<TMeta>>
+  | QueryInvalidateTarget<QueryFields<TMeta>>;
 
 /**
  * Opaque type representing a serializable cache snapshot.
@@ -107,9 +115,9 @@ export type CacheSnapshot = { readonly __brand: unique symbol };
 /**
  * Operations available for programmatic cache manipulation.
  */
-export type CacheOperations = {
+export type CacheOperations<TMeta extends SchemaMeta = SchemaMeta> = {
   extract(): CacheSnapshot;
   hydrate(data: CacheSnapshot): void;
-  invalidate(...targets: InvalidateTarget[]): void;
+  invalidate(...targets: InvalidateTarget<TMeta>[]): void;
   clear(): void;
 };

@@ -28,7 +28,7 @@ export {
 export { httpExchange, type HttpOptions } from './exchanges/http.ts';
 export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheOptions } from './exchanges/cache.ts';
-export type { CacheSnapshot } from './cache/types.ts';
+export type { CacheSnapshot, CacheOperations, InvalidateTarget } from './cache/types.ts';
 export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
 export { fragmentExchange } from './exchanges/fragment.ts';
 export { requiredExchange } from './exchanges/required.ts';

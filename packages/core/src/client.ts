@@ -190,7 +190,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
    * @param name - The exchange name.
    * @returns The extension object provided by the exchange.
    */
-  extension<TName extends keyof ExchangeExtensionMap>(name: TName): ExchangeExtensionMap[TName];
+  extension<TName extends keyof ExchangeExtensionMap<TMeta>>(name: TName): ExchangeExtensionMap<TMeta>[TName];
   extension(name: string): unknown;
   extension(name: string): unknown {
     const ext = this.#extensions.get(name);
@@ -200,7 +200,9 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     return ext;
   }
 
-  maybeExtension<TName extends keyof ExchangeExtensionMap>(name: TName): ExchangeExtensionMap[TName] | undefined;
+  maybeExtension<TName extends keyof ExchangeExtensionMap<TMeta>>(
+    name: TName,
+  ): ExchangeExtensionMap<TMeta>[TName] | undefined;
   maybeExtension(name: string): unknown;
   maybeExtension(name: string): unknown {
     return this.#extensions.get(name);

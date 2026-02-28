@@ -1,3 +1,4 @@
+import type { SchemaMeta } from '@mearie/shared';
 import type { Exchange, RequestOperation } from '../exchange.ts';
 import type { CacheOperations, CacheSnapshot, InvalidateTarget } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
@@ -18,8 +19,8 @@ import { empty } from '../stream/sources/empty.ts';
 import { isFragmentRef, isFragmentRefArray } from '../cache/utils.ts';
 
 declare module '@mearie/core' {
-  interface ExchangeExtensionMap {
-    cache: CacheOperations;
+  interface ExchangeExtensionMap<TMeta extends SchemaMeta> {
+    cache: CacheOperations<TMeta>;
   }
   interface OperationResultMetadataMap {
     cache?: { stale: boolean };

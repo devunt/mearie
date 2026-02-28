@@ -8,6 +8,7 @@ const schema: SchemaMeta = {
     User: { keyFields: ['id'] },
     Post: { keyFields: ['id'] },
     Comment: { keyFields: ['postId', 'id'] },
+    Profile: { keyFields: ['_id'] },
   },
   inputs: {},
   scalars: {},
@@ -1173,7 +1174,7 @@ describe('Cache', () => {
         { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
       );
 
-      cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
       const result = cache.readQuery(artifact, {});
 
@@ -1217,7 +1218,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact1, {}, { posts: ['post1', 'post2'] });
       cache.writeQuery(artifact2, {}, { name: 'Alice' });
 
-      cache.invalidate({ __typename: 'Query', field: 'posts', args: { limit: 10 } });
+      cache.invalidate({ __typename: 'Query', $field: 'posts', $args: { limit: 10 } });
 
       const postsResult = cache.readQuery(artifact1, {});
       const nameResult = cache.readQuery(artifact2, {});
@@ -1292,7 +1293,7 @@ describe('Cache', () => {
         },
       );
 
-      cache.invalidate({ __typename: 'User', field: 'email' });
+      cache.invalidate({ __typename: 'User', $field: 'email' });
 
       const result = cache.readQuery(artifact, {});
 
@@ -1411,7 +1412,7 @@ describe('Cache', () => {
       cache.subscribeQuery(nameQueryArtifact, {}, nameListener);
       cache.subscribeQuery(emailQueryArtifact, {}, emailListener);
 
-      cache.invalidate({ __typename: 'User', id: '1', field: 'name' });
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
 
       expect(nameListener).toHaveBeenCalledTimes(1);
       expect(emailListener).not.toHaveBeenCalled();
@@ -1438,7 +1439,7 @@ describe('Cache', () => {
       cache.writeQuery(userArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
       cache.writeQuery(nameArtifact, {}, { name: 'Root' });
 
-      cache.invalidate({ __typename: 'User', id: '1' }, { __typename: 'Query', field: 'name' });
+      cache.invalidate({ __typename: 'User', id: '1' }, { __typename: 'Query', $field: 'name' });
 
       const userResult = cache.readQuery(userArtifact, {});
       const nameResult = cache.readQuery(nameArtifact, {});
@@ -1455,7 +1456,7 @@ describe('Cache', () => {
       }).not.toThrow();
 
       expect(() => {
-        cache.invalidate({ __typename: 'User', id: '999', field: 'name' });
+        cache.invalidate({ __typename: 'User', id: '999', $field: 'name' });
       }).not.toThrow();
 
       expect(() => {
@@ -1482,7 +1483,151 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { comment: { __typename: 'Comment', postId: '1', id: '1', text: 'Great post!' } });
 
-      cache.invalidate({ __typename: 'Comment', id: { postId: '1', id: '1' } });
+      cache.invalidate({ __typename: 'Comment', postId: '1', id: '1' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.stale).toBe(true);
+    });
+
+    it('should invalidate entity with non-id key field (_id)', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetProfile', [
+        {
+          kind: 'Field',
+          name: 'profile',
+          type: 'Profile',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: '_id', type: 'ID' },
+            { kind: 'Field', name: 'bio', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { profile: { __typename: 'Profile', _id: 'p1', bio: 'Hello' } });
+
+      cache.invalidate({ __typename: 'Profile', _id: 'p1' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.data).toEqual({ profile: { __typename: 'Profile', _id: 'p1', bio: 'Hello' } });
+      expect(result.stale).toBe(true);
+    });
+
+    it('should invalidate specific field on entity with non-id key field', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetProfile', [
+        {
+          kind: 'Field',
+          name: 'profile',
+          type: 'Profile',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: '_id', type: 'ID' },
+            { kind: 'Field', name: 'bio', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { profile: { __typename: 'Profile', _id: 'p1', bio: 'Hello' } });
+
+      cache.invalidate({ __typename: 'Profile', _id: 'p1', $field: 'bio' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.data).toEqual({ profile: { __typename: 'Profile', _id: 'p1', bio: 'Hello' } });
+      expect(result.stale).toBe(true);
+    });
+
+    it('should invalidate composite key entity with $field', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetComment', [
+        {
+          kind: 'Field',
+          name: 'comment',
+          type: 'Comment',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'postId', type: 'ID' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'text', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { comment: { __typename: 'Comment', postId: '1', id: '1', text: 'Great!' } });
+
+      cache.invalidate({ __typename: 'Comment', postId: '1', id: '1', $field: 'text' });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.data).toEqual({ comment: { __typename: 'Comment', postId: '1', id: '1', text: 'Great!' } });
+      expect(result.stale).toBe(true);
+    });
+
+    it('should invalidate root query with $field and $args', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          args: {
+            limit: { kind: 'literal', value: 5 },
+            offset: { kind: 'literal', value: 0 },
+          },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { users: [{ __typename: 'User', id: '1', name: 'Alice' }] });
+
+      cache.invalidate({ __typename: 'Query', $field: 'users', $args: { limit: 5, offset: 0 } });
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.stale).toBe(true);
+    });
+
+    it('should fall back to typename-wide invalidation when key fields are missing', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetProfiles', [
+        {
+          kind: 'Field',
+          name: 'profiles',
+          type: 'Profile',
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: '_id', type: 'ID' },
+            { kind: 'Field', name: 'bio', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          profiles: [
+            { __typename: 'Profile', _id: 'p1', bio: 'Hello' },
+            { __typename: 'Profile', _id: 'p2', bio: 'World' },
+          ],
+        },
+      );
+
+      cache.invalidate({ __typename: 'Profile' });
 
       const result = cache.readQuery(artifact, {});
 
@@ -2449,7 +2594,7 @@ describe('Cache', () => {
           { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
         );
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         const result = cache.readQuery(artifact, {});
 
@@ -2546,7 +2691,7 @@ describe('Cache', () => {
         cache.writeQuery(nameArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
         cache.writeQuery(emailArtifact, {}, { user: { __typename: 'User', id: '1', email: 'alice@example.com' } });
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         const nameResult = cache.readQuery(nameArtifact, {});
         const emailResult = cache.readQuery(emailArtifact, {});
@@ -2647,7 +2792,7 @@ describe('Cache', () => {
           { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
         );
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
         const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -2680,7 +2825,7 @@ describe('Cache', () => {
           { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
         );
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
         const fragmentArtifact = createArtifact('fragment', 'NameFragment', [
@@ -2892,7 +3037,7 @@ describe('Cache', () => {
           { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
         );
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         expect(cache.readQuery(artifact, {}).stale).toBe(true);
 
@@ -2965,7 +3110,7 @@ describe('Cache', () => {
         const listener = vi.fn();
         cache.subscribeQuery(artifact, {}, listener);
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         expect(listener).toHaveBeenCalledTimes(1);
         listener.mockClear();
@@ -3163,7 +3308,7 @@ describe('Cache', () => {
           { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
         );
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         expect(cache.readQuery(fullArtifact, {}).stale).toBe(true);
 
@@ -3279,7 +3424,7 @@ describe('Cache', () => {
         const listener = vi.fn();
         cache.subscribeQuery(queryArtifact, {}, listener);
 
-        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+        cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
         expect(listener).toHaveBeenCalledTimes(1);
       });

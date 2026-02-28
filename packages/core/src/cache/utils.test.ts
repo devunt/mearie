@@ -4,7 +4,6 @@ import {
   makeFieldKey,
   makeFieldKeyFromArgs,
   resolveArguments,
-  resolveEntityKey,
   isEntityLink,
   isFragmentRefArray,
   replaceEqualDeep,
@@ -312,26 +311,6 @@ describe('makeFieldKeyFromArgs', () => {
     const fromMakeFieldKeyFromArgs = makeFieldKeyFromArgs('posts', { limit: 10, offset: 5 });
 
     expect(fromMakeFieldKeyFromArgs).toBe(fromMakeFieldKey);
-  });
-});
-
-describe('resolveEntityKey', () => {
-  it('should resolve string id', () => {
-    expect(resolveEntityKey('User', '1')).toBe('User:1');
-  });
-
-  it('should resolve number id', () => {
-    expect(resolveEntityKey('User', 42)).toBe('User:42');
-  });
-
-  it('should resolve record id without keyFields using Object.values order', () => {
-    expect(resolveEntityKey('Comment', { postId: 'post-1', commentId: 'c-2' })).toBe('Comment:post-1:c-2');
-  });
-
-  it('should resolve record id with keyFields using keyFields ordering', () => {
-    expect(resolveEntityKey('Comment', { postId: 'post-1', commentId: 'c-2' }, ['commentId', 'postId'])).toBe(
-      'Comment:c-2:post-1',
-    );
   });
 });
 

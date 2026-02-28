@@ -25,7 +25,6 @@ export class Cache {
   #schemaMeta: SchemaMeta;
   #storage = { [RootFieldKey]: {} } as Storage;
   #subscriptions = new Map<DependencyKey, Set<Subscription>>();
-  #invalidationSubscriptions = new Map<DependencyKey, Set<Subscription>>();
   #memo = new Map<string, unknown>();
 
   constructor(schemaMetadata: SchemaMeta) {
@@ -66,7 +65,7 @@ export class Cache {
     }
 
     for (const subscription of subscriptions) {
-      void subscription.listener('write');
+      void subscription.listener();
     }
   }
 
@@ -106,7 +105,6 @@ export class Cache {
    */
   subscribeQuery<T extends Artifact<'query'>>(artifact: T, variables: VariablesOf<T>, listener: Listener): () => void {
     const dependencies = new Set<DependencyKey>();
-    const invalidationDependencies = new Set<DependencyKey>();
 
     denormalize(
       artifact.selections,
@@ -116,22 +114,10 @@ export class Cache {
       (storageKey, fieldKey) => {
         const dependencyKey = makeDependencyKey(storageKey, fieldKey);
         dependencies.add(dependencyKey);
-        invalidationDependencies.add(dependencyKey);
       },
     );
 
-    denormalize(
-      artifact.selections,
-      this.#storage,
-      this.#storage[RootFieldKey],
-      variables as Record<string, unknown>,
-      (storageKey, fieldKey) => {
-        invalidationDependencies.add(makeDependencyKey(storageKey, fieldKey));
-      },
-      true,
-    );
-
-    return this.#subscribe(dependencies, listener, invalidationDependencies);
+    return this.#subscribe(dependencies, listener);
   }
 
   /**
@@ -227,10 +213,10 @@ export class Cache {
         if ('field' in target) {
           const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
           delete this.#storage[RootFieldKey]?.[fieldKey];
-          this.#collectSubscriptions(RootFieldKey, fieldKey, subscriptions, this.#invalidationSubscriptions);
+          this.#collectSubscriptions(RootFieldKey, fieldKey, subscriptions);
         } else {
           this.#storage[RootFieldKey] = {} as Fields;
-          this.#collectSubscriptions(RootFieldKey, undefined, subscriptions, this.#invalidationSubscriptions);
+          this.#collectSubscriptions(RootFieldKey, undefined, subscriptions);
         }
       } else if ('id' in target) {
         const entityKey = resolveEntityKey(
@@ -241,10 +227,10 @@ export class Cache {
         if ('field' in target) {
           const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
           delete this.#storage[entityKey]?.[fieldKey];
-          this.#collectSubscriptions(entityKey, fieldKey, subscriptions, this.#invalidationSubscriptions);
+          this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
         } else {
           delete this.#storage[entityKey];
-          this.#collectSubscriptions(entityKey, undefined, subscriptions, this.#invalidationSubscriptions);
+          this.#collectSubscriptions(entityKey, undefined, subscriptions);
         }
       } else {
         const prefix = `${target.__typename}:`;
@@ -254,10 +240,10 @@ export class Cache {
             if ('field' in target) {
               const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
               delete this.#storage[entityKey]?.[fieldKey];
-              this.#collectSubscriptions(entityKey, fieldKey, subscriptions, this.#invalidationSubscriptions);
+              this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
             } else {
               delete this.#storage[entityKey];
-              this.#collectSubscriptions(entityKey, undefined, subscriptions, this.#invalidationSubscriptions);
+              this.#collectSubscriptions(entityKey, undefined, subscriptions);
             }
           }
         }
@@ -265,19 +251,14 @@ export class Cache {
     }
 
     for (const subscription of subscriptions) {
-      void subscription.listener('invalidate');
+      void subscription.listener();
     }
   }
 
-  #collectSubscriptions(
-    storageKey: StorageKey,
-    fieldKey: FieldKey | undefined,
-    out: Set<Subscription>,
-    subscriptionsMap: Map<DependencyKey, Set<Subscription>> = this.#subscriptions,
-  ): void {
+  #collectSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<Subscription>): void {
     if (fieldKey === undefined) {
       const prefix = `${storageKey}.`;
-      for (const [depKey, ss] of subscriptionsMap) {
+      for (const [depKey, ss] of this.#subscriptions) {
         if (depKey.startsWith(prefix)) {
           for (const s of ss) {
             out.add(s);
@@ -286,7 +267,7 @@ export class Cache {
       }
     } else {
       const depKey = makeDependencyKey(storageKey, fieldKey);
-      const ss = subscriptionsMap.get(depKey);
+      const ss = this.#subscriptions.get(depKey);
       if (ss) {
         for (const s of ss) {
           out.add(s);
@@ -295,11 +276,7 @@ export class Cache {
     }
   }
 
-  #subscribe(
-    dependencies: Set<DependencyKey>,
-    listener: Listener,
-    invalidationDependencies: Set<DependencyKey> = dependencies,
-  ): () => void {
+  #subscribe(dependencies: Set<DependencyKey>, listener: Listener): () => void {
     const subscription = { listener };
 
     for (const dependency of dependencies) {
@@ -308,26 +285,12 @@ export class Cache {
       this.#subscriptions.set(dependency, subscriptions);
     }
 
-    for (const dependency of invalidationDependencies) {
-      const subscriptions = this.#invalidationSubscriptions.get(dependency) ?? new Set();
-      subscriptions.add(subscription);
-      this.#invalidationSubscriptions.set(dependency, subscriptions);
-    }
-
     return () => {
       for (const dependency of dependencies) {
         const subscriptions = this.#subscriptions.get(dependency);
         subscriptions?.delete(subscription);
         if (subscriptions?.size === 0) {
           this.#subscriptions.delete(dependency);
-        }
-      }
-
-      for (const dependency of invalidationDependencies) {
-        const subscriptions = this.#invalidationSubscriptions.get(dependency);
-        subscriptions?.delete(subscription);
-        if (subscriptions?.size === 0) {
-          this.#invalidationSubscriptions.delete(dependency);
         }
       }
     };
@@ -367,7 +330,6 @@ export class Cache {
   clear(): void {
     this.#storage = { [RootFieldKey]: {} };
     this.#subscriptions.clear();
-    this.#invalidationSubscriptions.clear();
     this.#memo.clear();
   }
 }

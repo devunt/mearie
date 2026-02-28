@@ -76,16 +76,10 @@ export type Data = {
 };
 
 /**
- * Cause of a subscription notification.
- * @internal
- */
-export type SubscriptionEvent = 'write' | 'invalidate';
-
-/**
  * Listener function.
  * @internal
  */
-export type Listener = (event: SubscriptionEvent) => MaybePromise<void>;
+export type Listener = () => MaybePromise<void>;
 
 export type Subscription = { listener: Listener };
 

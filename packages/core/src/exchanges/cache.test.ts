@@ -851,5 +851,159 @@ describe('cacheExchange', () => {
       sub();
       vi.useRealTimers();
     });
+
+    it('should refetch query for fragment-only selections after entity invalidation', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'f1',
+        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        selections: fragmentSelections,
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      subject.next(fragmentOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      const beforeInvalidation = results.find((r) => r.operation.key === 'f1');
+      expect(callCount).toBe(1);
+      expect(beforeInvalidation!.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'f1');
+      expect(callCount).toBe(2);
+      expect(fragmentResults.some((r) => r.data === null)).toBe(false);
+      expect(fragmentResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should keep stale fragment data until query refetch after entity field invalidation', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q2',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'f2',
+        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        selections: fragmentSelections,
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      subject.next(fragmentOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+
+      result.extension.invalidate({ __typename: 'User', id: '1', field: 'name' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'f2');
+      expect(callCount).toBe(2);
+      expect(fragmentResults.some((r) => r.data === null)).toBe(false);
+      expect(fragmentResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+
+      sub();
+      vi.useRealTimers();
+    });
   });
 });

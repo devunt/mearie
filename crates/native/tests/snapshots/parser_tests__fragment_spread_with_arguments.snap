@@ -1,0 +1,176 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query GetUser {\n            user {\n                ...Avatar(size: 100)\n            }\n        }\n        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }\"#)"
+---
+Document {
+    source: Source {
+        code: "query GetUser {\n            user {\n                ...Avatar(size: 100)\n            }\n        }\n        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 95,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
+                    variable_definitions: [],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 28,
+                                        end: 85,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            FragmentSpread(
+                                                FragmentSpread {
+                                                    span: Span {
+                                                        start: 51,
+                                                        end: 85,
+                                                    },
+                                                    fragment_name: FragmentName(
+                                                        Name(
+                                                            "Avatar",
+                                                        ),
+                                                    ),
+                                                    arguments: [
+                                                        Argument {
+                                                            span: Span {
+                                                                start: 61,
+                                                                end: 70,
+                                                            },
+                                                            name: ArgumentName(
+                                                                Name(
+                                                                    "size",
+                                                                ),
+                                                            ),
+                                                            value: Int(
+                                                                "100",
+                                                            ),
+                                                        },
+                                                    ],
+                                                    directives: [],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 104,
+                        end: 173,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "Avatar",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 120,
+                                end: 137,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "size",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "50",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 148,
+                                        end: 173,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "profilePic",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 159,
+                                                end: 170,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

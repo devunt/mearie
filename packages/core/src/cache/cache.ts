@@ -2,7 +2,14 @@ import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@m
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
 import { stringify } from '../utils.ts';
-import { makeDependencyKey, makeEntityKey, makeFieldKeyFromArgs, makeMemoKey, replaceEqualDeep } from './utils.ts';
+import {
+  makeDependencyKey,
+  makeEntityKey,
+  makeFieldKeyFromArgs,
+  makeMemoKey,
+  replaceEqualDeep,
+  getFragmentVars,
+} from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
   CacheSnapshot,
@@ -262,6 +269,7 @@ export class Cache {
     fragmentRef: FragmentRefs<string>,
   ): { data: DataOf<T> | null; stale: boolean } {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
+    const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
 
     const storageView = this.#getStorageView();
     const entity = storageView[entityKey];
@@ -275,7 +283,7 @@ export class Cache {
       artifact.selections,
       storageView,
       { [EntityLinkKey]: entityKey },
-      {},
+      fragmentVars,
       (storageKey, fieldKey) => {
         if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
           stale = true;
@@ -287,7 +295,8 @@ export class Cache {
       return { data: null, stale: false };
     }
 
-    const key = makeMemoKey('fragment', artifact.name, entityKey);
+    const argsId = Object.keys(fragmentVars).length > 0 ? entityKey + stringify(fragmentVars) : entityKey;
+    const key = makeMemoKey('fragment', artifact.name, argsId);
     const prev = this.#memo.get(key);
     const result = prev === undefined ? data : replaceEqualDeep(prev, data);
     this.#memo.set(key, result);
@@ -301,13 +310,20 @@ export class Cache {
     listener: Listener,
   ): () => void {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
+    const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
     const dependencies = new Set<DependencyKey>();
 
     const storageView = this.#getStorageView();
-    denormalize(artifact.selections, storageView, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
-      const dependencyKey = makeDependencyKey(storageKey, fieldKey);
-      dependencies.add(dependencyKey);
-    });
+    denormalize(
+      artifact.selections,
+      storageView,
+      { [EntityLinkKey]: entityKey },
+      fragmentVars,
+      (storageKey, fieldKey) => {
+        const dependencyKey = makeDependencyKey(storageKey, fieldKey);
+        dependencies.add(dependencyKey);
+      },
+    );
 
     return this.#subscribe(dependencies, listener);
   }
@@ -349,9 +365,16 @@ export class Cache {
     const storageView = this.#getStorageView();
     for (const ref of fragmentRefs) {
       const entityKey = (ref as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
-      denormalize(artifact.selections, storageView, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
-        dependencies.add(makeDependencyKey(storageKey, fieldKey));
-      });
+      const fragmentVars = getFragmentVars(ref, artifact.name);
+      denormalize(
+        artifact.selections,
+        storageView,
+        { [EntityLinkKey]: entityKey },
+        fragmentVars,
+        (storageKey, fieldKey) => {
+          dependencies.add(makeDependencyKey(storageKey, fieldKey));
+        },
+      );
     }
 
     return this.#subscribe(dependencies, listener);

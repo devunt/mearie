@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Cache } from './cache.ts';
 import type { Artifact, FragmentRefs, SchemaMeta } from '@mearie/shared';
-import { FragmentRefKey } from './constants.ts';
+import { FragmentRefKey, FragmentVarsKey } from './constants.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -3750,6 +3750,186 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
       expect(result.data).not.toBeNull();
+    });
+  });
+
+  describe('fragment arguments', () => {
+    it('readFragment uses fragment vars from fragment ref', () => {
+      const cache = new Cache(schema);
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 80 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'literal', value: 80 } },
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', profilePic: 'pic-80.jpg' },
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {});
+      const fragmentRef = (queryResult.data as Record<string, unknown>).user as FragmentRefs<string>;
+
+      expect((fragmentRef as unknown as Record<string, unknown>)[FragmentRefKey]).toBe('User:1');
+      expect((fragmentRef as unknown as Record<string, unknown>)[FragmentVarsKey]).toEqual({
+        Avatar: { size: 80 },
+      });
+
+      const fragmentArtifact = createArtifact('fragment', 'Avatar', [
+        {
+          kind: 'Field',
+          name: 'profilePic',
+          type: 'String',
+          args: { size: { kind: 'variable', name: 'size' } },
+        },
+      ]);
+
+      const fragmentResult = cache.readFragment(fragmentArtifact, fragmentRef);
+      expect(fragmentResult.data).toEqual({ profilePic: 'pic-80.jpg' });
+    });
+
+    it('different fragment args produce different memo entries', () => {
+      const cache = new Cache(schema);
+
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          alias: 'user1',
+          args: { id: { kind: 'literal', value: '1' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 50 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'literal', value: 50 } },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          alias: 'user2',
+          args: { id: { kind: 'literal', value: '2' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 200 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'literal', value: 200 } },
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user1: { __typename: 'User', id: '1', profilePic: 'pic-50.jpg' },
+          user2: { __typename: 'User', id: '2', profilePic: 'pic-200.jpg' },
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {});
+      const data = queryResult.data as Record<string, FragmentRefs<string>>;
+
+      const fragmentArtifact = createArtifact('fragment', 'Avatar', [
+        {
+          kind: 'Field',
+          name: 'profilePic',
+          type: 'String',
+          args: { size: { kind: 'variable', name: 'size' } },
+        },
+      ]);
+
+      const result1 = cache.readFragment(fragmentArtifact, data.user1!);
+      const result2 = cache.readFragment(fragmentArtifact, data.user2!);
+
+      expect(result1.data).toEqual({ profilePic: 'pic-50.jpg' });
+      expect(result2.data).toEqual({ profilePic: 'pic-200.jpg' });
+    });
+
+    it('readFragment without fragment vars is backward compatible', () => {
+      const cache = new Cache(schema);
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Alice' },
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {});
+      const fragmentRef = (queryResult.data as Record<string, unknown>).user as FragmentRefs<string>;
+
+      const fragmentArtifact = createArtifact('fragment', 'UserFields', [
+        { kind: 'Field', name: 'name', type: 'String' },
+      ]);
+
+      const fragmentResult = cache.readFragment(fragmentArtifact, fragmentRef);
+      expect(fragmentResult.data).toEqual({ name: 'Alice' });
     });
   });
 });

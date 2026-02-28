@@ -65,6 +65,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
             self.gen_enum_exports(),
             self.gen_artifact_exports(),
             self.gen_fragment_key_exports(),
+            self.gen_fragment_vars_exports(),
             self.gen_overloads(),
             std::iter::once(self.stmt_schema_declaration()),
         ])
@@ -107,6 +108,15 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
             self.document
                 .fragments()
                 .map(|fragment| format!("{}$key", fragment.name.as_str())),
+        )
+    }
+
+    fn gen_fragment_vars_exports(&self) -> StmtVec<'b> {
+        self.gen_type_exports(
+            self.document
+                .fragments()
+                .filter(|fragment| !fragment.variable_definitions.is_empty())
+                .map(|fragment| format!("{}$vars", fragment.name.as_str())),
         )
     }
 

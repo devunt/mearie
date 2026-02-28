@@ -1,10 +1,10 @@
 ---
 source: crates/native/tests/parser_tests.rs
-expression: "parse!(r#\"query { user { ...UserFields } }\n        fragment UserFields on User { id name }\"#)"
+expression: "parse!(r#\"query GetUser {\n            user {\n                ...Avatar\n            }\n        }\n        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }\"#)"
 ---
 Document {
     source: Source {
-        code: "query { user { ...UserFields } }\n        fragment UserFields on User { id name }",
+        code: "query GetUser {\n            user {\n                ...Avatar\n            }\n        }\n        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }",
         file_path: "test.graphql",
         start_line: 1,
     },
@@ -14,10 +14,14 @@ Document {
                 OperationDefinition {
                     span: Span {
                         start: 0,
-                        end: 32,
+                        end: 84,
                     },
                     operation_type: Query,
-                    name: None,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
                     variable_definitions: [],
                     directives: [],
                     selection_set: SelectionSet {
@@ -25,8 +29,8 @@ Document {
                             Field(
                                 Field {
                                     span: Span {
-                                        start: 8,
-                                        end: 30,
+                                        start: 28,
+                                        end: 74,
                                     },
                                     alias: None,
                                     name: FieldName(
@@ -41,12 +45,12 @@ Document {
                                             FragmentSpread(
                                                 FragmentSpread {
                                                     span: Span {
-                                                        start: 15,
-                                                        end: 30,
+                                                        start: 51,
+                                                        end: 74,
                                                     },
                                                     fragment_name: FragmentName(
                                                         Name(
-                                                            "UserFields",
+                                                            "Avatar",
                                                         ),
                                                     ),
                                                     arguments: [],
@@ -66,15 +70,44 @@ Document {
             Fragment(
                 FragmentDefinition {
                     span: Span {
-                        start: 41,
-                        end: 80,
+                        start: 93,
+                        end: 162,
                     },
                     name: FragmentName(
                         Name(
-                            "UserFields",
+                            "Avatar",
                         ),
                     ),
-                    variable_definitions: [],
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 109,
+                                end: 126,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "size",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "50",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
                     type_condition: TypeName(
                         Name(
                             "User",
@@ -86,35 +119,33 @@ Document {
                             Field(
                                 Field {
                                     span: Span {
-                                        start: 71,
-                                        end: 78,
+                                        start: 137,
+                                        end: 162,
                                     },
                                     alias: None,
                                     name: FieldName(
                                         Name(
-                                            "id",
+                                            "profilePic",
                                         ),
                                     ),
-                                    arguments: [],
-                                    directives: [],
-                                    selection_set: SelectionSet {
-                                        selections: [],
-                                    },
-                                },
-                            ),
-                            Field(
-                                Field {
-                                    span: Span {
-                                        start: 74,
-                                        end: 80,
-                                    },
-                                    alias: None,
-                                    name: FieldName(
-                                        Name(
-                                            "name",
-                                        ),
-                                    ),
-                                    arguments: [],
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 148,
+                                                end: 159,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                        },
+                                    ],
                                     directives: [],
                                     selection_set: SelectionSet {
                                         selections: [],

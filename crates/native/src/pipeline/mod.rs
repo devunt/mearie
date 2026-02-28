@@ -125,6 +125,136 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_fragment_variable_definitions_stripped_from_body() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { profilePic(size: Int): String }
+        "#;
+
+        let fragment_code = r#"
+            fragment Avatar($size: Int! = 50) on User {
+                profilePic(size: $size)
+            }
+        "#;
+
+        let operation_code = r#"
+            query GetUser {
+                user {
+                    ...Avatar(size: 100)
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(fragment_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let runtime_file = output.sources.iter().find(|s| s.file_path == "graphql.js").unwrap();
+
+        for line in runtime_file.code.lines() {
+            if line.trim_start().starts_with("body:") {
+                assert!(
+                    !line.contains("$size: Int!"),
+                    "Fragment body should not contain variable definitions, but got:\n{}",
+                    line
+                );
+                assert!(
+                    !line.contains("(size: 100)"),
+                    "Fragment spread should not contain arguments in body, but got:\n{}",
+                    line
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_fragment_args_in_runtime_selections() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { profilePic(size: Int): String }
+        "#;
+
+        let fragment_code = r#"
+            fragment Avatar($size: Int! = 50) on User {
+                profilePic(size: $size)
+            }
+        "#;
+
+        let operation_code = r#"
+            query GetUser {
+                user {
+                    ...Avatar(size: 100)
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(fragment_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let runtime_file = output.sources.iter().find(|s| s.file_path == "graphql.js").unwrap();
+
+        assert!(
+            runtime_file.code.contains("FragmentSpread"),
+            "Runtime should contain FragmentSpread selections"
+        );
+    }
+
+    #[test]
+    fn test_fragment_vars_type_generated() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { profilePic(size: Int): String }
+        "#;
+
+        let fragment_code = r#"
+            fragment Avatar($size: Int! = 50) on User {
+                profilePic(size: $size)
+            }
+        "#;
+
+        let operation_code = r#"
+            query GetUser {
+                user {
+                    ...Avatar(size: 100)
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(fragment_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let types_file = output.sources.iter().find(|s| s.file_path == "types.d.ts").unwrap();
+        assert!(
+            types_file.code.contains("Avatar$vars"),
+            "Types should contain Avatar$vars type, but got:\n{}",
+            types_file.code
+        );
+    }
+
+    #[test]
     fn test_required_directive_stripped_from_fragment_in_operation_body() {
         let arena = Arena::new();
 

@@ -49,6 +49,7 @@ Document {
                                                             "UserFields",
                                                         ),
                                                     ),
+                                                    arguments: [],
                                                     directives: [],
                                                 },
                                             ),
@@ -73,6 +74,7 @@ Document {
                             "UserFields",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "User",

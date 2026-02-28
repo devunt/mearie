@@ -535,12 +535,25 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
-            SelectionNodeData::FragmentSpread { name, selections } => {
-                let properties = self.ast.vec_from_array([
-                    self.prop_object("kind", self.expr_string("FragmentSpread")),
-                    self.prop_object("name", self.expr_string(name)),
-                    self.prop_object("selections", self.expr_selections_array(selections)),
-                ]);
+            SelectionNodeData::FragmentSpread { name, args, selections } => {
+                let mut properties = self.ast.vec();
+
+                properties.push(self.prop_object("kind", self.expr_string("FragmentSpread")));
+                properties.push(self.prop_object("name", self.expr_string(name)));
+
+                if let Some(args) = args
+                    && !args.is_empty()
+                {
+                    let args_props = self.ast.vec_from_iter(
+                        args.iter()
+                            .map(|arg| self.prop_object(arg.name.as_str(), self.expr_arg_value(&arg.value))),
+                    );
+                    let args_expr =
+                        Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, args_props)));
+                    properties.push(self.prop_object("args", args_expr));
+                }
+
+                properties.push(self.prop_object("selections", self.expr_selections_array(selections)));
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
@@ -729,8 +742,15 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
         let selections = self.flatten_selections(&fragment.selection_set, fragment.type_condition.as_str())?;
 
+        let args = if !spread.arguments.is_empty() || !fragment.variable_definitions.is_empty() {
+            Some(spread.arguments.as_slice())
+        } else {
+            None
+        };
+
         Ok(SelectionNodeData::FragmentSpread {
             name: spread.fragment_name.as_str(),
+            args,
             selections,
         })
     }
@@ -852,6 +872,7 @@ enum SelectionNodeData<'b> {
     },
     FragmentSpread {
         name: &'b str,
+        args: Option<&'b [crate::graphql::ast::Argument<'b>]>,
         selections: Vec<SelectionNodeData<'b>>,
     },
     InlineFragment {

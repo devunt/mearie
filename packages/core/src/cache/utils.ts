@@ -1,6 +1,6 @@
 import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
-import { EntityLinkKey, FragmentRefKey } from './constants.ts';
+import { EntityLinkKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink, MemoKey } from './types.ts';
 
 /**
@@ -97,6 +97,19 @@ export const isEntityLink = (value: unknown): value is EntityLink => {
  */
 export const isFragmentRef = (value: unknown): value is FragmentRefs<string> => {
   return typeof value === 'object' && value !== null && FragmentRefKey in value;
+};
+
+/**
+ * Extracts the merged variable context for a specific fragment from a fragment reference.
+ * Returns the merged variables (fragment args + operation variables) if present, or an empty object.
+ * @internal
+ */
+export const getFragmentVars = (fragmentRef: FragmentRefs<string>, fragmentName: string): Record<string, unknown> => {
+  return (
+    (fragmentRef as unknown as { [FragmentVarsKey]?: Record<string, Record<string, unknown>> })[FragmentVarsKey]?.[
+      fragmentName
+    ] ?? {}
+  );
 };
 
 /**

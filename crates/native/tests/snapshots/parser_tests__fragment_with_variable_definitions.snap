@@ -1,0 +1,104 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(\"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }\")"
+---
+Document {
+    source: Source {
+        code: "fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 69,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "Avatar",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 16,
+                                end: 33,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "size",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: Some(
+                                Int(
+                                    "50",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 44,
+                                        end: 69,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "profilePic",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 55,
+                                                end: 66,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

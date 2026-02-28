@@ -119,6 +119,7 @@ Document {
                                                             "UserFields",
                                                         ),
                                                     ),
+                                                    arguments: [],
                                                     directives: [],
                                                 },
                                             ),
@@ -179,6 +180,7 @@ Document {
                                                                             "PostFields",
                                                                         ),
                                                                     ),
+                                                                    arguments: [],
                                                                     directives: [],
                                                                 },
                                                             ),
@@ -207,6 +209,7 @@ Document {
                             "UserFields",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "User",
@@ -289,6 +292,7 @@ Document {
                             "PostFields",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "Post",

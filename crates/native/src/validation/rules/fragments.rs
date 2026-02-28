@@ -211,10 +211,9 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
 
         self.fragment_spreads.push((fragment_name, fragment_spread.span));
 
-        let fragment_type = ctx
-            .document()
-            .get_fragment(fragment_name)
-            .map(|fragment| fragment.type_condition.as_str());
+        let fragment = ctx.document().get_fragment(fragment_name);
+
+        let fragment_type = fragment.map(|f| f.type_condition.as_str());
 
         if fragment_type.is_none() && !self.fragment_names.contains(&fragment_name) {
             return Control::Skip;
@@ -231,6 +230,67 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
                 ),
                 fragment_spread.span,
             );
+        }
+
+        if let Some(fragment) = fragment {
+            let mut seen_args = FxHashSet::default();
+            for arg in &fragment_spread.arguments {
+                let arg_name = arg.name.as_str();
+
+                if !seen_args.insert(arg_name) {
+                    ctx.add_error(
+                        format!(
+                            "Duplicate argument '{}' in spread of fragment '{}'",
+                            arg_name, fragment_name
+                        ),
+                        arg.span,
+                    );
+                }
+
+                if !fragment
+                    .variable_definitions
+                    .iter()
+                    .any(|v| v.variable.as_str() == arg_name)
+                {
+                    ctx.add_error(
+                        format!(
+                            "Unknown argument '{}' on fragment '{}'. Fragment does not define this variable.",
+                            arg_name, fragment_name
+                        ),
+                        arg.span,
+                    );
+                }
+            }
+
+            for var_def in &fragment.variable_definitions {
+                let var_name = var_def.variable.as_str();
+                let is_required = matches!(var_def.typ, Type::NonNull(_)) && var_def.default_value.is_none();
+
+                if is_required {
+                    let provided = fragment_spread.arguments.iter().find(|a| a.name.as_str() == var_name);
+                    match provided {
+                        None => {
+                            ctx.add_error(
+                                format!(
+                                    "Required argument '{}' is missing in spread of fragment '{}'",
+                                    var_name, fragment_name
+                                ),
+                                fragment_spread.span,
+                            );
+                        }
+                        Some(arg) if matches!(arg.value, Value::Null) => {
+                            ctx.add_error(
+                                format!(
+                                    "Required argument '{}' must not be null in spread of fragment '{}'",
+                                    var_name, fragment_name
+                                ),
+                                arg.span,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
 
         Control::Next

@@ -21,6 +21,7 @@ Document {
                             "F",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "Query",
@@ -96,6 +97,7 @@ Document {
                                             "F",
                                         ),
                                     ),
+                                    arguments: [],
                                     directives: [],
                                 },
                             ),

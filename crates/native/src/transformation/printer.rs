@@ -107,6 +107,18 @@ impl Printer {
     fn print_fragment_definition(&mut self, frag: &FragmentDefinition) {
         self.write("fragment ");
         self.write(frag.name.as_str());
+
+        if !frag.variable_definitions.is_empty() {
+            self.write("(");
+            for (i, var) in frag.variable_definitions.iter().enumerate() {
+                if i > 0 {
+                    self.write(", ");
+                }
+                self.print_variable_definition(var);
+            }
+            self.write(")");
+        }
+
         self.write(" on ");
         self.write(frag.type_condition.as_str());
         self.print_directives(&frag.directives);
@@ -172,6 +184,18 @@ impl Printer {
     fn print_fragment_spread(&mut self, spread: &FragmentSpread) {
         self.write("...");
         self.write(spread.fragment_name.as_str());
+
+        if !spread.arguments.is_empty() {
+            self.write("(");
+            for (i, arg) in spread.arguments.iter().enumerate() {
+                if i > 0 {
+                    self.write(", ");
+                }
+                self.print_argument(arg);
+            }
+            self.write(")");
+        }
+
         self.print_directives(&spread.directives);
     }
 

@@ -49,6 +49,7 @@ Document {
                                                             "UserComplete",
                                                         ),
                                                     ),
+                                                    arguments: [],
                                                     directives: [],
                                                 },
                                             ),
@@ -73,6 +74,7 @@ Document {
                             "UserComplete",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "User",
@@ -92,6 +94,7 @@ Document {
                                             "UserBasic",
                                         ),
                                     ),
+                                    arguments: [],
                                     directives: [],
                                 },
                             ),
@@ -106,6 +109,7 @@ Document {
                                             "UserProfile",
                                         ),
                                     ),
+                                    arguments: [],
                                     directives: [],
                                 },
                             ),
@@ -126,6 +130,7 @@ Document {
                             "UserBasic",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "User",
@@ -189,6 +194,7 @@ Document {
                             "UserProfile",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "User",

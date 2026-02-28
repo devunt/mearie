@@ -1,6 +1,6 @@
 import type { Selection } from '@mearie/shared';
-import { makeFieldKey, isEntityLink, isNullish, mergeFields } from './utils.ts';
-import { EntityLinkKey, RootFieldKey, FragmentRefKey } from './constants.ts';
+import { makeFieldKey, resolveArguments, isEntityLink, isNullish, mergeFields } from './utils.ts';
+import { EntityLinkKey, RootFieldKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
 
 const typenameFieldKey = makeFieldKey({ kind: 'Field', name: '__typename', type: 'String' }, {});
@@ -70,6 +70,12 @@ export const denormalize = (
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
+          if (selection.args) {
+            const resolvedArgs = resolveArguments(selection.args, variables);
+            const mergedVars = { ...variables, ...resolvedArgs };
+            const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+            fields[FragmentVarsKey] = { ...existing, [selection.name]: mergedVars };
+          }
           if (accessor) {
             denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor);
           }

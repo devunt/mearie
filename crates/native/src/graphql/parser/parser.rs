@@ -394,6 +394,18 @@ impl<'a> Parser<'a, Parsing> {
         })
     }
 
+    fn parse_variable_definitions(&mut self) -> Result<Vec<'a, VariableDefinition<'a>>, MearieError> {
+        let mut variable_definitions = Vec::new_in(self.allocator());
+        if matches!(self.peek_token(), Token::ParenOpen) {
+            self.next_token();
+            while !matches!(self.peek_token(), Token::ParenClose) {
+                variable_definitions.push(self.parse_variable_definition()?);
+            }
+            self.next_token();
+        }
+        Ok(variable_definitions)
+    }
+
     fn parse_selection_set(&mut self) -> Result<SelectionSet<'a>, MearieError> {
         let mut selections = Vec::new_in(self.allocator());
 
@@ -438,11 +450,13 @@ impl<'a> Parser<'a, Parsing> {
                     }))
                 } else if self.peek_is_name_or_keyword() {
                     let fragment_name = self.next_name_or_keyword("fragment name")?;
+                    let arguments = self.parse_arguments()?;
                     let directives = self.parse_directives()?;
                     let end = self.span().end;
                     Ok(Selection::FragmentSpread(FragmentSpread {
                         span: Span::new(start, end),
                         fragment_name: FragmentName::from(fragment_name),
+                        arguments,
                         directives,
                     }))
                 } else {
@@ -517,14 +531,7 @@ impl<'a> Parser<'a, Parsing> {
             None
         };
 
-        let mut variable_definitions = Vec::new_in(self.allocator());
-        if matches!(self.peek_token(), Token::ParenOpen) {
-            self.next_token();
-            while !matches!(self.peek_token(), Token::ParenClose) {
-                variable_definitions.push(self.parse_variable_definition()?);
-            }
-            self.next_token();
-        }
+        let variable_definitions = self.parse_variable_definitions()?;
 
         let directives = self.parse_directives()?;
         let selection_set = self.parse_selection_set()?;
@@ -549,6 +556,8 @@ impl<'a> Parser<'a, Parsing> {
 
         let name = FragmentName::from(self.next_name_or_keyword("fragment name")?);
 
+        let variable_definitions = self.parse_variable_definitions()?;
+
         if !matches!(self.next_token(), Token::On) {
             return Err(self.error("on"));
         }
@@ -562,6 +571,7 @@ impl<'a> Parser<'a, Parsing> {
         Ok(FragmentDefinition {
             span: Span::new(start, end),
             name,
+            variable_definitions,
             type_condition,
             directives,
             selection_set,

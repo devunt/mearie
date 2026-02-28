@@ -32,6 +32,12 @@ pub struct VariableRules<'a, 'b> {
     variable_usage_infos: Vec<VariableUsageInfo<'a>>,
     type_stack: Vec<Option<&'a str>>,
     current_field_name: Option<&'a str>,
+    current_fragment_name: Option<&'a str>,
+    fragment_variable_names: Vec<&'a str>,
+    fragment_variable_definitions: FxHashMap<&'a str, VariableInfo<'a>>,
+    fragment_defined_vars: Vec<&'a str>,
+    fragment_used_vars: Vec<&'a str>,
+    fragments: Vec<(&'a str, Vec<&'a str>, Vec<&'a str>, Span)>,
     _phantom: PhantomData<&'b ()>,
 }
 
@@ -49,6 +55,28 @@ impl<'a, 'b> VariableRules<'a, 'b> {
             Value::Object(fields) => {
                 for field in fields {
                     self.collect_variables_from_value(&field.value);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn collect_fragment_variables_from_value(&mut self, value: &Value<'a>) {
+        match value {
+            Value::Variable(var) => {
+                let var_name = var.as_str();
+                if self.fragment_variable_definitions.contains_key(var_name) {
+                    self.fragment_used_vars.push(var_name);
+                }
+            }
+            Value::List(list) => {
+                for item in list {
+                    self.collect_fragment_variables_from_value(item);
+                }
+            }
+            Value::Object(fields) => {
+                for field in fields {
+                    self.collect_fragment_variables_from_value(&field.value);
                 }
             }
             _ => {}
@@ -175,38 +203,66 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
     ) -> Control {
         let name = var_def.variable.as_str();
 
-        if self.variable_names.contains(&name) {
-            ctx.add_error(format!("Duplicate variable name '${}'", name), var_def.span);
+        if self.current_fragment_name.is_some() {
+            if self.fragment_variable_names.contains(&name) {
+                ctx.add_error(format!("Duplicate variable name '${}'", name), var_def.span);
+            }
+            self.fragment_variable_names.push(name);
+            self.fragment_defined_vars.push(name);
+
+            let type_name = get_named_type(&var_def.typ);
+            let is_input_type = ctx.schema().is_scalar(type_name)
+                || ctx.schema().is_enum(type_name)
+                || ctx.schema().is_input_object(type_name);
+
+            if ctx.schema().has_type(type_name) && !is_input_type {
+                ctx.add_error(format!(
+                    "Variable '${} is declared with type '{}', which is not an input type. Variables must be input types (scalar, enum, or input object).",
+                    name, type_name
+                ), var_def.span);
+            }
+
+            self.fragment_variable_definitions.insert(
+                name,
+                VariableInfo {
+                    typ: var_def.typ.clone(),
+                    has_default_value: var_def.default_value.is_some(),
+                    span: var_def.span,
+                },
+            );
+        } else {
+            if self.variable_names.contains(&name) {
+                ctx.add_error(format!("Duplicate variable name '${}'", name), var_def.span);
+            }
+
+            self.variable_names.push(name);
+            self.current_defined_vars.push(name);
+
+            let type_name = get_named_type(&var_def.typ);
+            let is_input_type = ctx.schema().is_scalar(type_name)
+                || ctx.schema().is_enum(type_name)
+                || ctx.schema().is_input_object(type_name);
+
+            if ctx.schema().has_type(type_name) && !is_input_type {
+                ctx.add_error(format!(
+                    "Variable '${} is declared with type '{}', which is not an input type. Variables must be input types (scalar, enum, or input object).",
+                    name, type_name
+                ), var_def.span);
+            }
+
+            if let Some(default_value) = &var_def.default_value {
+                self.collect_variables_from_value(default_value);
+            }
+
+            self.variable_definitions.insert(
+                name,
+                VariableInfo {
+                    typ: var_def.typ.clone(),
+                    has_default_value: var_def.default_value.is_some(),
+                    span: var_def.span,
+                },
+            );
         }
-
-        self.variable_names.push(name);
-        self.current_defined_vars.push(name);
-
-        let type_name = get_named_type(&var_def.typ);
-
-        let is_input_type = ctx.schema().is_scalar(type_name)
-            || ctx.schema().is_enum(type_name)
-            || ctx.schema().is_input_object(type_name);
-
-        if ctx.schema().has_type(type_name) && !is_input_type {
-            ctx.add_error(format!(
-                "Variable '${} is declared with type '{}', which is not an input type. Variables must be input types (scalar, enum, or input object).",
-                name, type_name
-            ), var_def.span);
-        }
-
-        if let Some(default_value) = &var_def.default_value {
-            self.collect_variables_from_value(default_value);
-        }
-
-        self.variable_definitions.insert(
-            name,
-            VariableInfo {
-                typ: var_def.typ.clone(),
-                has_default_value: var_def.default_value.is_some(),
-                span: var_def.span,
-            },
-        );
 
         Control::Next
     }
@@ -239,7 +295,11 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
     }
 
     fn enter_argument(&mut self, ctx: &mut ValidationContext<'a, 'b>, argument: &Argument<'a>) -> Control {
-        self.collect_variables_from_value(&argument.value);
+        if self.current_fragment_name.is_some() {
+            self.collect_fragment_variables_from_value(&argument.value);
+        } else {
+            self.collect_variables_from_value(&argument.value);
+        }
 
         if let Some(parent_type) = self.type_stack.get(self.type_stack.len().saturating_sub(2))
             && let Some(parent_type_name) = parent_type
@@ -292,8 +352,48 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
         Control::Next
     }
 
-    fn enter_fragment(&mut self, _ctx: &mut ValidationContext<'a, 'b>, _fragment: &FragmentDefinition<'a>) -> Control {
-        Control::Skip
+    fn enter_fragment(&mut self, ctx: &mut ValidationContext<'a, 'b>, fragment: &FragmentDefinition<'a>) -> Control {
+        self.current_fragment_name = Some(fragment.name.as_str());
+        self.fragment_variable_names.clear();
+        self.fragment_variable_definitions.clear();
+        self.fragment_defined_vars.clear();
+        self.fragment_used_vars.clear();
+
+        let type_name = fragment.type_condition.as_str();
+        if ctx.schema().has_type(type_name) {
+            self.type_stack.push(Some(type_name));
+        } else {
+            self.type_stack.push(None);
+        }
+
+        Control::Next
+    }
+
+    fn leave_fragment(&mut self, ctx: &mut ValidationContext<'a, 'b>, fragment: &FragmentDefinition<'a>) -> Control {
+        let fragment_name = fragment.name.as_str();
+
+        for defined_var in &self.fragment_defined_vars {
+            if !self.fragment_used_vars.contains(defined_var) {
+                ctx.add_error(
+                    format!(
+                        "Variable '{}' is defined but not used in fragment '{}'",
+                        defined_var, fragment_name
+                    ),
+                    fragment.span,
+                );
+            }
+        }
+
+        self.fragments.push((
+            fragment_name,
+            self.fragment_defined_vars.clone(),
+            self.fragment_used_vars.clone(),
+            fragment.span,
+        ));
+
+        self.current_fragment_name = None;
+        self.type_stack.pop();
+        Control::Next
     }
 
     fn leave_document(&mut self, ctx: &mut ValidationContext<'a, 'b>, _document: &Document<'a>) -> Control {

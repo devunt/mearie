@@ -84,6 +84,7 @@ export type Directive = {
 export type FragmentSpreadSelection = {
   kind: 'FragmentSpread';
   name: string;
+  args?: Record<string, Argument>;
   selections: Selection[];
 };
 

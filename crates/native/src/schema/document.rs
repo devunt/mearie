@@ -332,6 +332,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: fragment_name,
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -360,6 +363,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: fragment_name,
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -387,6 +393,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: fragment_name,
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -394,6 +403,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: fragment_name,
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -503,6 +515,9 @@ mod tests {
             definitions: bumpalo::vec![in arena.allocator(); Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                 span: Span::empty(),
                 name: FragmentName::new(Name::new(arena.intern("UserFragment"))),
+
+                variable_definitions: arena.alloc_vec(),
+
                 type_condition: TypeName::new(Name::new(arena.intern("User"))),
                 directives: arena.alloc_vec(),
                 selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -527,6 +542,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: FragmentName::new(Name::new(arena.intern("Fragment1"))),
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },
@@ -534,6 +552,9 @@ mod tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: FragmentName::new(Name::new(arena.intern("Fragment2"))),
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("Post"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet { selections: bumpalo::vec![in arena.allocator(); ] },

@@ -30,15 +30,15 @@ export type $Schema = $SchemaMeta<{
 }>;
 export type RequiredAction = "THROW" | "CASCADE";
 export type GetNode$data = {
-	node?: $Nullable<{
+	node?: $Nullable<({
 		id: $Scalars["ID"];
 	} & {
 		title: $Scalars["String"];
-	} | {
+	}) | ({
 		id: $Scalars["ID"];
 	} & {
 		name: $Scalars["String"];
-	}>;
+	})>;
 };
 export type GetNode$vars = {
 	id: $Scalars["ID"];

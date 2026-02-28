@@ -365,7 +365,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             OperationType::Subscription => ("subscription", "Subscription"),
         };
 
-        let data_type = self.type_selection_set(&operation.selection_set, root_type)?;
+        let (data_type, _) = self.type_selection_set(&operation.selection_set, root_type)?;
         let vars_type = self.type_variables(&operation.variable_definitions);
         let artifact_type = self.type_artifact(
             kind,
@@ -385,7 +385,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let fragment_name = fragment.name.as_str();
         let type_condition = fragment.type_condition.as_str();
 
-        let data_type = self.type_selection_set(&fragment.selection_set, type_condition)?;
+        let (data_type, _) = self.type_selection_set(&fragment.selection_set, type_condition)?;
         let key_type = self.type_fragment_refs(vec![fragment_name]);
 
         let has_vars = !fragment.variable_definitions.is_empty();
@@ -418,9 +418,9 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         Ok(stmts)
     }
 
-    fn type_selection_set(&self, selection_set: &SelectionSet<'b>, parent_type: &'b str) -> Result<TSType<'b>> {
+    fn type_selection_set(&self, selection_set: &SelectionSet<'b>, parent_type: &'b str) -> Result<(TSType<'b>, bool)> {
         if selection_set.is_empty() {
-            return Ok(self.type_empty_object());
+            return Ok((self.type_empty_object(), false));
         }
 
         let mut shared_fields: Vec<&Field<'b>> = Vec::new();
@@ -449,9 +449,9 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let result_type = self.type_combine_selections(parent_type, shared_fields, inline_fragments, fragment_refs)?;
 
         if self.cascade_escapes_selection_set(selection_set, parent_type) {
-            Ok(self.type_nullable(result_type))
+            Ok((self.type_nullable(result_type), true))
         } else {
-            Ok(result_type)
+            Ok((result_type, false))
         }
     }
 
@@ -524,8 +524,8 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
 
         let field_type = if !field.selection_set.is_empty() {
             let inner_type_name = graphql_type.innermost_type().as_str();
-            let selection_type = self.type_selection_set(&field.selection_set, inner_type_name)?;
-            self.type_from_graphql(graphql_type, Some(selection_type), has_required)
+            let (selection_type, cascade_nullable) = self.type_selection_set(&field.selection_set, inner_type_name)?;
+            self.type_from_graphql(graphql_type, Some(selection_type), has_required || cascade_nullable)
         } else {
             self.type_from_graphql(graphql_type, None, has_required)
         };
@@ -548,7 +548,19 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         } else if types.len() == 1 {
             types.into_iter().next().unwrap()
         } else {
-            self.ast.ts_type_union_type(SPAN, self.ast.vec_from_iter(types))
+            let parenthesized_types: Vec<TSType<'b>> = types
+                .into_iter()
+                .map(|typ| {
+                    if matches!(typ, TSType::TSIntersectionType(_)) {
+                        self.ast.ts_type_parenthesized_type(SPAN, typ)
+                    } else {
+                        typ
+                    }
+                })
+                .collect();
+
+            self.ast
+                .ts_type_union_type(SPAN, self.ast.vec_from_iter(parenthesized_types))
         }
     }
 
@@ -597,7 +609,8 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
                 }
 
                 if let Some((_, inline_fragment)) = inline_fragments.iter().find(|(t, _)| *t == type_condition) {
-                    branch_parts.push(self.type_selection_set(&inline_fragment.selection_set, type_condition)?);
+                    let (inline_type, _) = self.type_selection_set(&inline_fragment.selection_set, type_condition)?;
+                    branch_parts.push(inline_type);
                 }
 
                 Ok(self.create_intersection(branch_parts))

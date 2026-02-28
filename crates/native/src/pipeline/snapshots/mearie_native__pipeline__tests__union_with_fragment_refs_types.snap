@@ -38,9 +38,9 @@ export type GetFeed$data = {
 	feed: $List<{
 		body: $Scalars["String"];
 		id: $Scalars["ID"];
-	} | {
+	} | ({
 		id: $Scalars["ID"];
-	} & $FragmentRefs<"ArticlePreview">>;
+	} & $FragmentRefs<"ArticlePreview">)>;
 };
 export type GetFeed$vars = {};
 export type GetFeed = $Artifact<"query", "GetFeed", GetFeed$data, GetFeed$vars>;

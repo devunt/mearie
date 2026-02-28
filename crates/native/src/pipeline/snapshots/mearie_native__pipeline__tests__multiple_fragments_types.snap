@@ -1,0 +1,43 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		User: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "age" | "email" | "name" | "id";
+		};
+	};
+	queryFields: "user";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type UserContact$data = {
+	email?: $Nullable<$Scalars["String"]>;
+	age?: $Nullable<$Scalars["Int"]>;
+};
+export type UserContact$key = $FragmentRefs<"UserContact">;
+export type UserContact = $Artifact<"fragment", "UserContact", UserContact$data, never>;
+export type UserName$data = {
+	name: $Scalars["String"];
+};
+export type UserName$key = $FragmentRefs<"UserName">;
+export type UserName = $Artifact<"fragment", "UserName", UserName$data, never>;
+export type GetUser$data = {
+	user?: $Nullable<{
+		id: $Scalars["ID"];
+	} & $FragmentRefs<"UserName" | "UserContact">>;
+};
+export type GetUser$vars = {};
+export type GetUser = $Artifact<"query", "GetUser", GetUser$data, GetUser$vars>;

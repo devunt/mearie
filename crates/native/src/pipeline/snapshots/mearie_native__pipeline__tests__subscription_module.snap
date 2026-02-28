@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type OnMessageAdded = import("./types.d.ts").OnMessageAdded;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type OnMessageAdded = import("./types.d.ts").OnMessageAdded;
+	export function graphql(artifact: "\n            subscription OnMessageAdded($channelId: ID!) {\n                messageAdded(channelId: $channelId) {\n                    id\n                    text\n                    sender\n                }\n            }\n        "): OnMessageAdded;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

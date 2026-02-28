@@ -1,0 +1,17 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetUser = import("./types.d.ts").GetUser;
+type ListUsers = import("./types.d.ts").ListUsers;
+type DeleteUser = import("./types.d.ts").DeleteUser;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetUser = import("./types.d.ts").GetUser;
+	export type ListUsers = import("./types.d.ts").ListUsers;
+	export type DeleteUser = import("./types.d.ts").DeleteUser;
+	export function graphql(artifact: "\n            query GetUser($id: ID!) {\n                user(id: $id) {\n                    id\n                    name\n                }\n            }\n        "): GetUser;
+	export function graphql(artifact: "\n            query ListUsers {\n                users {\n                    id\n                    name\n                }\n            }\n        "): ListUsers;
+	export function graphql(artifact: "\n            mutation DeleteUser($id: ID!) {\n                deleteUser(id: $id)\n            }\n        "): DeleteUser;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

@@ -1,0 +1,41 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		User: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "email" | "name" | "id";
+		};
+	};
+	queryFields: "_unused";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type CreateUserInput = {
+	name: $Scalars["String"];
+	email: $Scalars["String"];
+	age?: $Nullable<$Scalars["Int"]>;
+};
+export type CreateUser$data = {
+	createUser: {
+		email: $Scalars["String"];
+		name: $Scalars["String"];
+		id: $Scalars["ID"];
+	};
+};
+export type CreateUser$vars = {
+	input: CreateUserInput;
+};
+export type CreateUser = $Artifact<"mutation", "CreateUser", CreateUser$data, CreateUser$vars>;

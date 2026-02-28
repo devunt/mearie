@@ -1,0 +1,16 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetUser = import("./types.d.ts").GetUser;
+type Avatar = import("./types.d.ts").Avatar;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetUser = import("./types.d.ts").GetUser;
+	export type Avatar = import("./types.d.ts").Avatar;
+	export type Avatar$key = import("./types.d.ts").Avatar$key;
+	export type Avatar$vars = import("./types.d.ts").Avatar$vars;
+	export function graphql(artifact: "\n            query GetUser {\n                user {\n                    id\n                    ...Avatar(size: 100)\n                }\n            }\n        "): GetUser;
+	export function graphql(artifact: "\n            fragment Avatar($size: Int! = 50) on User {\n                profilePic(size: $size)\n            }\n        "): Avatar;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

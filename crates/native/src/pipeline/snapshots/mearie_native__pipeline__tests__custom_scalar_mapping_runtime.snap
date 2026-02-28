@@ -1,0 +1,41 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetEvent = {
+	name: "GetEvent",
+	body: "query GetEvent {\n  event {\n    __typename\n    id\n    name\n    startAt\n    metadata\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "event",
+		type: "Event",
+		nullable: true,
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "startAt",
+				type: "DateTime"
+			},
+			{
+				kind: "Field",
+				name: "metadata",
+				type: "JSON",
+				nullable: true
+			}
+		]
+	}]
+};
+export const artifactMap = { "\n            query GetEvent {\n                event {\n                    id\n                    name\n                    startAt\n                    metadata\n                }\n            }\n        ": $GetEvent };
+export const schema = { entities: { "Event": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

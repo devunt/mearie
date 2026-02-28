@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type CreateUser = import("./types.d.ts").CreateUser;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type CreateUser = import("./types.d.ts").CreateUser;
+	export function graphql(artifact: "\n            mutation CreateUser($input: CreateUserInput!) {\n                createUser(input: $input) {\n                    id\n                    name\n                    email\n                }\n            }\n        "): CreateUser;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

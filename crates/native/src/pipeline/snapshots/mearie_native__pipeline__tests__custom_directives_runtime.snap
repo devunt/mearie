@@ -1,0 +1,63 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser($showEmail: Boolean!, $hidePhone: Boolean!) {\n  user {\n    __typename\n    id\n    name\n    email @include(if: $showEmail)\n    phone @skip(if: $hidePhone)\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "email",
+				type: "String",
+				nullable: true,
+				directives: [{
+					name: "include",
+					args: { if: {
+						kind: "variable",
+						name: "showEmail"
+					} }
+				}]
+			},
+			{
+				kind: "Field",
+				name: "phone",
+				type: "String",
+				nullable: true,
+				directives: [{
+					name: "skip",
+					args: { if: {
+						kind: "variable",
+						name: "hidePhone"
+					} }
+				}]
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "showEmail",
+		type: "Boolean"
+	}, {
+		name: "hidePhone",
+		type: "Boolean"
+	}]
+};
+export const artifactMap = { "\n            query GetUser($showEmail: Boolean!, $hidePhone: Boolean!) {\n                user {\n                    id\n                    name\n                    email @include(if: $showEmail)\n                    phone @skip(if: $hidePhone)\n                }\n            }\n        ": $GetUser };
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

@@ -1,0 +1,42 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $OnMessageAdded = {
+	name: "OnMessageAdded",
+	body: "subscription OnMessageAdded($channelId: ID!) {\n  messageAdded(channelId: $channelId) {\n    __typename\n    id\n    text\n    sender\n  }\n}",
+	kind: "subscription",
+	selections: [{
+		kind: "Field",
+		name: "messageAdded",
+		type: "Message",
+		args: { channelId: {
+			kind: "variable",
+			name: "channelId"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "text",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "sender",
+				type: "String"
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "channelId",
+		type: "ID"
+	}]
+};
+export const artifactMap = { "\n            subscription OnMessageAdded($channelId: ID!) {\n                messageAdded(channelId: $channelId) {\n                    id\n                    text\n                    sender\n                }\n            }\n        ": $OnMessageAdded };
+export const schema = { entities: { "Message": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

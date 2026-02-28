@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetUserAddress = import("./types.d.ts").GetUserAddress;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetUserAddress = import("./types.d.ts").GetUserAddress;
+	export function graphql(artifact: "\n            query GetUserAddress {\n                user {\n                    id\n                    name\n                    profile {\n                        id\n                        bio\n                        address {\n                            id\n                            street\n                            city\n                            country\n                        }\n                    }\n                }\n            }\n        "): GetUserAddress;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

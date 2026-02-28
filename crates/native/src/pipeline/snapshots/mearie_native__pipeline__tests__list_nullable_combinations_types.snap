@@ -1,0 +1,26 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {};
+	queryFields: "d" | "a" | "b" | "c";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type ListCombinations$data = {
+	d: $List<$Nullable<$Scalars["String"]>>;
+	a: $List<$Scalars["String"]>;
+	b?: $Nullable<$List<$Nullable<$Scalars["String"]>>>;
+	c?: $Nullable<$List<$Scalars["String"]>>;
+};
+export type ListCombinations$vars = {};
+export type ListCombinations = $Artifact<"query", "ListCombinations", ListCombinations$data, ListCombinations$vars>;

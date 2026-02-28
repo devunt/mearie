@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type Search = import("./types.d.ts").Search;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type Search = import("./types.d.ts").Search;
+	export function graphql(artifact: "\n            query Search {\n                search {\n                    ... on User {\n                        id\n                        name\n                    }\n                    ... on Post {\n                        id\n                        title\n                    }\n                }\n            }\n        "): Search;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

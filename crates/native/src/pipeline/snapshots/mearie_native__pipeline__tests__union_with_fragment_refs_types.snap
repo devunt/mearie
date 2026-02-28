@@ -1,0 +1,46 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		Article: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "headline" | "id";
+		};
+		Comment: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "body" | "id";
+		};
+	};
+	queryFields: "feed";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type ArticlePreview$data = {
+	headline: $Scalars["String"];
+};
+export type ArticlePreview$key = $FragmentRefs<"ArticlePreview">;
+export type ArticlePreview = $Artifact<"fragment", "ArticlePreview", ArticlePreview$data, never>;
+export type GetFeed$data = {
+	feed: $List<{
+		body: $Scalars["String"];
+		id: $Scalars["ID"];
+	} | {
+		id: $Scalars["ID"];
+	} & $FragmentRefs<"ArticlePreview">>;
+};
+export type GetFeed$vars = {};
+export type GetFeed = $Artifact<"query", "GetFeed", GetFeed$data, GetFeed$vars>;

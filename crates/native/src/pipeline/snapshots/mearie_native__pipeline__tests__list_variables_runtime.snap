@@ -1,0 +1,63 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $FindUsers = {
+	name: "FindUsers",
+	body: "query FindUsers($ids: [ID!]!, $tags: [String]) {\n  usersByIds(ids: $ids) {\n    __typename\n    id\n    name\n  }\n  search(tags: $tags) {\n    __typename\n    id\n    title\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "usersByIds",
+		type: "User",
+		array: true,
+		args: { ids: {
+			kind: "variable",
+			name: "ids"
+		} },
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "name",
+			type: "String"
+		}]
+	}, {
+		kind: "Field",
+		name: "search",
+		type: "SearchResult",
+		array: true,
+		nullable: true,
+		args: { tags: {
+			kind: "variable",
+			name: "tags"
+		} },
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "title",
+			type: "String"
+		}]
+	}],
+	variableDefs: [{
+		name: "ids",
+		type: "ID",
+		array: true
+	}, {
+		name: "tags",
+		type: "String",
+		array: true,
+		nullable: true
+	}]
+};
+export const artifactMap = { "\n            query FindUsers($ids: [ID!]!, $tags: [String]) {\n                usersByIds(ids: $ids) {\n                    id\n                    name\n                }\n                search(tags: $tags) {\n                    id\n                    title\n                }\n            }\n        ": $FindUsers };
+export const schema = { entities: {
+	"User": { keyFields: ["id"] },
+	"SearchResult": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

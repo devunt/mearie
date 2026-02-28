@@ -1,0 +1,46 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $Search = {
+	name: "Search",
+	body: "query Search {\n  search {\n    __typename\n    ... on User {\n      __typename\n      id\n      name\n    }\n    ... on Post {\n      __typename\n      id\n      title\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "search",
+		type: "SearchResult",
+		array: true,
+		selections: [{
+			kind: "InlineFragment",
+			on: "User",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "name",
+				type: "String"
+			}]
+		}, {
+			kind: "InlineFragment",
+			on: "Post",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "title",
+				type: "String"
+			}]
+		}]
+	}]
+};
+export const artifactMap = { "\n            query Search {\n                search {\n                    ... on User {\n                        id\n                        name\n                    }\n                    ... on Post {\n                        id\n                        title\n                    }\n                }\n            }\n        ": $Search };
+export const schema = { entities: {
+	"Post": { keyFields: ["id"] },
+	"User": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

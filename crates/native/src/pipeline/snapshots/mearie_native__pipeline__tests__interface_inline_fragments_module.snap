@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetNode = import("./types.d.ts").GetNode;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetNode = import("./types.d.ts").GetNode;
+	export function graphql(artifact: "\n            query GetNode($id: ID!) {\n                node(id: $id) {\n                    id\n                    ... on User {\n                        name\n                    }\n                    ... on Post {\n                        title\n                    }\n                }\n            }\n        "): GetNode;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

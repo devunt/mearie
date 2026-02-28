@@ -1,0 +1,58 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser {\n  user {\n    __typename\n    id\n    ...Avatar\n  }\n}\n\nfragment Avatar on User {\n  __typename\n  id\n  profilePic(size: $size)\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "FragmentSpread",
+			name: "Avatar",
+			args: { size: {
+				kind: "literal",
+				value: 100
+			} },
+			selections: [{
+				kind: "Field",
+				name: "profilePic",
+				type: "String",
+				nullable: true,
+				args: { size: {
+					kind: "variable",
+					name: "size"
+				} }
+			}]
+		}]
+	}]
+};
+export const $Avatar = {
+	name: "Avatar",
+	body: "fragment Avatar on User {\n  __typename\n  id\n  profilePic(size: $size)\n}",
+	kind: "fragment",
+	selections: [{
+		kind: "Field",
+		name: "profilePic",
+		type: "String",
+		nullable: true,
+		args: { size: {
+			kind: "variable",
+			name: "size"
+		} }
+	}]
+};
+export const artifactMap = {
+	"\n            query GetUser {\n                user {\n                    id\n                    ...Avatar(size: 100)\n                }\n            }\n        ": $GetUser,
+	"\n            fragment Avatar($size: Int! = 50) on User {\n                profilePic(size: $size)\n            }\n        ": $Avatar
+};
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

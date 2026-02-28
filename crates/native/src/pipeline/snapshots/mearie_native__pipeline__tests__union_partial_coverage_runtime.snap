@@ -1,0 +1,33 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetResult = {
+	name: "GetResult",
+	body: "query GetResult {\n  result {\n    __typename\n    ... on Success {\n      __typename\n      id\n      value\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "result",
+		type: "Result",
+		selections: [{
+			kind: "InlineFragment",
+			on: "Success",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "value",
+				type: "String"
+			}]
+		}]
+	}]
+};
+export const artifactMap = { "\n            query GetResult {\n                result {\n                    ... on Success {\n                        id\n                        value\n                    }\n                }\n            }\n        ": $GetResult };
+export const schema = { entities: {
+	"Success": { keyFields: ["id"] },
+	"Error": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

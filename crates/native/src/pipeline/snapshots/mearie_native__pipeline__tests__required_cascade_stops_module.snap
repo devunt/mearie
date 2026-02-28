@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetTheme = import("./types.d.ts").GetTheme;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetTheme = import("./types.d.ts").GetTheme;
+	export function graphql(artifact: "\n            query GetTheme {\n                user {\n                    id\n                    settings {\n                        id\n                        theme {\n                            id\n                            primaryColor @required(action: CASCADE)\n                        }\n                    }\n                }\n            }\n        "): GetTheme;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

@@ -1,0 +1,12 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetUsersByRole = import("./types.d.ts").GetUsersByRole;
+declare module "$mearie" {
+	export type Role = import("./types.d.ts").Role;
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetUsersByRole = import("./types.d.ts").GetUsersByRole;
+	export function graphql(artifact: "\n            query GetUsersByRole($role: Role!) {\n                usersByRole(role: $role) {\n                    id\n                    name\n                    role\n                }\n            }\n        "): GetUsersByRole;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

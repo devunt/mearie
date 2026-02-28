@@ -306,9 +306,8 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn build_query_fields_type(&self) -> TSType<'b> {
-        if let Some(query_type_name) = self.schema.query_type()
-            && let Some(fields) = self.schema.get_object_fields(query_type_name)
-        {
+        let query_type_name = self.schema.query_type().unwrap_or("Query");
+        if let Some(fields) = self.schema.get_object_fields(query_type_name) {
             let field_types: Vec<TSType<'b>> = fields
                 .keys()
                 .map(|&field_name| {

@@ -1,5 +1,14 @@
 # mearie
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [cacc553]
+  - @mearie/shared@0.4.0
+  - @mearie/cli@0.1.6
+  - @mearie/vite@0.1.6
+
 ## 0.1.5
 
 ### Patch Changes

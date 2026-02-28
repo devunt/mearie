@@ -1,5 +1,35 @@
 # @mearie/svelte
 
+## 0.3.2
+
+### Patch Changes
+
+- 1259c13: feat(core): add optimistic update support for mutations
+
+  Mutations can now include an `optimisticResponse` in metadata to immediately reflect expected changes in the cache before the network response arrives. On success, the optimistic data is replaced with the actual server response; on error, the cache rolls back to its previous state.
+
+  Usage:
+
+  ```ts
+  await execute(variables, {
+    metadata: {
+      cache: {
+        optimisticResponse: { updateUser: { __typename: 'User', id: '1', name: 'Alice' } },
+      },
+    },
+  });
+  ```
+
+  - `OperationMetadataMap` and `MutationOptions` are now generic, enabling type-safe `optimisticResponse` tied to `DataOf<T>`
+  - Cache uses independent optimistic layers per mutation for correct concurrent handling
+  - Framework bindings (React, Vue, Solid, Svelte) propagate the generic to their mutation option types
+
+- Updated dependencies [eb98bb5]
+- Updated dependencies [f36f49a]
+- Updated dependencies [cacc553]
+- Updated dependencies [1259c13]
+  - @mearie/core@0.5.0
+
 ## 0.3.1
 
 ### Patch Changes

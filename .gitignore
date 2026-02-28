@@ -10,3 +10,4 @@ target/
 **/.vitepress/cache/
 
 .env
+.worktrees/

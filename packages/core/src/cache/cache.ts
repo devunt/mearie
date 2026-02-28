@@ -7,7 +7,6 @@ import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
   CacheSnapshot,
   DependencyKey,
-  Fields,
   FieldKey,
   InvalidateTarget,
   Storage,
@@ -26,6 +25,7 @@ export class Cache {
   #storage = { [RootFieldKey]: {} } as Storage;
   #subscriptions = new Map<DependencyKey, Set<Subscription>>();
   #memo = new Map<string, unknown>();
+  #stale = new Set<string>();
 
   constructor(schemaMetadata: SchemaMeta) {
     this.#schemaMeta = schemaMetadata;
@@ -40,6 +40,7 @@ export class Cache {
   writeQuery<T extends Artifact>(artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
     const dependencies = new Set<DependencyKey>();
     const subscriptions = new Set<Subscription>();
+    const entityStaleCleared = new Set<StorageKey>();
 
     normalize(
       this.#schemaMeta,
@@ -48,12 +49,25 @@ export class Cache {
       data,
       variables as Record<string, unknown>,
       (storageKey, fieldKey, oldValue, newValue) => {
+        const depKey = makeDependencyKey(storageKey, fieldKey);
+
+        if (this.#stale.delete(depKey)) {
+          dependencies.add(depKey);
+        }
+
+        if (!entityStaleCleared.has(storageKey) && this.#stale.delete(storageKey as string)) {
+          entityStaleCleared.add(storageKey);
+        }
+
         if (oldValue !== newValue) {
-          const dependencyKey = makeDependencyKey(storageKey, fieldKey);
-          dependencies.add(dependencyKey);
+          dependencies.add(depKey);
         }
       },
     );
+
+    for (const entityKey of entityStaleCleared) {
+      this.#collectSubscriptions(entityKey, undefined, subscriptions);
+    }
 
     for (const dependency of dependencies) {
       const ss = this.#subscriptions.get(dependency);
@@ -76,16 +90,26 @@ export class Cache {
    * @param variables - Query variables.
    * @returns Denormalized query result or null if not found.
    */
-  readQuery<T extends Artifact<'query'>>(artifact: T, variables: VariablesOf<T>): DataOf<T> | null {
+  readQuery<T extends Artifact<'query'>>(
+    artifact: T,
+    variables: VariablesOf<T>,
+  ): { data: DataOf<T> | null; stale: boolean } {
+    let stale = false;
+
     const { data, partial } = denormalize(
       artifact.selections,
       this.#storage,
       this.#storage[RootFieldKey],
       variables as Record<string, unknown>,
+      (storageKey, fieldKey) => {
+        if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
+          stale = true;
+        }
+      },
     );
 
     if (partial) {
-      return null;
+      return { data: null, stale: false };
     }
 
     const key = makeMemoKey('query', artifact.name, stringify(variables as Record<string, unknown>));
@@ -93,7 +117,7 @@ export class Cache {
     const result = prev === undefined ? data : replaceEqualDeep(prev, data);
     this.#memo.set(key, result);
 
-    return result as DataOf<T>;
+    return { data: result as DataOf<T>, stale };
   }
 
   /**
@@ -127,18 +151,33 @@ export class Cache {
    * @param fragmentRef - Fragment reference containing entity key.
    * @returns Denormalized fragment data or null if not found or invalid.
    */
-  readFragment<T extends Artifact<'fragment'>>(artifact: T, fragmentRef: FragmentRefs<string>): DataOf<T> | null {
+  readFragment<T extends Artifact<'fragment'>>(
+    artifact: T,
+    fragmentRef: FragmentRefs<string>,
+  ): { data: DataOf<T> | null; stale: boolean } {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
 
     const entity = this.#storage[entityKey];
     if (!entity) {
-      return null;
+      return { data: null, stale: false };
     }
 
-    const { data, partial } = denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {});
+    let stale = false;
+
+    const { data, partial } = denormalize(
+      artifact.selections,
+      this.#storage,
+      { [EntityLinkKey]: entityKey },
+      {},
+      (storageKey, fieldKey) => {
+        if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
+          stale = true;
+        }
+      },
+    );
 
     if (partial) {
-      return null;
+      return { data: null, stale: false };
     }
 
     const key = makeMemoKey('fragment', artifact.name, entityKey);
@@ -146,7 +185,7 @@ export class Cache {
     const result = prev === undefined ? data : replaceEqualDeep(prev, data);
     this.#memo.set(key, result);
 
-    return result as DataOf<T>;
+    return { data: result as DataOf<T>, stale };
   }
 
   subscribeFragment<T extends Artifact<'fragment'>>(
@@ -165,14 +204,22 @@ export class Cache {
     return this.#subscribe(dependencies, listener);
   }
 
-  readFragments<T extends Artifact<'fragment'>>(artifact: T, fragmentRefs: FragmentRefs<string>[]): DataOf<T>[] | null {
+  readFragments<T extends Artifact<'fragment'>>(
+    artifact: T,
+    fragmentRefs: FragmentRefs<string>[],
+  ): { data: DataOf<T>[] | null; stale: boolean } {
     const results: DataOf<T>[] = [];
+    let stale = false;
+
     for (const ref of fragmentRefs) {
-      const data = this.readFragment(artifact, ref);
-      if (data === null) {
-        return null;
+      const result = this.readFragment(artifact, ref);
+      if (result.data === null) {
+        return { data: null, stale: false };
       }
-      results.push(data);
+      if (result.stale) {
+        stale = true;
+      }
+      results.push(result.data);
     }
 
     const entityKeys = fragmentRefs.map((ref) => (ref as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey]);
@@ -181,7 +228,7 @@ export class Cache {
     const result = prev === undefined ? results : (replaceEqualDeep(prev, results) as DataOf<T>[]);
     this.#memo.set(key, result);
 
-    return result;
+    return { data: result, stale };
   }
 
   subscribeFragments<T extends Artifact<'fragment'>>(
@@ -212,10 +259,11 @@ export class Cache {
       if (target.__typename === 'Query') {
         if ('field' in target) {
           const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
-          delete this.#storage[RootFieldKey]?.[fieldKey];
+          const depKey = makeDependencyKey(RootFieldKey, fieldKey);
+          this.#stale.add(depKey);
           this.#collectSubscriptions(RootFieldKey, fieldKey, subscriptions);
         } else {
-          this.#storage[RootFieldKey] = {} as Fields;
+          this.#stale.add(RootFieldKey as string);
           this.#collectSubscriptions(RootFieldKey, undefined, subscriptions);
         }
       } else if ('id' in target) {
@@ -226,10 +274,10 @@ export class Cache {
         );
         if ('field' in target) {
           const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
-          delete this.#storage[entityKey]?.[fieldKey];
+          this.#stale.add(makeDependencyKey(entityKey, fieldKey));
           this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
         } else {
-          delete this.#storage[entityKey];
+          this.#stale.add(entityKey);
           this.#collectSubscriptions(entityKey, undefined, subscriptions);
         }
       } else {
@@ -239,10 +287,10 @@ export class Cache {
             const entityKey = key as EntityKey;
             if ('field' in target) {
               const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
-              delete this.#storage[entityKey]?.[fieldKey];
+              this.#stale.add(makeDependencyKey(entityKey, fieldKey));
               this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
             } else {
-              delete this.#storage[entityKey];
+              this.#stale.add(entityKey);
               this.#collectSubscriptions(entityKey, undefined, subscriptions);
             }
           }
@@ -331,5 +379,6 @@ export class Cache {
     this.#storage = { [RootFieldKey]: {} };
     this.#subscriptions.clear();
     this.#memo.clear();
+    this.#stale.clear();
   }
 }

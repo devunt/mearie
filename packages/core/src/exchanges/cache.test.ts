@@ -1209,4 +1209,406 @@ describe('cacheExchange', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('stale flag handling', () => {
+    it('should emit stale: true after invalidation and clear stale after refetch', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
+          mergeMapOp((op) => {
+            callCount++;
+            return fromPromise(
+              (async () => {
+                if (callCount > 1) {
+                  await new Promise((resolve) => {
+                    setTimeout(resolve, 50);
+                  });
+                }
+                return {
+                  operation: op,
+                  data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+                } as OperationResult;
+              })(),
+            );
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleGetUser',
+        key: 'stale-q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      expect(results[0]!.metadata?.cache?.stale).toBeFalsy();
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const staleResult = results.find((r) => r.metadata?.cache?.stale === true);
+      expect(staleResult).toBeDefined();
+      expect(staleResult!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      const freshResult = results.at(-1)!;
+      expect(freshResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+      expect(freshResult.metadata?.cache?.stale).toBeFalsy();
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should emit stale: true under cache-only with data present', async () => {
+      vi.useFakeTimers();
+
+      let networkCallCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-only' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            networkCallCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleCacheOnlyUser',
+        key: 'stale-co-q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      const networkCountAfterInit = networkCallCount;
+
+      const dataResults = results.filter((r) => r.data != null && (r.data as Record<string, unknown>).user != null);
+      expect(dataResults.length).toBeGreaterThanOrEqual(1);
+
+      results.length = 0;
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const staleResult = results.find((r) => r.metadata?.cache?.stale === true);
+      expect(staleResult).toBeDefined();
+      expect(staleResult!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const networkCallsDuringInvalidation = networkCallCount - networkCountAfterInit;
+      expect(networkCallsDuringInvalidation).toBeLessThanOrEqual(1);
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should emit stale: true from cache then fresh data from network under cache-and-network', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleCNGetUser',
+        key: 'stale-cn-q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+      expect(results.length).toBeGreaterThanOrEqual(1);
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const staleResults = results.filter((r) => r.metadata?.cache?.stale === true);
+      expect(staleResults.length).toBeGreaterThanOrEqual(1);
+      expect(staleResults[0]!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const freshResults = results.filter(
+        (r) => !r.metadata?.cache?.stale && r.data != null && (r.data as Record<string, unknown>).user != null,
+      );
+      expect(freshResults.length).toBeGreaterThanOrEqual(1);
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should carry stale flag on fragment result when entity is stale', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
+          mergeMapOp((op) => {
+            callCount++;
+            return fromPromise(
+              (async () => {
+                if (callCount > 1) {
+                  await new Promise((resolve) => {
+                    setTimeout(resolve, 100);
+                  });
+                }
+                return {
+                  operation: op,
+                  data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+                } as OperationResult;
+              })(),
+            );
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleFragGetUser',
+        key: 'stale-fq1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'StaleUserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'StaleUserFragment',
+        key: 'stale-f1',
+        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        selections: fragmentSelections,
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      subject.next(fragmentOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      const initialFragment = results.find((r) => r.operation.key === 'stale-f1');
+      expect(initialFragment).toBeDefined();
+      expect(initialFragment!.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+      expect(initialFragment!.metadata?.cache?.stale).toBeFalsy();
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'stale-f1');
+      const staleFragment = fragmentResults.find((r) => r.metadata?.cache?.stale === true);
+      expect(staleFragment).toBeDefined();
+      expect(staleFragment!.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const finalFragments = results.filter((r) => r.operation.key === 'stale-f1');
+      const freshFragment = finalFragments.at(-1)!;
+      expect(freshFragment.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+      expect(freshFragment.metadata?.cache?.stale).toBeFalsy();
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should clear stale flag after refetch completes and subsequent cache read is fresh', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
+          mergeMapOp((op) => {
+            callCount++;
+            return fromPromise(
+              (async () => {
+                if (callCount > 1) {
+                  await new Promise((resolve) => {
+                    setTimeout(resolve, 50);
+                  });
+                }
+                return {
+                  operation: op,
+                  data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+                } as OperationResult;
+              })(),
+            );
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleClearGetUser',
+        key: 'stale-clear-q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.metadata?.cache?.stale).toBeFalsy();
+
+      result.extension.invalidate({ __typename: 'User', id: '1' });
+      await Promise.resolve();
+
+      const staleEmission = results.find((r) => r.metadata?.cache?.stale === true);
+      expect(staleEmission).toBeDefined();
+      expect(staleEmission!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      const finalResult = results.at(-1)!;
+      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+      expect(finalResult.metadata?.cache?.stale).toBeFalsy();
+
+      sub();
+      vi.useRealTimers();
+    });
+  });
 });

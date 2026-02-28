@@ -40,7 +40,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: 'Alice' });
     });
@@ -55,7 +55,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: 'Alice', age: 30 });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: 'Alice', age: 30 });
     });
@@ -67,7 +67,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: null });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: null });
     });
@@ -90,7 +90,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
     });
@@ -127,7 +127,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact1, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
       cache.writeQuery(artifact2, {}, { user: { __typename: 'User', id: '1', email: 'alice@example.com' } });
 
-      const result = cache.readQuery(artifact2, {});
+      const result = cache.readQuery(artifact2, {}).data;
 
       expect(result).toEqual({ user: { __typename: 'User', id: '1', email: 'alice@example.com' } });
     });
@@ -160,7 +160,7 @@ describe('Cache', () => {
         },
       );
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({
         users: [
@@ -186,7 +186,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { posts: ['post1', 'post2'] });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ posts: ['post1', 'post2'] });
     });
@@ -207,7 +207,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, { limit: 5 }, { posts: ['post1', 'post2'] });
 
-      const result = cache.readQuery(artifact, { limit: 5 });
+      const result = cache.readQuery(artifact, { limit: 5 }).data;
 
       expect(result).toEqual({ posts: ['post1', 'post2'] });
     });
@@ -311,7 +311,7 @@ describe('Cache', () => {
 
       expect(listener).toHaveBeenCalledTimes(1);
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
       expect(result).toEqual({
         users: [
           { __typename: 'User', id: '2', name: 'Bob' },
@@ -327,7 +327,7 @@ describe('Cache', () => {
 
       const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toBeNull();
     });
@@ -348,7 +348,7 @@ describe('Cache', () => {
         },
       ]);
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toBeNull();
     });
@@ -384,7 +384,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact1, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const result = cache.readQuery(artifact2, {});
+      const result = cache.readQuery(artifact2, {}).data;
 
       expect(result).toBeNull();
     });
@@ -396,7 +396,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: 'Alice' });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: 'Alice' });
     });
@@ -408,7 +408,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: null });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: null });
     });
@@ -431,7 +431,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
     });
@@ -464,7 +464,7 @@ describe('Cache', () => {
         },
       );
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({
         users: [
@@ -501,7 +501,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact1, {}, { posts: ['post1', 'post2'] });
 
-      const result = cache.readQuery(artifact2, {});
+      const result = cache.readQuery(artifact2, {}).data;
 
       expect(result).toBeNull();
     });
@@ -522,7 +522,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, { limit: 5 }, { posts: ['post1', 'post2'] });
 
-      const result = cache.readQuery(artifact, { limit: 5 });
+      const result = cache.readQuery(artifact, { limit: 5 }).data;
 
       expect(result).toEqual({ posts: ['post1', 'post2'] });
     });
@@ -661,53 +661,6 @@ describe('Cache', () => {
       expect(listener2).toHaveBeenCalledTimes(1);
     });
 
-    it('should NOT notify when fragment field changes but query only has FragmentSpread', () => {
-      const cache = new Cache(schema);
-
-      const fragmentSelections = [
-        { kind: 'Field' as const, name: '__typename', type: 'String' },
-        { kind: 'Field' as const, name: 'id', type: 'ID' },
-        { kind: 'Field' as const, name: 'name', type: 'String' },
-        { kind: 'Field' as const, name: 'email', type: 'String' },
-      ];
-
-      const queryArtifact = createArtifact('query', 'GetUser', [
-        {
-          kind: 'Field',
-          name: 'user',
-          type: 'User',
-          selections: [
-            {
-              kind: 'FragmentSpread',
-              name: 'UserFragment',
-              selections: fragmentSelections,
-            },
-          ],
-        },
-      ]);
-
-      cache.writeQuery(
-        queryArtifact,
-        {},
-        {
-          user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
-        },
-      );
-
-      const listener = vi.fn();
-      cache.subscribeQuery(queryArtifact, {}, listener);
-
-      cache.writeQuery(
-        queryArtifact,
-        {},
-        {
-          user: { __typename: 'User', id: '1', name: 'Bob', email: 'alice@example.com' },
-        },
-      );
-
-      expect(listener).not.toHaveBeenCalled();
-    });
-
     it('should notify when fragment field changes and query explicitly requests overlapping field', () => {
       const cache = new Cache(schema);
 
@@ -769,7 +722,7 @@ describe('Cache', () => {
         { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
-      const result = cache.readFragment(artifact, {} as FragmentRefs<string>);
+      const result = cache.readFragment(artifact, {} as FragmentRefs<string>).data;
 
       expect(result).toBeNull();
     });
@@ -785,7 +738,7 @@ describe('Cache', () => {
 
       const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
 
-      const result = cache.readFragment(artifact, fragmentRef);
+      const result = cache.readFragment(artifact, fragmentRef).data;
 
       expect(result).toBeNull();
     });
@@ -823,7 +776,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
@@ -832,7 +785,7 @@ describe('Cache', () => {
         { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
-      const result = cache.readFragment(fragmentArtifact, fragmentRef);
+      const result = cache.readFragment(fragmentArtifact, fragmentRef).data;
 
       expect(result).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
     });
@@ -863,7 +816,7 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
@@ -872,7 +825,7 @@ describe('Cache', () => {
         { kind: 'Field', name: 'email', type: 'String' },
       ]);
 
-      const result = cache.readFragment(fragmentArtifact, fragmentRef);
+      const result = cache.readFragment(fragmentArtifact, fragmentRef).data;
 
       expect(result).toBeNull();
     });
@@ -905,7 +858,7 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -941,7 +894,7 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -980,7 +933,7 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -1037,7 +990,7 @@ describe('Cache', () => {
       cache.writeQuery(queryArtifact1, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
       cache.writeQuery(queryArtifact2, {}, { otherUser: { __typename: 'User', id: '2', name: 'Bob' } });
 
-      const queryResult = cache.readQuery(queryArtifact1, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact1, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -1076,7 +1029,7 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> };
       const fragmentRef = queryResult.user;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
@@ -1104,7 +1057,7 @@ describe('Cache', () => {
 
       cache.clear();
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toBeNull();
     });
@@ -1129,7 +1082,7 @@ describe('Cache', () => {
 
       cache.clear();
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toBeNull();
     });
@@ -1164,7 +1117,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, { name: 'Bob' });
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({ name: 'Bob' });
     });
@@ -1193,7 +1146,8 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      expect(result.stale).toBe(true);
     });
 
     it('should invalidate entity field', () => {
@@ -1223,7 +1177,10 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+      });
+      expect(result.stale).toBe(true);
     });
 
     it('should invalidate all root queries', () => {
@@ -1237,7 +1194,8 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.data).toEqual({ name: 'Alice' });
+      expect(result.stale).toBe(true);
     });
 
     it('should invalidate specific root query field', () => {
@@ -1264,8 +1222,10 @@ describe('Cache', () => {
       const postsResult = cache.readQuery(artifact1, {});
       const nameResult = cache.readQuery(artifact2, {});
 
-      expect(postsResult).toBeNull();
-      expect(nameResult).toEqual({ name: 'Alice' });
+      expect(postsResult.data).toEqual({ posts: ['post1', 'post2'] });
+      expect(postsResult.stale).toBe(true);
+      expect(nameResult.data).toEqual({ name: 'Alice' });
+      expect(nameResult.stale).toBe(false);
     });
 
     it('should invalidate all entities of typename', () => {
@@ -1300,7 +1260,7 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.stale).toBe(true);
     });
 
     it('should invalidate field across all entities of typename', () => {
@@ -1336,7 +1296,7 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.stale).toBe(true);
     });
 
     it('should notify subscriptions on invalidation', () => {
@@ -1483,8 +1443,8 @@ describe('Cache', () => {
       const userResult = cache.readQuery(userArtifact, {});
       const nameResult = cache.readQuery(nameArtifact, {});
 
-      expect(userResult).toBeNull();
-      expect(nameResult).toBeNull();
+      expect(userResult.stale).toBe(true);
+      expect(nameResult.stale).toBe(true);
     });
 
     it('should not throw when invalidating nonexistent entity', () => {
@@ -1526,7 +1486,7 @@ describe('Cache', () => {
 
       const result = cache.readQuery(artifact, {});
 
-      expect(result).toBeNull();
+      expect(result.stale).toBe(true);
     });
   });
 
@@ -1538,7 +1498,7 @@ describe('Cache', () => {
 
       cache.writeQuery(artifact, {}, {});
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({});
     });
@@ -1580,7 +1540,7 @@ describe('Cache', () => {
         },
       );
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({
         post: {
@@ -1660,7 +1620,7 @@ describe('Cache', () => {
         },
       );
 
-      const result = cache.readQuery(artifact, {});
+      const result = cache.readQuery(artifact, {}).data;
 
       expect(result).toEqual({
         comment: { __typename: 'Comment', postId: '1', id: '1', text: 'Great post!' },
@@ -1678,7 +1638,7 @@ describe('Cache', () => {
         { kind: 'Field', name: 'name', type: 'String' },
       ]);
 
-      const result = cache.readFragments(artifact, []);
+      const result = cache.readFragments(artifact, []).data;
 
       expect(result).toEqual([]);
     });
@@ -1713,11 +1673,11 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentRefs = queryResult.users;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
-      const result = cache.readFragments(fragmentArtifact, fragmentRefs);
+      const result = cache.readFragments(fragmentArtifact, fragmentRefs).data;
 
       expect(result).toEqual([
         { __typename: 'User', id: '1', name: 'Alice' },
@@ -1745,11 +1705,11 @@ describe('Cache', () => {
 
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
-      const validRef = (cache.readQuery(queryArtifact, {}) as { user: FragmentRefs<string> }).user;
+      const validRef = (cache.readQuery(queryArtifact, {}).data as { user: FragmentRefs<string> }).user;
       const missingRef = { [FragmentRefKey]: 'User:999' } as unknown as FragmentRefs<string>;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
-      const result = cache.readFragments(fragmentArtifact, [validRef, missingRef]);
+      const result = cache.readFragments(fragmentArtifact, [validRef, missingRef]).data;
 
       expect(result).toBeNull();
     });
@@ -1784,7 +1744,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentRefs = queryResult.users;
 
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', [
@@ -1792,7 +1752,7 @@ describe('Cache', () => {
         { kind: 'Field', name: 'id', type: 'ID' },
         { kind: 'Field', name: 'email', type: 'String' },
       ]);
-      const result = cache.readFragments(fragmentArtifact, fragmentRefs);
+      const result = cache.readFragments(fragmentArtifact, fragmentRefs).data;
 
       expect(result).toBeNull();
     });
@@ -1829,7 +1789,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
 
       const unsubscribe = cache.subscribeFragments(fragmentArtifact, queryResult.users, vi.fn());
@@ -1867,7 +1827,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
 
       const listener = vi.fn();
@@ -1917,7 +1877,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
 
       const listener = vi.fn();
@@ -1967,7 +1927,7 @@ describe('Cache', () => {
         },
       );
 
-      const queryResult = cache.readQuery(queryArtifact, {}) as { users: FragmentRefs<string>[] };
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
       const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
 
       const listener = vi.fn();
@@ -1999,8 +1959,8 @@ describe('Cache', () => {
 
         cache.writeQuery(artifact, {}, { name: 'Alice' });
 
-        const result1 = cache.readQuery(artifact, {});
-        const result2 = cache.readQuery(artifact, {});
+        const result1 = cache.readQuery(artifact, {}).data;
+        const result2 = cache.readQuery(artifact, {}).data;
 
         expect(result1).toBe(result2);
       });
@@ -2011,10 +1971,10 @@ describe('Cache', () => {
         const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
         cache.writeQuery(artifact, {}, { name: 'Alice' });
-        const result1 = cache.readQuery(artifact, {});
+        const result1 = cache.readQuery(artifact, {}).data;
 
         cache.writeQuery(artifact, {}, { name: 'Bob' });
-        const result2 = cache.readQuery(artifact, {});
+        const result2 = cache.readQuery(artifact, {}).data;
 
         expect(result1).not.toBe(result2);
         expect(result2).toEqual({ name: 'Bob' });
@@ -2048,7 +2008,7 @@ describe('Cache', () => {
           },
         );
 
-        const result1 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+        const result1 = cache.readQuery(artifact, {}).data as { users: { id: string; name: string }[] };
 
         // Write same data again (simulating a re-fetch with no changes)
         cache.writeQuery(
@@ -2062,7 +2022,7 @@ describe('Cache', () => {
           },
         );
 
-        const result2 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+        const result2 = cache.readQuery(artifact, {}).data as { users: { id: string; name: string }[] };
 
         expect(result1).toBe(result2);
         expect(result1.users).toBe(result2.users);
@@ -2098,7 +2058,7 @@ describe('Cache', () => {
           },
         );
 
-        const result1 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+        const result1 = cache.readQuery(artifact, {}).data as { users: { id: string; name: string }[] };
 
         // Only change user 2's name
         cache.writeQuery(
@@ -2112,7 +2072,7 @@ describe('Cache', () => {
           },
         );
 
-        const result2 = cache.readQuery(artifact, {}) as { users: { id: string; name: string }[] };
+        const result2 = cache.readQuery(artifact, {}).data as { users: { id: string; name: string }[] };
 
         expect(result2).not.toBe(result1);
         expect(result2.users).not.toBe(result1.users);
@@ -2152,11 +2112,11 @@ describe('Cache', () => {
 
         // Write query A
         cache.writeQuery(queryA, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-        const resultA1 = cache.readQuery(queryA, {});
+        const resultA1 = cache.readQuery(queryA, {}).data;
 
         // Write unrelated query B - should not affect query A's reference
         cache.writeQuery(queryB, {}, { post: { __typename: 'Post', id: 'p1', title: 'Hello' } });
-        const resultA2 = cache.readQuery(queryA, {});
+        const resultA2 = cache.readQuery(queryA, {}).data;
 
         expect(resultA1).toBe(resultA2);
       });
@@ -2181,12 +2141,12 @@ describe('Cache', () => {
         cache.writeQuery(artifact, { id: '1' }, { user: { __typename: 'User', id: '1', name: 'Alice' } });
         cache.writeQuery(artifact, { id: '2' }, { user: { __typename: 'User', id: '2', name: 'Bob' } });
 
-        const result1a = cache.readQuery(artifact, { id: '1' });
-        const result2a = cache.readQuery(artifact, { id: '2' });
+        const result1a = cache.readQuery(artifact, { id: '1' }).data;
+        const result2a = cache.readQuery(artifact, { id: '2' }).data;
 
         // Re-read without changes
-        const result1b = cache.readQuery(artifact, { id: '1' });
-        const result2b = cache.readQuery(artifact, { id: '2' });
+        const result1b = cache.readQuery(artifact, { id: '1' }).data;
+        const result2b = cache.readQuery(artifact, { id: '2' }).data;
 
         expect(result1a).toBe(result1b);
         expect(result2a).toBe(result2b);
@@ -2206,8 +2166,8 @@ describe('Cache', () => {
         const clientCache = new Cache(schema);
         clientCache.hydrate(snapshot);
 
-        const result1 = clientCache.readQuery(artifact, {});
-        const result2 = clientCache.readQuery(artifact, {});
+        const result1 = clientCache.readQuery(artifact, {}).data;
+        const result2 = clientCache.readQuery(artifact, {}).data;
 
         expect(result1).toBe(result2);
         expect(result1).toEqual({ name: 'Alice' });
@@ -2242,8 +2202,8 @@ describe('Cache', () => {
 
         const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>;
 
-        const result1 = cache.readFragment(fragmentArtifact, ref);
-        const result2 = cache.readFragment(fragmentArtifact, ref);
+        const result1 = cache.readFragment(fragmentArtifact, ref).data;
+        const result2 = cache.readFragment(fragmentArtifact, ref).data;
 
         expect(result1).toBe(result2);
       });
@@ -2273,10 +2233,10 @@ describe('Cache', () => {
 
         cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
         const ref = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<'UserFragment'>;
-        const result1 = cache.readFragment(fragmentArtifact, ref);
+        const result1 = cache.readFragment(fragmentArtifact, ref).data;
 
         cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alicia' } });
-        const result2 = cache.readFragment(fragmentArtifact, ref);
+        const result2 = cache.readFragment(fragmentArtifact, ref).data;
 
         expect(result1).not.toBe(result2);
         expect(result2).toEqual({ __typename: 'User', id: '1', name: 'Alicia' });
@@ -2324,8 +2284,8 @@ describe('Cache', () => {
           { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<'UserFragment'>,
         ];
 
-        const result1 = cache.readFragments(fragmentArtifact, refs);
-        const result2 = cache.readFragments(fragmentArtifact, refs);
+        const result1 = cache.readFragments(fragmentArtifact, refs).data;
+        const result2 = cache.readFragments(fragmentArtifact, refs).data;
 
         expect(result1).toBe(result2);
       });
@@ -2370,7 +2330,7 @@ describe('Cache', () => {
           { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<'UserFragment'>,
         ];
 
-        const result1 = cache.readFragments(fragmentArtifact, refs)!;
+        const result1 = cache.readFragments(fragmentArtifact, refs).data!;
 
         // Change only user 2
         cache.writeQuery(
@@ -2384,7 +2344,7 @@ describe('Cache', () => {
           },
         );
 
-        const result2 = cache.readFragments(fragmentArtifact, refs)!;
+        const result2 = cache.readFragments(fragmentArtifact, refs).data!;
 
         expect(result2).not.toBe(result1);
         expect(result2[0]).toBe(result1[0]); // Alice unchanged
@@ -2399,17 +2359,929 @@ describe('Cache', () => {
         const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
 
         cache.writeQuery(artifact, {}, { name: 'Alice' });
-        const result1 = cache.readQuery(artifact, {});
+        const result1 = cache.readQuery(artifact, {}).data;
 
         cache.clear();
 
         cache.writeQuery(artifact, {}, { name: 'Alice' });
-        const result2 = cache.readQuery(artifact, {});
+        const result2 = cache.readQuery(artifact, {}).data;
 
         // After clear, even with same data, reference should be new
         // because the previous result map was cleared
         expect(result1).not.toBe(result2);
         expect(result1).toEqual(result2);
+      });
+    });
+  });
+
+  describe('stale', () => {
+    describe('readQuery', () => {
+      it('should return stale: false for fresh data', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      });
+
+      it('should return stale: true after entity invalidation', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      });
+
+      it('should return stale: true after field invalidation', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual({
+          user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+        });
+      });
+
+      it('should return stale: true after root query invalidation', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+        cache.writeQuery(artifact, {}, { name: 'Alice' });
+
+        cache.invalidate({ __typename: 'Query' });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual({ name: 'Alice' });
+      });
+
+      it('should return data: null and stale: false for partial + stale', () => {
+        const cache = new Cache(schema);
+
+        const writeArtifact = createArtifact('query', 'GetUserName', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        const readArtifact = createArtifact('query', 'GetUserFull', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(writeArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        const result = cache.readQuery(readArtifact, {});
+
+        expect(result.data).toBeNull();
+        expect(result.stale).toBe(false);
+      });
+
+      it('should not leak stale to unrelated query on same entity (field-level)', () => {
+        const cache = new Cache(schema);
+
+        const nameArtifact = createArtifact('query', 'GetUserName', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        const emailArtifact = createArtifact('query', 'GetUserEmail', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(nameArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+        cache.writeQuery(emailArtifact, {}, { user: { __typename: 'User', id: '1', email: 'alice@example.com' } });
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        const nameResult = cache.readQuery(nameArtifact, {});
+        const emailResult = cache.readQuery(emailArtifact, {});
+
+        expect(nameResult.stale).toBe(false);
+        expect(emailResult.stale).toBe(true);
+      });
+    });
+
+    describe('readFragment', () => {
+      it('should return stale: false for fresh fragment', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+        const result = cache.readFragment(fragmentArtifact, fragmentRef);
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+      });
+
+      it('should return stale: true after entity invalidation', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+        const result = cache.readFragment(fragmentArtifact, fragmentRef);
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+      });
+
+      it('should return stale: true after field invalidation of included field', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+          { kind: 'Field' as const, name: 'email', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+        const result = cache.readFragment(fragmentArtifact, fragmentRef);
+
+        expect(result.stale).toBe(true);
+      });
+
+      it('should return stale: false after field invalidation of non-included field', () => {
+        const cache = new Cache(schema);
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+        const fragmentArtifact = createArtifact('fragment', 'NameFragment', [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ]);
+
+        const result = cache.readFragment(fragmentArtifact, fragmentRef);
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+      });
+    });
+
+    describe('readFragments', () => {
+      it('should return stale: false when all fragments are fresh', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<string>,
+        ];
+
+        const result = cache.readFragments(fragmentArtifact, refs);
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual([
+          { __typename: 'User', id: '1', name: 'Alice' },
+          { __typename: 'User', id: '2', name: 'Bob' },
+        ]);
+      });
+
+      it('should return stale: true when one fragment is stale', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<string>,
+        ];
+
+        const result = cache.readFragments(fragmentArtifact, refs);
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual([
+          { __typename: 'User', id: '1', name: 'Alice' },
+          { __typename: 'User', id: '2', name: 'Bob' },
+        ]);
+      });
+
+      it('should return stale: true when all fragments are stale', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+        cache.invalidate({ __typename: 'User', id: '2' });
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<string>,
+        ];
+
+        const result = cache.readFragments(fragmentArtifact, refs);
+
+        expect(result.stale).toBe(true);
+        expect(result.data).toEqual([
+          { __typename: 'User', id: '1', name: 'Alice' },
+          { __typename: 'User', id: '2', name: 'Bob' },
+        ]);
+      });
+    });
+
+    describe('writeQuery clears stale', () => {
+      it('should clear entity-level stale on writeQuery', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(cache.readQuery(artifact, {}).stale).toBe(true);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      });
+
+      it('should clear field-level stale on writeQuery', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        expect(cache.readQuery(artifact, {}).stale).toBe(true);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+      });
+
+      it('should notify subscriber when only entity-level stale clears (identical data)', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const listener = vi.fn();
+        cache.subscribeQuery(artifact, {}, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        listener.mockClear();
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(cache.readQuery(artifact, {}).stale).toBe(false);
+      });
+
+      it('should notify subscriber when only field-level stale clears (identical data)', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          artifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        const listener = vi.fn();
+        cache.subscribeQuery(artifact, {}, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        listener.mockClear();
+
+        cache.writeQuery(
+          artifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(cache.readQuery(artifact, {}).stale).toBe(false);
+      });
+
+      it('should not notify subscriber when writing identical data with no stale', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const listener = vi.fn();
+        cache.subscribeQuery(artifact, {}, listener);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        expect(listener).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('stale interactions', () => {
+      it('should handle double invalidation', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const listener = vi.fn();
+        cache.subscribeQuery(artifact, {}, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(cache.readQuery(artifact, {}).stale).toBe(true);
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(listener).toHaveBeenCalledTimes(2);
+        expect(cache.readQuery(artifact, {}).stale).toBe(true);
+      });
+
+      it('should return stale: false after invalidate then clear then fresh write', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        cache.clear();
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      });
+
+      it('should return stale: false when pre-invalidating nonexistent entity then writing it', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.invalidate({ __typename: 'User', id: '999' });
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '999', name: 'Ghost' } });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+        expect(result.data).toEqual({ user: { __typename: 'User', id: '999', name: 'Ghost' } });
+      });
+
+      it('should reset stale after clear', () => {
+        const cache = new Cache(schema);
+
+        const artifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(cache.readQuery(artifact, {}).stale).toBe(true);
+
+        cache.clear();
+
+        cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const result = cache.readQuery(artifact, {});
+
+        expect(result.stale).toBe(false);
+      });
+
+      it('should not clear stale for unwritten fields on partial write', () => {
+        const cache = new Cache(schema);
+
+        const fullArtifact = createArtifact('query', 'GetUserFull', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]);
+
+        const nameOnlyArtifact = createArtifact('query', 'GetUserName', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ]);
+
+        cache.writeQuery(
+          fullArtifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        expect(cache.readQuery(fullArtifact, {}).stale).toBe(true);
+
+        cache.writeQuery(nameOnlyArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const result = cache.readQuery(fullArtifact, {});
+
+        expect(result.stale).toBe(true);
+      });
+    });
+
+    describe('subscriptions', () => {
+      it('should notify subscribeFragment on entity invalidation', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+        const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+        const listener = vi.fn();
+        cache.subscribeFragment(fragmentArtifact, fragmentRef, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+      });
+
+      it('should notify subscribeFragments on entity invalidation', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUsers', [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          {
+            users: [
+              { __typename: 'User', id: '1', name: 'Alice' },
+              { __typename: 'User', id: '2', name: 'Bob' },
+            ],
+          },
+        );
+
+        const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+        const refs = [
+          { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>,
+          { [FragmentRefKey]: 'User:2' } as unknown as FragmentRefs<string>,
+        ];
+
+        const listener = vi.fn();
+        cache.subscribeFragments(fragmentArtifact, refs, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
+      });
+
+      it('should notify subscribeQuery with fragment-spread-only on field-level invalidation', () => {
+        const cache = new Cache(schema);
+
+        const fragmentSelections = [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+          { kind: 'Field' as const, name: 'email', type: 'String' },
+        ];
+
+        const queryArtifact = createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ]);
+
+        cache.writeQuery(
+          queryArtifact,
+          {},
+          { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+        );
+
+        const listener = vi.fn();
+        cache.subscribeQuery(queryArtifact, {}, listener);
+
+        cache.invalidate({ __typename: 'User', id: '1', field: 'email' });
+
+        expect(listener).toHaveBeenCalledTimes(1);
       });
     });
   });

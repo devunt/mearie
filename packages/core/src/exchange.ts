@@ -6,6 +6,9 @@ import type { Client } from './client.ts';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface OperationMetadataMap {}
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OperationResultMetadataMap {}
+
 export type OperationMetadata = {
   [K in keyof OperationMetadataMap]?: OperationMetadataMap[K];
 } & Record<string, unknown>;
@@ -32,7 +35,7 @@ export type OperationResult = {
   data?: unknown;
   errors?: readonly OperationError[];
   extensions?: Record<string, unknown>;
-  stale?: boolean;
+  metadata?: OperationResultMetadataMap & Record<string, unknown>;
 };
 
 export type ExchangeInput<TMeta extends SchemaMeta = SchemaMeta> = {

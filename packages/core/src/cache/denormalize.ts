@@ -70,6 +70,9 @@ export const denormalize = (
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
+          if (accessor) {
+            denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor);
+          }
         } else {
           mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
         }

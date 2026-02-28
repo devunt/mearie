@@ -60,16 +60,16 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
         for selection in &selection_set.selections {
             if let Selection::FragmentSpread(spread) = selection {
                 let name = spread.fragment_name.as_str();
-                if let Some((_, existing_args)) = seen_spreads.iter().find(|(n, _)| *n == name) {
-                    if !spread_arguments_are_equal(existing_args, &spread.arguments) {
-                        ctx.add_error(
-                            format!(
-                                "Fragment '{}' is spread multiple times with different arguments in the same selection set",
-                                name
-                            ),
-                            spread.span,
-                        );
-                    }
+                if let Some((_, existing_args)) = seen_spreads.iter().find(|(n, _)| *n == name)
+                    && !spread_arguments_are_equal(existing_args, &spread.arguments)
+                {
+                    ctx.add_error(
+                        format!(
+                            "Fragment '{}' is spread multiple times with different arguments in the same selection set",
+                            name
+                        ),
+                        spread.span,
+                    );
                 }
                 seen_spreads.push((name, &spread.arguments));
             }

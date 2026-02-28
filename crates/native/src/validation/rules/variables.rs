@@ -19,6 +19,17 @@ struct VariableUsageInfo<'a> {
     usage_span: Span,
 }
 
+struct FragmentInfo<'a> {
+    name: &'a str,
+    defined_vars: Vec<&'a str>,
+    #[allow(dead_code)]
+    used_vars: Vec<&'a str>,
+    op_var_refs: Vec<&'a str>,
+    spread_refs: Vec<&'a str>,
+    #[allow(dead_code)]
+    span: Span,
+}
+
 #[derive(Default)]
 pub struct VariableRules<'a, 'b> {
     variable_names: Vec<&'a str>,
@@ -40,7 +51,7 @@ pub struct VariableRules<'a, 'b> {
     fragment_op_var_refs: Vec<&'a str>,
     current_spread_refs: Vec<&'a str>,
     op_spread_graph: Vec<(&'a str, Vec<&'a str>)>,
-    fragments: Vec<(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)>,
+    fragments: Vec<FragmentInfo<'a>>,
     _phantom: PhantomData<&'b ()>,
 }
 
@@ -399,14 +410,14 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
             }
         }
 
-        self.fragments.push((
-            fragment_name,
-            self.fragment_defined_vars.clone(),
-            self.fragment_used_vars.clone(),
-            self.fragment_op_var_refs.clone(),
-            self.current_spread_refs.clone(),
-            fragment.span,
-        ));
+        self.fragments.push(FragmentInfo {
+            name: fragment_name,
+            defined_vars: self.fragment_defined_vars.clone(),
+            used_vars: self.fragment_used_vars.clone(),
+            op_var_refs: self.fragment_op_var_refs.clone(),
+            spread_refs: self.current_spread_refs.clone(),
+            span: fragment.span,
+        });
 
         self.current_fragment_name = None;
         self.type_stack.pop();
@@ -435,11 +446,9 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
 
             let mut all_used_vars: Vec<&str> = direct_used_vars.to_vec();
             for frag_name in &transitive_fragments {
-                if let Some((_, frag_defined_vars, _, frag_op_vars, _, _)) =
-                    self.fragments.iter().find(|(name, _, _, _, _, _)| name == frag_name)
-                {
-                    for op_var in frag_op_vars {
-                        if !frag_defined_vars.contains(op_var) {
+                if let Some(frag) = self.fragments.iter().find(|f| f.name == *frag_name) {
+                    for op_var in &frag.op_var_refs {
+                        if !frag.defined_vars.contains(op_var) {
                             all_used_vars.push(op_var);
                         }
                     }
@@ -472,10 +481,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
     }
 }
 
-fn collect_transitive_fragments<'a>(
-    direct_spreads: &[&'a str],
-    fragments: &[(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)],
-) -> Vec<&'a str> {
+fn collect_transitive_fragments<'a>(direct_spreads: &[&'a str], fragments: &[FragmentInfo<'a>]) -> Vec<&'a str> {
     let mut result = Vec::new();
     let mut visited = Vec::new();
     for name in direct_spreads {
@@ -486,7 +492,7 @@ fn collect_transitive_fragments<'a>(
 
 fn collect_transitive_fragments_inner<'a>(
     name: &'a str,
-    fragments: &[(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)],
+    fragments: &[FragmentInfo<'a>],
     result: &mut Vec<&'a str>,
     visited: &mut Vec<&'a str>,
 ) {
@@ -496,8 +502,8 @@ fn collect_transitive_fragments_inner<'a>(
     visited.push(name);
     result.push(name);
 
-    if let Some((_, _, _, _, spread_refs, _)) = fragments.iter().find(|(n, _, _, _, _, _)| *n == name) {
-        for spread_name in spread_refs {
+    if let Some(frag) = fragments.iter().find(|f| f.name == name) {
+        for spread_name in &frag.spread_refs {
             collect_transitive_fragments_inner(spread_name, fragments, result, visited);
         }
     }

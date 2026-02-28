@@ -1,5 +1,11 @@
 # @mearie/cli
 
+## 0.1.6
+
+### Patch Changes
+
+- @mearie/codegen@0.1.6
+
 ## 0.1.5
 
 ### Patch Changes

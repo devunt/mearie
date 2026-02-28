@@ -1,5 +1,13 @@
 # @mearie/codegen
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [cacc553]
+  - @mearie/native@0.4.0
+  - @mearie/shared@0.4.0
+
 ## 0.1.5
 
 ### Patch Changes

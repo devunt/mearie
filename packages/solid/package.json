@@ -1,6 +1,6 @@
 {
   "name": "@mearie/solid",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "sideEffects": false,
   "type": "module",
   "exports": {

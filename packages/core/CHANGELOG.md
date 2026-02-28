@@ -1,5 +1,49 @@
 # @mearie/core
 
+## 0.5.0
+
+### Minor Changes
+
+- cacc553: feat(native,shared,core): add client-only fragment arguments support
+
+  Fragments can now declare parameters and accept arguments at spread sites, following the GraphQL spec PR #1081 semantics. Arguments are compiled away at codegen time — no changes to the server query — and bound automatically at runtime via fragment refs.
+
+  Parser and AST accept `fragment Foo($x: Int! = 1) on Bar { ... }` definitions and `...Foo(x: 42)` spreads. Validation enforces all 9 spec rules (argument names, required args, uniqueness, scoping, type compatibility, etc.). The transformation pipeline strips variable definitions and spread arguments from operation bodies sent to the server.
+
+  At runtime, fragment spread arguments are resolved during denormalization and stored on fragment refs as `__fragmentVars`. `readFragment` and `subscribeFragment` use these vars to compute correct cache field keys, with zero API surface changes — `useFragment` works as before.
+
+### Patch Changes
+
+- eb98bb5: fix(core): emit error instead of hanging when cache remains partial after network response
+- f36f49a: fix(core): store entity-typed objects without key fields as inline objects instead of skipping
+
+  When normalizing a union/interface field where the actual type is an entity in the schema but key fields are missing from the response (e.g., `node { __typename ... on Post { id, title } }` returning `{ __typename: "Folder" }`), the normalizer previously returned `SKIP`, silently dropping the field from the cache. This caused `readQuery` to report the result as partial, and the cache exchange would never emit a result.
+
+  Now, such objects are stored as inline (non-normalized) objects, preserving the data as returned by the server.
+
+- 1259c13: feat(core): add optimistic update support for mutations
+
+  Mutations can now include an `optimisticResponse` in metadata to immediately reflect expected changes in the cache before the network response arrives. On success, the optimistic data is replaced with the actual server response; on error, the cache rolls back to its previous state.
+
+  Usage:
+
+  ```ts
+  await execute(variables, {
+    metadata: {
+      cache: {
+        optimisticResponse: { updateUser: { __typename: 'User', id: '1', name: 'Alice' } },
+      },
+    },
+  });
+  ```
+
+  - `OperationMetadataMap` and `MutationOptions` are now generic, enabling type-safe `optimisticResponse` tied to `DataOf<T>`
+  - Cache uses independent optimistic layers per mutation for correct concurrent handling
+  - Framework bindings (React, Vue, Solid, Svelte) propagate the generic to their mutation option types
+
+- Updated dependencies [cacc553]
+  - @mearie/shared@0.4.0
+
 ## 0.4.0
 
 ### Minor Changes

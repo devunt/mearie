@@ -30,8 +30,8 @@ export type QueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = {
   initialData?: DataOf<T>;
   metadata?: OperationMetadata;
 };
-export type MutationOptions = {
-  metadata?: OperationMetadata;
+export type MutationOptions<T extends Artifact<'mutation'> = Artifact<'mutation'>> = {
+  metadata?: OperationMetadata<T>;
 };
 export type SubscriptionOptions = {
   metadata?: OperationMetadata;
@@ -80,7 +80,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 
-  createOperation(artifact: Artifact, variables?: unknown, metadata?: OperationMetadata): Operation {
+  createOperation(artifact: Artifact, variables?: unknown, metadata?: Record<string, unknown>): Operation {
     const key = this.createOperationKey();
 
     return {
@@ -115,8 +115,8 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
   executeMutation<T extends Artifact<'mutation'>>(
     artifact: T,
     ...[variables, options]: VariablesOf<T> extends undefined
-      ? [undefined?, MutationOptions?]
-      : [VariablesOf<T>, MutationOptions?]
+      ? [undefined?, MutationOptions<T>?]
+      : [VariablesOf<T>, MutationOptions<T>?]
   ): Source<OperationResult> {
     const operation = this.createOperation(artifact, variables, options?.metadata);
     return this.executeOperation(operation);
@@ -172,8 +172,8 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
   async mutation<T extends Artifact<'mutation'>>(
     artifact: T,
     ...[variables, options]: VariablesOf<T> extends undefined
-      ? [undefined?, MutationOptions?]
-      : [VariablesOf<T>, MutationOptions?]
+      ? [undefined?, MutationOptions<T>?]
+      : [VariablesOf<T>, MutationOptions<T>?]
   ): Promise<DataOf<T>> {
     const operation = this.createOperation(artifact, variables, options?.metadata);
     const result = await pipe(this.executeOperation(operation), take(1), collect);

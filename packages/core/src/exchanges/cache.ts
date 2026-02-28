@@ -1,4 +1,4 @@
-import type { SchemaMeta } from '@mearie/shared';
+import type { Artifact, DataOf, SchemaMeta } from '@mearie/shared';
 import type { Exchange, RequestOperation } from '../exchange.ts';
 import type { CacheOperations, CacheSnapshot, InvalidateTarget } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
@@ -21,6 +21,11 @@ import { isFragmentRef, isFragmentRefArray } from '../cache/utils.ts';
 declare module '@mearie/core' {
   interface ExchangeExtensionMap<TMeta extends SchemaMeta> {
     cache: CacheOperations<TMeta>;
+  }
+  interface OperationMetadataMap<T extends Artifact> {
+    cache?: {
+      optimisticResponse?: T extends Artifact<'mutation'> ? DataOf<T> : never;
+    };
   }
   interface OperationResultMetadataMap {
     cache?: { stale: boolean };
@@ -147,6 +152,11 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                 op.artifact.kind === 'subscription' ||
                 (op.artifact.kind === 'query' && fetchPolicy === 'network-only')),
           ),
+          tap((op) => {
+            if (op.artifact.kind === 'mutation' && op.metadata?.cache?.optimisticResponse) {
+              cache.writeOptimistic(op.key, op.artifact, op.variables, op.metadata.cache.optimisticResponse);
+            }
+          }),
         );
 
         const query$ = pipe(
@@ -233,6 +243,14 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
           merge(nonCache$, network$, teardown$, refetch$.source),
           forward,
           tap((result) => {
+            if (
+              result.operation.variant === 'request' &&
+              result.operation.artifact.kind === 'mutation' &&
+              result.operation.metadata?.cache?.optimisticResponse
+            ) {
+              cache.removeOptimistic(result.operation.key);
+            }
+
             if (result.operation.variant === 'request' && result.data) {
               cache.writeQuery(result.operation.artifact, result.operation.variables, result.data);
             }

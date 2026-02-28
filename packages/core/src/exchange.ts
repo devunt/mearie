@@ -3,14 +3,14 @@ import type { Source } from './stream/index.ts';
 import type { OperationError } from './errors.ts';
 import type { Client } from './client.ts';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface OperationMetadataMap {}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars
+export interface OperationMetadataMap<T extends Artifact = Artifact> {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface OperationResultMetadataMap {}
 
-export type OperationMetadata = {
-  [K in keyof OperationMetadataMap]?: OperationMetadataMap[K];
+export type OperationMetadata<T extends Artifact = Artifact> = {
+  [K in keyof OperationMetadataMap<T>]?: OperationMetadataMap<T>[K];
 } & Record<string, unknown>;
 
 export type BaseOperation = {

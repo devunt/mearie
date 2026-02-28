@@ -24,13 +24,13 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       metadata: Ref<OperationResult['metadata']>;
     };
 
-export type UseMutationOptions = MutationOptions;
+export type UseMutationOptions<T extends Artifact<'mutation'> = Artifact<'mutation'>> = MutationOptions<T>;
 
 export type Mutation<T extends Artifact<'mutation'>> = [
   (
     ...[variables, options]: VariablesOf<T> extends Record<string, never>
-      ? [undefined?, UseMutationOptions?]
-      : [VariablesOf<T>, UseMutationOptions?]
+      ? [undefined?, UseMutationOptions<T>?]
+      : [VariablesOf<T>, UseMutationOptions<T>?]
   ) => Promise<DataOf<T>>,
   MutationResult<T>,
 ];
@@ -43,7 +43,7 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
   const error = ref<AggregatedError | undefined>(undefined);
   const metadata = ref<OperationResult['metadata']>();
 
-  const execute = async (variables?: VariablesOf<T>, options?: UseMutationOptions): Promise<DataOf<T>> => {
+  const execute = async (variables?: VariablesOf<T>, options?: UseMutationOptions<T>): Promise<DataOf<T>> => {
     loading.value = true;
     error.value = undefined;
     metadata.value = undefined;

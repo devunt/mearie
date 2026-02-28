@@ -109,3 +109,61 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+  snapshot:
+    name: Publish snapshot
+    if: |
+      github.repository == 'devunt/mearie' &&
+      needs.detect-release.outputs.is_release == 'false'
+    needs: detect-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          if ls .changeset/*.md 1>/dev/null 2>&1; then
+            count=$(ls .changeset/*.md 2>/dev/null | wc -l)
+            if [ "$count" -gt 0 ]; then
+              echo "has_changesets=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_changesets=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_changesets=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Version packages (snapshot)
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: pnpm changeset version --snapshot next
+
+      - name: Build packages
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: pnpm build
+
+      - name: Prepare publish
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: pnpm publish:prepare
+
+      - name: Publish snapshot
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: pnpm changeset publish --tag next --no-git-tag
+        env:
+          NPM_CONFIG_PROVENANCE: true

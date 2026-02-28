@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       is_release: ${{ steps.check.outputs.is_release }}
-      native_updated: ${{ steps.check.outputs.native_updated }}
+      native_changed: ${{ steps.check.outputs.native_changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,20 +31,27 @@ jobs:
             echo "Release commit detected"
 
             if git diff HEAD^ HEAD --name-only | grep -q "crates/native/package.json"; then
-              echo "native_updated=true" >> $GITHUB_OUTPUT
+              echo "native_changed=true" >> $GITHUB_OUTPUT
               echo "Native package updated"
             else
-              echo "native_updated=false" >> $GITHUB_OUTPUT
+              echo "native_changed=false" >> $GITHUB_OUTPUT
             fi
           else
             echo "is_release=false" >> $GITHUB_OUTPUT
-            echo "native_updated=false" >> $GITHUB_OUTPUT
             echo "Regular commit, not a release"
+
+            new_changesets=$(git diff HEAD^ HEAD --name-only --diff-filter=A -- '.changeset/*.md')
+            if [ -n "$new_changesets" ] && echo "$new_changesets" | xargs grep -l '"@mearie/native"' 2>/dev/null | grep -q .; then
+              echo "native_changed=true" >> $GITHUB_OUTPUT
+              echo "Native package found in new changesets"
+            else
+              echo "native_changed=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
   build-native:
     name: Build native binaries
-    if: needs.detect-release.outputs.native_updated == 'true'
+    if: needs.detect-release.outputs.native_changed == 'true'
     needs: detect-release
     permissions:
       contents: read
@@ -53,8 +60,8 @@ jobs:
   publish:
     name: Version or publish packages
     if: |
-      github.repository == 'devunt/mearie' &&
       always() &&
+      github.repository == 'devunt/mearie' &&
       (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
     needs: [detect-release, build-native]
     permissions:
@@ -89,13 +96,13 @@ jobs:
         run: pnpm publish:prepare
 
       - name: Download native artifacts
-        if: needs.detect-release.outputs.native_updated == 'true'
+        if: needs.detect-release.outputs.native_changed == 'true'
         uses: actions/download-artifact@v7
         with:
           path: crates/native/artifacts
 
       - name: Prepare native artifacts
-        if: needs.detect-release.outputs.native_updated == 'true'
+        if: needs.detect-release.outputs.native_changed == 'true'
         working-directory: crates/native
         run: pnpm napi:prepare
 
@@ -113,9 +120,11 @@ jobs:
   snapshot:
     name: Publish snapshot
     if: |
+      always() &&
       github.repository == 'devunt/mearie' &&
-      needs.detect-release.outputs.is_release == 'false'
-    needs: detect-release
+      needs.detect-release.outputs.is_release == 'false' &&
+      (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
+    needs: [detect-release, build-native]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -139,13 +148,9 @@ jobs:
       - name: Check for changesets
         id: changesets
         run: |
-          if ls .changeset/*.md 1>/dev/null 2>&1; then
-            count=$(ls .changeset/*.md 2>/dev/null | wc -l)
-            if [ "$count" -gt 0 ]; then
-              echo "has_changesets=true" >> $GITHUB_OUTPUT
-            else
-              echo "has_changesets=false" >> $GITHUB_OUTPUT
-            fi
+          count=$(ls .changeset/*.md 2>/dev/null | grep -cv 'README.md' || true)
+          if [ "$count" -gt 0 ]; then
+            echo "has_changesets=true" >> $GITHUB_OUTPUT
           else
             echo "has_changesets=false" >> $GITHUB_OUTPUT
           fi
@@ -161,6 +166,17 @@ jobs:
       - name: Prepare publish
         if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm publish:prepare
+
+      - name: Download native artifacts
+        if: needs.detect-release.outputs.native_changed == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          path: crates/native/artifacts
+
+      - name: Prepare native artifacts
+        if: needs.detect-release.outputs.native_changed == 'true'
+        working-directory: crates/native
+        run: pnpm napi:prepare
 
       - name: Publish snapshot
         if: steps.changesets.outputs.has_changesets == 'true'

@@ -1927,9 +1927,11 @@ describe('cacheExchange', () => {
       const results = await testExchange(exchange, forward, [operation], client);
 
       expect(results).toHaveLength(1);
-      expect(results[0].errors).toBeDefined();
-      expect(results[0].errors!.length).toBeGreaterThan(0);
-      expect(results[0].errors![0].message).toContain('denormalize');
+
+      const errors = results[0]?.errors;
+      expect(errors).toBeDefined();
+      expect(errors?.length).toBeGreaterThan(0);
+      expect(errors?.[0]?.message).toContain('denormalize');
     });
   });
 });

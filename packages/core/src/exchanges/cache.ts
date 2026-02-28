@@ -264,7 +264,10 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
               return fromValue(result);
             }
 
-            const { data } = cache.readQuery(result.operation.artifact, result.operation.variables);
+            const { data } = cache.readQuery(
+              result.operation.artifact as Artifact<'query'>,
+              result.operation.variables,
+            );
             if (data !== null) {
               return empty();
             }

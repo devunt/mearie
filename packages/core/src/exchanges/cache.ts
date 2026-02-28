@@ -52,14 +52,14 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             (op): op is RequestOperation<'fragment'> => op.variant === 'request' && op.artifact.kind === 'fragment',
           ),
           mergeMap((op) => {
-            const fragmentRef = op.metadata?.fragmentRef;
+            const fragmentRef = op.metadata?.fragment?.ref;
 
             if (!fragmentRef) {
               return fromValue({
                 operation: op,
                 errors: [
                   new ExchangeError(
-                    'Fragment operation missing fragmentRef in metadata. This usually happens when the wrong fragment reference was passed.',
+                    'Fragment operation missing fragment.ref in metadata. This usually happens when the wrong fragment reference was passed.',
                     { exchangeName: 'cache' },
                   ),
                 ],

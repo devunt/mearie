@@ -287,7 +287,7 @@ describe('cacheExchange', () => {
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       const results = await testExchange(exchange, forward, [operation], client);
@@ -301,7 +301,7 @@ describe('cacheExchange', () => {
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       const results = await testExchange(exchange, forward, [operation], client);
@@ -309,7 +309,7 @@ describe('cacheExchange', () => {
       expect(results).toHaveLength(1);
     });
 
-    it('should require fragmentRef in metadata', async () => {
+    it('should require fragment.ref in metadata', async () => {
       const exchange = cacheExchange();
       const forward = makeTestForward();
       const operation = makeTestOperation({ kind: 'fragment' });
@@ -319,7 +319,7 @@ describe('cacheExchange', () => {
       expect(results[0]!.errors).toBeDefined();
     });
 
-    it('should error if fragmentRef missing', async () => {
+    it('should error if fragment.ref missing', async () => {
       const exchange = cacheExchange();
       const forward = makeTestForward();
       const operation = makeTestOperation({ kind: 'fragment' });
@@ -327,7 +327,7 @@ describe('cacheExchange', () => {
       const results = await testExchange(exchange, forward, [operation], client);
 
       expect(results[0]!.errors).toHaveLength(1);
-      expect(results[0]!.errors![0]!.message).toContain('fragmentRef');
+      expect(results[0]!.errors![0]!.message).toContain('fragment.ref');
     });
   });
 
@@ -373,7 +373,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'fragment-1',
-        metadata: { fragmentRef: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] },
+        metadata: { fragment: { ref: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] } },
         selections: fragmentSelections,
       });
 
@@ -437,7 +437,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'fragment-1',
-        metadata: { fragmentRef: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] },
+        metadata: { fragment: { ref: [{ __fragmentRef: 'User:1' }, { __fragmentRef: 'User:2' }] } },
         selections: fragmentSelections,
       });
 
@@ -741,7 +741,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'fragment-1',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
         selections: [
           { kind: 'Field', name: '__typename', type: 'String' },
           { kind: 'Field', name: 'id', type: 'ID' },
@@ -902,7 +902,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'f1',
-        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        metadata: { fragment: { ref: { __fragmentRef: 'User:1' } } },
         selections: fragmentSelections,
       });
 
@@ -980,7 +980,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'f2',
-        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        metadata: { fragment: { ref: { __fragmentRef: 'User:1' } } },
         selections: fragmentSelections,
       });
 
@@ -1170,7 +1170,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'f3',
-        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        metadata: { fragment: { ref: { __fragmentRef: 'User:1' } } },
         selections: fragmentSelections,
       });
 
@@ -1178,7 +1178,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'UserFragment',
         key: 'f4',
-        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        metadata: { fragment: { ref: { __fragmentRef: 'User:1' } } },
         selections: fragmentSelections,
       });
 
@@ -1492,7 +1492,7 @@ describe('cacheExchange', () => {
         kind: 'fragment',
         name: 'StaleUserFragment',
         key: 'stale-f1',
-        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        metadata: { fragment: { ref: { __fragmentRef: 'User:1' } } },
         selections: fragmentSelections,
       });
 

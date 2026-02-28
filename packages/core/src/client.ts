@@ -144,7 +144,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       key,
       metadata: {
         ...options?.metadata,
-        fragmentRef,
+        fragment: { ref: fragmentRef },
       } as Operation['metadata'],
       artifact: artifact as Artifact<ArtifactKind>,
       variables: {},

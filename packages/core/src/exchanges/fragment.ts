@@ -7,7 +7,9 @@ import { merge } from '../stream/operators/merge.ts';
 
 declare module '@mearie/core' {
   interface OperationMetadataMap {
-    fragmentRef?: unknown;
+    fragment?: {
+      ref?: unknown;
+    };
   }
 }
 
@@ -19,14 +21,14 @@ export const fragmentExchange = (): Exchange => {
         ops$,
         filter((op) => op.variant === 'request' && op.artifact.kind === 'fragment'),
         map((op) => {
-          const fragmentRef = op.metadata.fragmentRef;
+          const fragmentRef = op.metadata.fragment?.ref;
 
           if (!fragmentRef) {
             return {
               operation: op,
               errors: [
                 new ExchangeError(
-                  'Fragment operation missing fragmentRef in metadata. This usually happens when the wrong fragment reference was passed.',
+                  'Fragment operation missing fragment.ref in metadata. This usually happens when the wrong fragment reference was passed.',
                   {
                     exchangeName: 'fragment',
                   },

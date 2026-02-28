@@ -6,13 +6,13 @@ import type { Operation } from '../exchange.ts';
 
 describe('fragmentExchange', () => {
   describe('fragment operations', () => {
-    it('should return fragmentRef for fragment operation', async () => {
+    it('should return fragment ref for fragment operation', async () => {
       const exchange = fragmentExchange();
       const forward = makeTestForward();
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       const results = await testExchange(exchange, forward, [operation]);
@@ -55,7 +55,7 @@ describe('fragmentExchange', () => {
   });
 
   describe('error handling', () => {
-    it('should error when fragmentRef missing in metadata', async () => {
+    it('should error when fragment.ref missing in metadata', async () => {
       const exchange = fragmentExchange();
       const forward = makeTestForward();
       const operation = makeTestOperation({ kind: 'fragment' });
@@ -77,7 +77,7 @@ describe('fragmentExchange', () => {
 
       const error = results[0]!.errors![0]!;
       expect(error.message).toBe(
-        'Fragment operation missing fragmentRef in metadata. This usually happens when the wrong fragment reference was passed.',
+        'Fragment operation missing fragment.ref in metadata. This usually happens when the wrong fragment reference was passed.',
       );
     });
 
@@ -100,7 +100,7 @@ describe('fragmentExchange', () => {
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const fragmentOp = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
       const queryOp = makeTestOperation({ kind: 'query' });
 
@@ -120,7 +120,7 @@ describe('fragmentExchange', () => {
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       await testExchange(exchange, forward, [operation]);
@@ -174,8 +174,8 @@ describe('fragmentExchange', () => {
     });
   });
 
-  describe('fragmentRef types', () => {
-    it('should handle fragmentRef with different properties', async () => {
+  describe('fragment ref types', () => {
+    it('should handle fragment ref with different properties', async () => {
       const exchange = fragmentExchange();
       const forward = makeTestForward();
       const fragmentRef = {
@@ -185,7 +185,7 @@ describe('fragmentExchange', () => {
       };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       const results = await testExchange(exchange, forward, [operation]);
@@ -193,13 +193,13 @@ describe('fragmentExchange', () => {
       expect(results[0]!.data).toEqual(fragmentRef);
     });
 
-    it('should handle fragmentRef with null key', async () => {
+    it('should handle fragment ref with null key', async () => {
       const exchange = fragmentExchange();
       const forward = makeTestForward();
       const fragmentRef = { __key: null, __typename: 'User' };
       const operation = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
 
       const results = await testExchange(exchange, forward, [operation]);
@@ -214,8 +214,8 @@ describe('fragmentExchange', () => {
       const forward = makeTestForward();
       const ref1 = { __key: 'User:1', __typename: 'User' };
       const ref2 = { __key: 'Post:1', __typename: 'Post' };
-      const op1 = makeTestOperation({ kind: 'fragment', metadata: { fragmentRef: ref1 } });
-      const op2 = makeTestOperation({ kind: 'fragment', metadata: { fragmentRef: ref2 } });
+      const op1 = makeTestOperation({ kind: 'fragment', metadata: { fragment: { ref: ref1 } } });
+      const op2 = makeTestOperation({ kind: 'fragment', metadata: { fragment: { ref: ref2 } } });
 
       const results = await testExchange(exchange, forward, [op1, op2]);
 
@@ -233,7 +233,7 @@ describe('fragmentExchange', () => {
       const fragmentRef = { __key: 'User:1', __typename: 'User' };
       const fragmentOp = makeTestOperation({
         kind: 'fragment',
-        metadata: { fragmentRef },
+        metadata: { fragment: { ref: fragmentRef } },
       });
       const queryOp = makeTestOperation({ kind: 'query' });
       const teardownOp = makeTestOperation({ variant: 'teardown' });

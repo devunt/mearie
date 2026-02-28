@@ -11,6 +11,7 @@ export const denormalize = (
   value: unknown,
   variables: Record<string, unknown>,
   accessor?: (storageKey: StorageKey, fieldKey: FieldKey) => void,
+  trackFragmentDependencies = false,
 ): { data: unknown; partial: boolean } => {
   let partial = false;
 
@@ -70,6 +71,9 @@ export const denormalize = (
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
+          if (trackFragmentDependencies) {
+            denormalizeField(storageKey, selection.selections, value);
+          }
         } else {
           mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
         }

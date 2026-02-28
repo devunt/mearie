@@ -1393,6 +1393,70 @@ describe('Cache', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
+    it('should only notify fragment-only query subscriptions that overlap the invalidated field', () => {
+      const cache = new Cache(schema);
+
+      const nameFragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+      const emailFragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+      ];
+
+      const nameQueryArtifact = createArtifact('query', 'GetUserName', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserNameFragment', selections: nameFragmentSelections }],
+        },
+      ]);
+
+      const emailQueryArtifact = createArtifact('query', 'GetUserEmail', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserEmailFragment', selections: emailFragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(
+        createArtifact('query', 'GetUser', [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ]),
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+        },
+      );
+
+      const nameListener = vi.fn();
+      const emailListener = vi.fn();
+
+      cache.subscribeQuery(nameQueryArtifact, {}, nameListener);
+      cache.subscribeQuery(emailQueryArtifact, {}, emailListener);
+
+      cache.invalidate({ __typename: 'User', id: '1', field: 'name' });
+
+      expect(nameListener).toHaveBeenCalledTimes(1);
+      expect(emailListener).not.toHaveBeenCalled();
+    });
+
     it('should handle multiple targets at once', () => {
       const cache = new Cache(schema);
 

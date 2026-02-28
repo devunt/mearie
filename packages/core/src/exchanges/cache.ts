@@ -15,6 +15,7 @@ import { switchMap } from '../stream/operators/switch-map.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 import { empty } from '../stream/sources/empty.ts';
 import { isFragmentRef, isFragmentRefArray } from '../cache/utils.ts';
+import { stringify } from '../utils.ts';
 
 declare module '@mearie/core' {
   interface ExchangeExtensionMap {
@@ -41,6 +42,17 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
         clear: () => cache.clear(),
       },
       io: (ops$) => {
+        const staleQueryData = new Map<string, unknown>();
+        const staleFragmentData = new Map<string, unknown>();
+
+        const queryStaleKey = (op: RequestOperation<'query'>): string => {
+          return `${op.artifact.name}@${stringify(op.variables as Record<string, unknown>)}`;
+        };
+
+        const fragmentStaleKey = (op: RequestOperation<'fragment'>, fragmentRef: unknown): string => {
+          return `${op.artifact.name}@${stringify(fragmentRef)}`;
+        };
+
         const fragment$ = pipe(
           ops$,
           filter(
@@ -63,6 +75,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
 
             if (isFragmentRefArray(fragmentRef)) {
               const trigger = makeSubject<void>();
+              const staleKey = fragmentStaleKey(op, fragmentRef);
               let hasData = false;
 
               const teardown$ = pipe(
@@ -88,14 +101,21 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                 mergeMap((data) => {
                   if (data !== null) {
                     hasData = true;
+                    staleFragmentData.set(staleKey, data);
                     return fromValue({ operation: op, data, errors: [] });
                   }
 
-                  if (hasData) {
-                    return empty();
+                  if (!hasData) {
+                    const stale = staleFragmentData.get(staleKey);
+                    if (stale !== undefined) {
+                      hasData = true;
+                      return fromValue({ operation: op, data: stale, errors: [] });
+                    }
+
+                    return fromValue({ operation: op, data, errors: [] });
                   }
 
-                  return fromValue({ operation: op, data, errors: [] });
+                  return empty();
                 }),
               );
             }
@@ -109,6 +129,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             }
 
             const trigger = makeSubject<void>();
+            const staleKey = fragmentStaleKey(op, fragmentRef);
             let hasData = false;
 
             const teardown$ = pipe(
@@ -134,14 +155,21 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
               mergeMap((data) => {
                 if (data !== null) {
                   hasData = true;
+                  staleFragmentData.set(staleKey, data);
                   return fromValue({ operation: op, data, errors: [] });
                 }
 
-                if (hasData) {
-                  return empty();
+                if (!hasData) {
+                  const stale = staleFragmentData.get(staleKey);
+                  if (stale !== undefined) {
+                    hasData = true;
+                    return fromValue({ operation: op, data: stale, errors: [] });
+                  }
+
+                  return fromValue({ operation: op, data, errors: [] });
                 }
 
-                return fromValue({ operation: op, data, errors: [] });
+                return empty();
               }),
             );
           }),
@@ -173,6 +201,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
           query$,
           mergeMap((op) => {
             const trigger = makeSubject<void>();
+            const staleKey = queryStaleKey(op);
             let hasData = false;
             let invalidated = false;
 
@@ -210,7 +239,16 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
 
                   hasData = true;
                   invalidated = false;
+                  staleQueryData.set(staleKey, data);
                   return fromValue({ operation: op, data, errors: [] });
+                }
+
+                if (!hasData) {
+                  const stale = staleQueryData.get(staleKey);
+                  if (stale !== undefined) {
+                    hasData = true;
+                    return fromValue({ operation: op, data: stale, errors: [] });
+                  }
                 }
 
                 if (hasData) {

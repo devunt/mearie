@@ -8,6 +8,8 @@ import { subscribe } from '../stream/sinks/subscribe.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 import { map } from '../stream/operators/map.ts';
 import { filter } from '../stream/operators/filter.ts';
+import { mergeMap as mergeMapOp } from '../stream/operators/merge-map.ts';
+import { fromPromise } from '../stream/sources/from-promise.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -1001,6 +1003,207 @@ describe('cacheExchange', () => {
       expect(callCount).toBe(2);
       expect(fragmentResults.some((r) => r.data === null)).toBe(false);
       expect(fragmentResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should not refetch unrelated queries when invalidating a specific field', async () => {
+      vi.useFakeTimers();
+
+      const callCounts = { qName: 0, qEmail: 0 };
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            if (op.key === 'qName') {
+              callCounts.qName++;
+              return {
+                operation: op,
+                data: {
+                  user: {
+                    __typename: 'User',
+                    id: '1',
+                    name: callCounts.qName === 1 ? 'Alice' : 'Bob',
+                  },
+                },
+              } as OperationResult;
+            }
+
+            if (op.key === 'qEmail') {
+              callCounts.qEmail++;
+              return {
+                operation: op,
+                data: {
+                  user: {
+                    __typename: 'User',
+                    id: '1',
+                    email: callCounts.qEmail === 1 ? 'alice@example.com' : 'bob@example.com',
+                  },
+                },
+              } as OperationResult;
+            }
+
+            return { operation: op } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const sub = pipe(subject.source, result.io, subscribe({ next: () => {} }));
+
+      const nameQuery = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserName',
+        key: 'qName',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      const emailQuery = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserEmail',
+        key: 'qEmail',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'email', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(nameQuery);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      subject.next(emailQuery);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCounts).toEqual({ qName: 1, qEmail: 1 });
+
+      result.extension.invalidate({ __typename: 'User', id: '1', field: 'name' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCounts).toEqual({ qName: 2, qEmail: 1 });
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should keep stale fragment data when fragment re-subscribes during invalidation refetch', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
+          mergeMapOp((op) => {
+            callCount++;
+
+            return fromPromise(
+              (async () => {
+                if (callCount > 1) {
+                  await new Promise((resolve) => {
+                    setTimeout(resolve, 50);
+                  });
+                }
+
+                return {
+                  operation: op,
+                  data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+                } as OperationResult;
+              })(),
+            );
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q3',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+          },
+        ],
+      });
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'f3',
+        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        selections: fragmentSelections,
+      });
+
+      const fragmentResubscribeOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'f4',
+        metadata: { fragmentRef: { __fragmentRef: 'User:1' } },
+        selections: fragmentSelections,
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      subject.next(fragmentOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      result.extension.invalidate({ __typename: 'User', id: '1', field: 'name' });
+      subject.next(fragmentResubscribeOp);
+      await Promise.resolve();
+
+      const resubscribeResultsBeforeRefetch = results.filter((r) => r.operation.key === 'f4');
+      expect(resubscribeResultsBeforeRefetch.length).toBeGreaterThanOrEqual(1);
+      expect(resubscribeResultsBeforeRefetch[0]!.data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      const resubscribeResults = results.filter((r) => r.operation.key === 'f4');
+      expect(resubscribeResults.some((r) => r.data === null)).toBe(false);
+      expect(resubscribeResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
 
       sub();
       vi.useRealTimers();

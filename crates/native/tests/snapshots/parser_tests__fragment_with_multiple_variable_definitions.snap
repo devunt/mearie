@@ -1,0 +1,142 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"fragment Avatar($size: Int!, $format: String = \"png\") on User { profilePic(size: $size, format: $format) }\"#)"
+---
+Document {
+    source: Source {
+        code: "fragment Avatar($size: Int!, $format: String = \"png\") on User { profilePic(size: $size, format: $format) }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 106,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "Avatar",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 16,
+                                end: 30,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "size",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                        VariableDefinition {
+                            span: Span {
+                                start: 29,
+                                end: 53,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "format",
+                                ),
+                            ),
+                            typ: Named(
+                                NamedType {
+                                    name: TypeName(
+                                        Name(
+                                            "String",
+                                        ),
+                                    ),
+                                },
+                            ),
+                            default_value: Some(
+                                String(
+                                    "png",
+                                ),
+                            ),
+                            directives: [],
+                        },
+                    ],
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 64,
+                                        end: 106,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "profilePic",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 75,
+                                                end: 86,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                        },
+                                        Argument {
+                                            span: Span {
+                                                start: 88,
+                                                end: 103,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "format",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "format",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

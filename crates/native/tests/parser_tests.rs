@@ -322,6 +322,60 @@ fn test_query_with_fragments_and_variables() {
 }
 
 // =============================================================================
+// FRAGMENT ARGUMENTS
+// =============================================================================
+
+#[test]
+fn test_fragment_with_variable_definitions() {
+    assert_debug_snapshot!(parse!(
+        "fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }"
+    ));
+}
+
+#[test]
+fn test_fragment_with_multiple_variable_definitions() {
+    assert_debug_snapshot!(parse!(
+        r#"fragment Avatar($size: Int!, $format: String = "png") on User { profilePic(size: $size, format: $format) }"#
+    ));
+}
+
+#[test]
+fn test_fragment_spread_with_arguments() {
+    assert_debug_snapshot!(parse!(
+        r#"query GetUser {
+            user {
+                ...Avatar(size: 100)
+            }
+        }
+        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }"#
+    ));
+}
+
+#[test]
+fn test_fragment_spread_with_variable_argument() {
+    assert_debug_snapshot!(parse!(
+        r#"query GetUser($avatarSize: Int!) {
+            user {
+                ...Avatar(size: $avatarSize)
+            }
+        }
+        fragment Avatar($size: Int!) on User { profilePic(size: $size) }"#
+    ));
+}
+
+#[test]
+fn test_fragment_spread_with_default_used() {
+    assert_debug_snapshot!(parse!(
+        r#"query GetUser {
+            user {
+                ...Avatar
+            }
+        }
+        fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) }"#
+    ));
+}
+
+// =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
 

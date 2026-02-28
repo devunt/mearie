@@ -387,18 +387,35 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
 
         let data_type = self.type_selection_set(&fragment.selection_set, type_condition)?;
         let key_type = self.type_fragment_refs(vec![fragment_name]);
+
+        let has_vars = !fragment.variable_definitions.is_empty();
+
+        let vars_type = if has_vars {
+            Some(self.type_ref(&format!("{}$vars", fragment_name)))
+        } else {
+            None
+        };
+
         let artifact_type = self.type_artifact(
             "fragment",
             fragment_name,
             self.type_ref(&format!("{}$data", fragment_name)),
-            None,
+            vars_type,
         );
 
-        Ok(vec![
-            self.stmt_export_type(&format!("{}$data", fragment_name), data_type),
-            self.stmt_export_type(&format!("{}$key", fragment_name), key_type),
-            self.stmt_export_type(fragment_name, artifact_type),
-        ])
+        let mut stmts = vec![self.stmt_export_type(&format!("{}$data", fragment_name), data_type)];
+
+        if has_vars {
+            stmts.push(self.stmt_export_type(
+                &format!("{}$vars", fragment_name),
+                self.type_variables(&fragment.variable_definitions),
+            ));
+        }
+
+        stmts.push(self.stmt_export_type(&format!("{}$key", fragment_name), key_type));
+        stmts.push(self.stmt_export_type(fragment_name, artifact_type));
+
+        Ok(stmts)
     }
 
     fn type_selection_set(&self, selection_set: &SelectionSet<'b>, parent_type: &'b str) -> Result<TSType<'b>> {

@@ -65,6 +65,11 @@ pub fn clone_field<'a>(arena: &'a Arena, field: &Field<'a>) -> Field<'a> {
 }
 
 pub fn clone_fragment_spread<'a>(arena: &'a Arena, spread: &FragmentSpread<'a>) -> FragmentSpread<'a> {
+    let mut arguments = bumpalo::vec![in arena.allocator();];
+    for a in &spread.arguments {
+        arguments.push(clone_argument(arena, a));
+    }
+
     let mut directives = bumpalo::vec![in arena.allocator();];
     for d in &spread.directives {
         directives.push(clone_directive(arena, d));
@@ -73,6 +78,7 @@ pub fn clone_fragment_spread<'a>(arena: &'a Arena, spread: &FragmentSpread<'a>) 
     FragmentSpread {
         span: spread.span,
         fragment_name: spread.fragment_name,
+        arguments,
         directives,
     }
 }

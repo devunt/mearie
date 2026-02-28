@@ -51,6 +51,32 @@ impl<'a, 'b> FragmentRules<'a, 'b> {
 }
 
 impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
+    fn enter_selection_set(
+        &mut self,
+        ctx: &mut ValidationContext<'a, 'b>,
+        selection_set: &SelectionSet<'a>,
+    ) -> Control {
+        let mut seen_spreads: Vec<(&str, &[Argument<'a>])> = Vec::new();
+        for selection in &selection_set.selections {
+            if let Selection::FragmentSpread(spread) = selection {
+                let name = spread.fragment_name.as_str();
+                if let Some((_, existing_args)) = seen_spreads.iter().find(|(n, _)| *n == name)
+                    && !spread_arguments_are_equal(existing_args, &spread.arguments)
+                {
+                    ctx.add_error(
+                        format!(
+                            "Fragment '{}' is spread multiple times with different arguments in the same selection set",
+                            name
+                        ),
+                        spread.span,
+                    );
+                }
+                seen_spreads.push((name, &spread.arguments));
+            }
+        }
+        Control::Next
+    }
+
     fn enter_fragment(&mut self, ctx: &mut ValidationContext<'a, 'b>, fragment: &FragmentDefinition<'a>) -> Control {
         let name = fragment.name.as_str();
 
@@ -211,10 +237,9 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
 
         self.fragment_spreads.push((fragment_name, fragment_spread.span));
 
-        let fragment_type = ctx
-            .document()
-            .get_fragment(fragment_name)
-            .map(|fragment| fragment.type_condition.as_str());
+        let fragment = ctx.document().get_fragment(fragment_name);
+
+        let fragment_type = fragment.map(|f| f.type_condition.as_str());
 
         if fragment_type.is_none() && !self.fragment_names.contains(&fragment_name) {
             return Control::Skip;
@@ -231,6 +256,67 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
                 ),
                 fragment_spread.span,
             );
+        }
+
+        if let Some(fragment) = fragment {
+            let mut seen_args = FxHashSet::default();
+            for arg in &fragment_spread.arguments {
+                let arg_name = arg.name.as_str();
+
+                if !seen_args.insert(arg_name) {
+                    ctx.add_error(
+                        format!(
+                            "Duplicate argument '{}' in spread of fragment '{}'",
+                            arg_name, fragment_name
+                        ),
+                        arg.span,
+                    );
+                }
+
+                if !fragment
+                    .variable_definitions
+                    .iter()
+                    .any(|v| v.variable.as_str() == arg_name)
+                {
+                    ctx.add_error(
+                        format!(
+                            "Unknown argument '{}' on fragment '{}'. Fragment does not define this variable.",
+                            arg_name, fragment_name
+                        ),
+                        arg.span,
+                    );
+                }
+            }
+
+            for var_def in &fragment.variable_definitions {
+                let var_name = var_def.variable.as_str();
+                let is_required = matches!(var_def.typ, Type::NonNull(_)) && var_def.default_value.is_none();
+
+                if is_required {
+                    let provided = fragment_spread.arguments.iter().find(|a| a.name.as_str() == var_name);
+                    match provided {
+                        None => {
+                            ctx.add_error(
+                                format!(
+                                    "Required argument '{}' is missing in spread of fragment '{}'",
+                                    var_name, fragment_name
+                                ),
+                                fragment_spread.span,
+                            );
+                        }
+                        Some(arg) if matches!(arg.value, Value::Null) => {
+                            ctx.add_error(
+                                format!(
+                                    "Required argument '{}' must not be null in spread of fragment '{}'",
+                                    var_name, fragment_name
+                                ),
+                                arg.span,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
 
         Control::Next
@@ -254,6 +340,48 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for FragmentRules<'a, 'b> {
         }
 
         Control::Next
+    }
+}
+
+fn spread_arguments_are_equal<'a>(args1: &[Argument<'a>], args2: &[Argument<'a>]) -> bool {
+    if args1.len() != args2.len() {
+        return false;
+    }
+    for arg1 in args1 {
+        let name = arg1.name.as_str();
+        match args2.iter().find(|a| a.name.as_str() == name) {
+            None => return false,
+            Some(arg2) => {
+                if !values_are_equal(&arg1.value, &arg2.value) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
+fn values_are_equal<'a>(v1: &Value<'a>, v2: &Value<'a>) -> bool {
+    match (v1, v2) {
+        (Value::Variable(a), Value::Variable(b)) => a.as_str() == b.as_str(),
+        (Value::Int(a), Value::Int(b)) => a == b,
+        (Value::Float(a), Value::Float(b)) => a == b,
+        (Value::String(a), Value::String(b)) => a == b,
+        (Value::Boolean(a), Value::Boolean(b)) => a == b,
+        (Value::Null, Value::Null) => true,
+        (Value::Enum(a), Value::Enum(b)) => a.as_str() == b.as_str(),
+        (Value::List(a), Value::List(b)) => {
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_are_equal(x, y))
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            a.len() == b.len()
+                && a.iter().all(|f1| {
+                    b.iter()
+                        .find(|f2| f2.name.as_str() == f1.name.as_str())
+                        .is_some_and(|f2| values_are_equal(&f1.value, &f2.value))
+                })
+        }
+        _ => false,
     }
 }
 
@@ -472,6 +600,159 @@ mod tests {
             FragmentRules,
             r#"enum Status { ACTIVE INACTIVE }"#,
             r#"query Q { user { ... on Status { field } } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_names_valid() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_names_unknown() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(unknownArg: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_provided() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_missing() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_null() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: null) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_optional_argument_omitted() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_non_null_with_default_omitted() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_uniqueness_valid() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int, quality: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $quality: Int!) on User { profilePic(size: $size, quality: $quality) } query Q { user { ...Avatar(size: 100, quality: 80) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_uniqueness_duplicate() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100, size: 200) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_with_variable_argument() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q($s: Int!) { user { ...Avatar(size: $s) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_without_args_on_fragment_without_vars() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { name: String }"#,
+            r#"fragment UserFields on User { name } query Q { user { ...UserFields } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_same_fragment_same_args() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_same_fragment_different_args() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) ...Avatar(size: 200) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_same_fragment_no_args() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { name: String }"#,
+            r#"fragment UserFields on User { name } query Q { user { ...UserFields ...UserFields } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_same_fragment_different_variable_args() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q($a: Int!, $b: Int!) { user { ...Avatar(size: $a) ...Avatar(size: $b) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_same_fragment_same_variable_args() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q($s: Int!) { user { ...Avatar(size: $s) ...Avatar(size: $s) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fields_in_set_can_merge_different_fragments_any_args() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String name: String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } fragment Name on User { name } query Q { user { ...Avatar(size: 100) ...Name } }"#
         ));
     }
 }

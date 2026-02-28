@@ -18,3 +18,10 @@ export const RootFieldKey = '__root' as const;
  * @internal
  */
 export const FragmentRefKey = '__fragmentRef' as const;
+
+/**
+ * Special key used to carry merged variable context (fragment args + operation variables)
+ * on fragment references. Used by readFragment to resolve variable-dependent field keys.
+ * @internal
+ */
+export const FragmentVarsKey = '__fragmentVars' as const;

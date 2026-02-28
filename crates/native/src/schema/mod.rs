@@ -181,6 +181,9 @@ mod integration_tests {
                 Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                     span: Span::empty(),
                     name: FragmentName::new(Name::new(arena.intern("UserFields"))),
+
+                    variable_definitions: arena.alloc_vec(),
+
                     type_condition: TypeName::new(Name::new(arena.intern("User"))),
                     directives: arena.alloc_vec(),
                     selection_set: SelectionSet {
@@ -206,6 +209,9 @@ mod integration_tests {
                         selections: bumpalo::vec![in arena.allocator(); Selection::FragmentSpread(FragmentSpread {
                             span: Span::empty(),
                             fragment_name: FragmentName::new(Name::new(arena.intern("UserFields"))),
+
+                            arguments: arena.alloc_vec(),
+
                             directives: arena.alloc_vec(),
                         })],
                     },
@@ -286,6 +292,9 @@ mod integration_tests {
             definitions: bumpalo::vec![in arena.allocator(); Definition::Executable(ExecutableDefinition::Fragment(FragmentDefinition {
                 span: Span::empty(),
                 name: FragmentName::new(Name::new(arena.intern("UserFields"))),
+
+                variable_definitions: arena.alloc_vec(),
+
                 type_condition: TypeName::new(Name::new(arena.intern("User"))),
                 directives: arena.alloc_vec(),
                 selection_set: SelectionSet { selections: arena.alloc_vec() },

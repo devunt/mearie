@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { denormalize } from './denormalize.ts';
-import { RootFieldKey, EntityLinkKey, FragmentRefKey } from './constants.ts';
+import { RootFieldKey, EntityLinkKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey } from './types.ts';
 import type { Selection } from '@mearie/shared';
 
@@ -4392,6 +4392,224 @@ describe('denormalize', () => {
 
       expect(partial).toBe(false);
       expect((data as Record<string, unknown>).user).toEqual({ id: '1', name: 'Alice' });
+    });
+  });
+
+  describe('fragment arguments', () => {
+    it('stores FragmentVarsKey when fragment spread has args', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 100 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'variable', name: 'size' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'profilePic@{"size":100}': 'pic-100.jpg',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage);
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
+    });
+
+    it('does not store FragmentVarsKey when fragment spread has no args', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage);
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toBeUndefined();
+    });
+
+    it('resolves variable arguments from operation variables', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'variable', name: 'avatarSize' } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'variable', name: 'size' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'profilePic@{"size":200}': 'pic-200.jpg',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { avatarSize: 200 });
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentVarsKey]).toEqual({ Avatar: { avatarSize: 200, size: 200 } });
+    });
+
+    it('merges multiple fragment spreads with different args on same entity', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 80 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'variable', name: 'size' } },
+                },
+              ],
+            },
+            {
+              kind: 'FragmentSpread',
+              name: 'Bio',
+              args: { maxLength: { kind: 'literal', value: 200 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'biography',
+                  type: 'String',
+                  args: { maxLength: { kind: 'variable', name: 'maxLength' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'profilePic@{"size":80}': 'pic-80.jpg',
+          'biography@{"maxLength":200}': 'Short bio',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage);
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentVarsKey]).toEqual({
+        Avatar: { size: 80 },
+        Bio: { maxLength: 200 },
+      });
+    });
+
+    it('fragment args override operation variables with same name in merged vars', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal', value: 100 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'variable', name: 'size' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'profilePic@{"size":100}': 'pic-100.jpg',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { size: 50 });
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
     });
   });
 });

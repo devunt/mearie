@@ -91,6 +91,13 @@ pub trait Transformer<'a> {
     ) -> Option<FragmentDefinition<'a>> {
         let arena = ctx.arena();
 
+        let mut variable_definitions = bumpalo::vec![in arena.allocator();];
+        for v in &frag.variable_definitions {
+            if let Some(transformed) = self.transform_variable_definition(ctx, v) {
+                variable_definitions.push(transformed);
+            }
+        }
+
         let mut directives = bumpalo::vec![in arena.allocator();];
         for d in &frag.directives {
             if let Some(transformed) = self.transform_directive(ctx, d) {
@@ -101,6 +108,7 @@ pub trait Transformer<'a> {
         Some(FragmentDefinition {
             span: frag.span,
             name: frag.name,
+            variable_definitions,
             type_condition: frag.type_condition,
             directives,
             selection_set: self.transform_selection_set(ctx, &frag.selection_set, frag.type_condition.as_str())?,
@@ -195,6 +203,13 @@ pub trait Transformer<'a> {
     ) -> Option<FragmentSpread<'a>> {
         let arena = ctx.arena();
 
+        let mut arguments = bumpalo::vec![in arena.allocator();];
+        for a in &spread.arguments {
+            if let Some(transformed) = self.transform_argument(ctx, a) {
+                arguments.push(transformed);
+            }
+        }
+
         let mut directives = bumpalo::vec![in arena.allocator();];
         for d in &spread.directives {
             if let Some(transformed) = self.transform_directive(ctx, d) {
@@ -205,6 +220,7 @@ pub trait Transformer<'a> {
         Some(FragmentSpread {
             span: spread.span,
             fragment_name: spread.fragment_name,
+            arguments,
             directives,
         })
     }

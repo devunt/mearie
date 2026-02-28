@@ -49,6 +49,7 @@ Document {
                                                             "ResultFields",
                                                         ),
                                                     ),
+                                                    arguments: [],
                                                     directives: [],
                                                 },
                                             ),
@@ -151,6 +152,7 @@ Document {
                             "ResultFields",
                         ),
                     ),
+                    variable_definitions: [],
                     type_condition: TypeName(
                         Name(
                             "SearchResult",

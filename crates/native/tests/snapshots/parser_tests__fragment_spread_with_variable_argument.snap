@@ -1,0 +1,199 @@
+---
+source: crates/native/tests/parser_tests.rs
+expression: "parse!(r#\"query GetUser($avatarSize: Int!) {\n            user {\n                ...Avatar(size: $avatarSize)\n            }\n        }\n        fragment Avatar($size: Int!) on User { profilePic(size: $size) }\"#)"
+---
+Document {
+    source: Source {
+        code: "query GetUser($avatarSize: Int!) {\n            user {\n                ...Avatar(size: $avatarSize)\n            }\n        }\n        fragment Avatar($size: Int!) on User { profilePic(size: $size) }",
+        file_path: "test.graphql",
+        start_line: 1,
+    },
+    definitions: [
+        Executable(
+            Operation(
+                OperationDefinition {
+                    span: Span {
+                        start: 0,
+                        end: 122,
+                    },
+                    operation_type: Query,
+                    name: Some(
+                        Name(
+                            "GetUser",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 14,
+                                end: 32,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "avatarSize",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 47,
+                                        end: 112,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "user",
+                                        ),
+                                    ),
+                                    arguments: [],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [
+                                            FragmentSpread(
+                                                FragmentSpread {
+                                                    span: Span {
+                                                        start: 70,
+                                                        end: 112,
+                                                    },
+                                                    fragment_name: FragmentName(
+                                                        Name(
+                                                            "Avatar",
+                                                        ),
+                                                    ),
+                                                    arguments: [
+                                                        Argument {
+                                                            span: Span {
+                                                                start: 80,
+                                                                end: 97,
+                                                            },
+                                                            name: ArgumentName(
+                                                                Name(
+                                                                    "size",
+                                                                ),
+                                                            ),
+                                                            value: Variable(
+                                                                Name(
+                                                                    "avatarSize",
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                    directives: [],
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+        Executable(
+            Fragment(
+                FragmentDefinition {
+                    span: Span {
+                        start: 131,
+                        end: 195,
+                    },
+                    name: FragmentName(
+                        Name(
+                            "Avatar",
+                        ),
+                    ),
+                    variable_definitions: [
+                        VariableDefinition {
+                            span: Span {
+                                start: 147,
+                                end: 159,
+                            },
+                            variable: VariableName(
+                                Name(
+                                    "size",
+                                ),
+                            ),
+                            typ: NonNull(
+                                Named(
+                                    NamedType {
+                                        name: TypeName(
+                                            Name(
+                                                "Int",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ),
+                            default_value: None,
+                            directives: [],
+                        },
+                    ],
+                    type_condition: TypeName(
+                        Name(
+                            "User",
+                        ),
+                    ),
+                    directives: [],
+                    selection_set: SelectionSet {
+                        selections: [
+                            Field(
+                                Field {
+                                    span: Span {
+                                        start: 170,
+                                        end: 195,
+                                    },
+                                    alias: None,
+                                    name: FieldName(
+                                        Name(
+                                            "profilePic",
+                                        ),
+                                    ),
+                                    arguments: [
+                                        Argument {
+                                            span: Span {
+                                                start: 181,
+                                                end: 192,
+                                            },
+                                            name: ArgumentName(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                            value: Variable(
+                                                Name(
+                                                    "size",
+                                                ),
+                                            ),
+                                        },
+                                    ],
+                                    directives: [],
+                                    selection_set: SelectionSet {
+                                        selections: [],
+                                    },
+                                },
+                            ),
+                        ],
+                    },
+                },
+            ),
+        ),
+    ],
+}

@@ -1,5 +1,5 @@
 use super::context::TransformContext;
-use super::rules::{DirectiveRules, SelectionRules};
+use super::rules::{DirectiveRules, FragmentArgumentRules, SelectionRules};
 use super::transformer::Transformer;
 use crate::arena::Arena;
 use crate::graphql::ast::Document;
@@ -9,7 +9,8 @@ use crate::schema::SchemaIndex;
 ///
 /// Transformation order:
 /// 1. DirectiveRules - Removes @required directives
-/// 2. SelectionRules - Adds __typename and id fields
+/// 2. FragmentArgumentRules - Strips fragment variable definitions and spread arguments
+/// 3. SelectionRules - Adds __typename and id fields
 ///
 /// Returns the transformed document allocated in the same arena.
 pub fn transform_document<'a>(
@@ -22,6 +23,11 @@ pub fn transform_document<'a>(
     let mut directive_rules = DirectiveRules::new();
     let doc = directive_rules
         .transform_document(&mut ctx, document)
+        .expect("Document transformation should not filter out document");
+
+    let mut fragment_argument_rules = FragmentArgumentRules::new();
+    let doc = fragment_argument_rules
+        .transform_document(&mut ctx, doc)
         .expect("Document transformation should not filter out document");
 
     let mut selection_rules = SelectionRules::new();

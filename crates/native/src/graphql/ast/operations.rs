@@ -114,6 +114,7 @@ impl<'a> Field<'a> {
 pub struct FragmentSpread<'a> {
     pub span: Span,
     pub fragment_name: super::types::FragmentName<'a>,
+    pub arguments: Vec<'a, Argument<'a>>,
     pub directives: Vec<'a, Directive<'a>>,
 }
 

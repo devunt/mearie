@@ -1,5 +1,5 @@
 use super::directives::Directive;
-use super::operations::SelectionSet;
+use super::operations::{SelectionSet, VariableDefinition};
 use super::types::{FragmentName, TypeName};
 use crate::error::location::Span;
 use bumpalo::collections::Vec;
@@ -9,6 +9,7 @@ use bumpalo::collections::Vec;
 pub struct FragmentDefinition<'a> {
     pub span: Span,
     pub name: FragmentName<'a>,
+    pub variable_definitions: Vec<'a, VariableDefinition<'a>>,
     pub type_condition: TypeName<'a>,
     pub directives: Vec<'a, Directive<'a>>,
     pub selection_set: SelectionSet<'a>,

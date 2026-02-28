@@ -168,6 +168,12 @@ impl<'a> VisitNode<'a> for FragmentDefinition<'a> {
             flow => return flow,
         }
 
+        for var_def in &self.variable_definitions {
+            if var_def.visit(ctx, visitor) == Control::Break {
+                return Control::Break;
+            }
+        }
+
         if visit_directives(&self.directives, ctx, visitor) == Control::Break {
             return Control::Break;
         }
@@ -246,6 +252,12 @@ impl<'a> VisitNode<'a> for FragmentSpread<'a> {
         match visitor.enter_fragment_spread(ctx, self) {
             Control::Next => {}
             flow => return flow,
+        }
+
+        for argument in &self.arguments {
+            if argument.visit(ctx, visitor) == Control::Break {
+                return Control::Break;
+            }
         }
 
         if visit_directives(&self.directives, ctx, visitor) == Control::Break {

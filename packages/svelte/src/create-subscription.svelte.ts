@@ -1,4 +1,4 @@
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, SubscriptionOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
@@ -8,16 +8,19 @@ export type Subscription<T extends Artifact<'subscription'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
     };
 
 export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
@@ -37,6 +40,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
   let data = $state.raw<DataOf<T> | undefined>();
   let loading = $state<boolean>(!options?.().skip);
   let error = $state<AggregatedError | undefined>();
+  let metadata = $state<OperationResult['metadata']>();
 
   $effect(() => {
     if (options?.().skip) {
@@ -51,6 +55,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
       client.executeSubscription(subscription, typeof variables === 'function' ? variables() : undefined, options?.()),
       subscribe({
         next: (result) => {
+          metadata = result.metadata;
           if (result.errors && result.errors.length > 0) {
             const err = new AggregatedError(result.errors);
 
@@ -84,6 +89,9 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
     },
     get error() {
       return error;
+    },
+    get metadata() {
+      return metadata;
     },
   } as Subscription<T>;
 };

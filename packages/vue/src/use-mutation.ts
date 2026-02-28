@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, MutationOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, take, collect } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
@@ -9,16 +9,19 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       data: Ref<undefined>;
       loading: Ref<true>;
       error: Ref<undefined>;
+      metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<undefined>;
+      metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<AggregatedError>;
+      metadata: Ref<OperationResult['metadata']>;
     };
 
 export type UseMutationOptions = MutationOptions;
@@ -38,10 +41,12 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
   const data = ref<DataOf<T> | undefined>(undefined);
   const loading = ref<boolean>(false);
   const error = ref<AggregatedError | undefined>(undefined);
+  const metadata = ref<OperationResult['metadata']>();
 
   const execute = async (variables?: VariablesOf<T>, options?: UseMutationOptions): Promise<DataOf<T>> => {
     loading.value = true;
     error.value = undefined;
+    metadata.value = undefined;
 
     try {
       const result = await pipe(
@@ -54,12 +59,14 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
       if (result.errors && result.errors.length > 0) {
         const err = new AggregatedError(result.errors);
 
+        metadata.value = result.metadata;
         error.value = err;
         loading.value = false;
 
         throw err;
       }
 
+      metadata.value = result.metadata;
       data.value = result.data as DataOf<T>;
       loading.value = false;
 
@@ -81,6 +88,7 @@ export const useMutation = <T extends Artifact<'mutation'>>(mutation: T): Mutati
       data,
       loading,
       error,
+      metadata,
     },
   ] as Mutation<T>;
 };

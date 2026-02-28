@@ -35,7 +35,7 @@ jobs:
 
       - name: Cache native artifact
         id: native-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: crates/native/dist/*.node
           key: native-${{ matrix.settings.target }}-${{ hashFiles('crates/**', 'Cargo.lock') }}

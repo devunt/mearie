@@ -1,0 +1,47 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser($userId: ID!) {\n  user(id: $userId) {\n    __typename\n    id\n    name\n    email\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		args: { id: {
+			kind: "variable",
+			name: "userId"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "email",
+				type: "String",
+				nullable: true
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "userId",
+		type: "ID"
+	}]
+};
+export const artifactMap = { "\n            query GetUser($userId: ID!) {\n                user(id: $userId) {\n                    id\n                    name\n                    email\n                }\n            }\n        ": $GetUser };
+export const schema = { entities: {
+	"User": { keyFields: ["id"] },
+	"Post": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

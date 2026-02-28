@@ -1,0 +1,63 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetFeed = {
+	name: "GetFeed",
+	body: "query GetFeed {\n  feed {\n    __typename\n    ... on Article {\n      __typename\n      id\n      ...ArticlePreview\n    }\n    ... on Comment {\n      __typename\n      id\n      body\n    }\n  }\n}\n\nfragment ArticlePreview on Article {\n  __typename\n  id\n  headline\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "feed",
+		type: "FeedItem",
+		array: true,
+		selections: [{
+			kind: "InlineFragment",
+			on: "Article",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "FragmentSpread",
+				name: "ArticlePreview",
+				selections: [{
+					kind: "Field",
+					name: "headline",
+					type: "String"
+				}]
+			}]
+		}, {
+			kind: "InlineFragment",
+			on: "Comment",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "body",
+				type: "String"
+			}]
+		}]
+	}]
+};
+export const $ArticlePreview = {
+	name: "ArticlePreview",
+	body: "fragment ArticlePreview on Article {\n  __typename\n  id\n  headline\n}",
+	kind: "fragment",
+	selections: [{
+		kind: "Field",
+		name: "headline",
+		type: "String"
+	}]
+};
+export const artifactMap = {
+	"\n            query GetFeed {\n                feed {\n                    ... on Article {\n                        id\n                        ...ArticlePreview\n                    }\n                    ... on Comment {\n                        id\n                        body\n                    }\n                }\n            }\n        ": $GetFeed,
+	"\n            fragment ArticlePreview on Article {\n                headline\n            }\n        ": $ArticlePreview
+};
+export const schema = { entities: {
+	"Article": { keyFields: ["id"] },
+	"Comment": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

@@ -1,0 +1,51 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		Settings: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "theme" | "id";
+		};
+		User: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "settings" | "id";
+		};
+		Theme: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "primaryColor" | "id";
+		};
+	};
+	queryFields: "user";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type GetTheme$data = {
+	user: {
+		settings?: $Nullable<$Nullable<{
+			theme: $Nullable<{
+				primaryColor: $Scalars["String"];
+				id: $Scalars["ID"];
+			}>;
+			id: $Scalars["ID"];
+		}>>;
+		id: $Scalars["ID"];
+	};
+};
+export type GetTheme$vars = {};
+export type GetTheme = $Artifact<"query", "GetTheme", GetTheme$data, GetTheme$vars>;

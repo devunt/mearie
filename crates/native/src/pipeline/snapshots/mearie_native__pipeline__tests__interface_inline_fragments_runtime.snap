@@ -1,0 +1,54 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetNode = {
+	name: "GetNode",
+	body: "query GetNode($id: ID!) {\n  node(id: $id) {\n    __typename\n    id\n    ... on User {\n      __typename\n      id\n      name\n    }\n    ... on Post {\n      __typename\n      id\n      title\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "node",
+		type: "Node",
+		nullable: true,
+		args: { id: {
+			kind: "variable",
+			name: "id"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "InlineFragment",
+				on: "User",
+				selections: [{
+					kind: "Field",
+					name: "name",
+					type: "String"
+				}]
+			},
+			{
+				kind: "InlineFragment",
+				on: "Post",
+				selections: [{
+					kind: "Field",
+					name: "title",
+					type: "String"
+				}]
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "id",
+		type: "ID"
+	}]
+};
+export const artifactMap = { "\n            query GetNode($id: ID!) {\n                node(id: $id) {\n                    id\n                    ... on User {\n                        name\n                    }\n                    ... on Post {\n                        title\n                    }\n                }\n            }\n        ": $GetNode };
+export const schema = { entities: {
+	"User": { keyFields: ["id"] },
+	"Post": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

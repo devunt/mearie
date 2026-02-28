@@ -1,0 +1,63 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $CreateOrder = {
+	name: "CreateOrder",
+	body: "mutation CreateOrder($input: CreateOrderInput!) {\n  createOrder(input: $input) {\n    __typename\n    id\n    status\n  }\n}",
+	kind: "mutation",
+	selections: [{
+		kind: "Field",
+		name: "createOrder",
+		type: "Order",
+		args: { input: {
+			kind: "variable",
+			name: "input"
+		} },
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "status",
+			type: "String"
+		}]
+	}],
+	variableDefs: [{
+		name: "input",
+		type: "CreateOrderInput"
+	}]
+};
+export const artifactMap = { "\n            mutation CreateOrder($input: CreateOrderInput!) {\n                createOrder(input: $input) {\n                    id\n                    status\n                }\n            }\n        ": $CreateOrder };
+export const schema = {
+	entities: { "Order": { keyFields: ["id"] } },
+	inputs: {
+		"AddressInput": { fields: [{
+			name: "street",
+			type: "String"
+		}, {
+			name: "city",
+			type: "String"
+		}] },
+		"ShippingInput": { fields: [{
+			name: "address",
+			type: "AddressInput"
+		}] },
+		"OrderItemInput": { fields: [{
+			name: "productId",
+			type: "ID"
+		}, {
+			name: "quantity",
+			type: "Int"
+		}] },
+		"CreateOrderInput": { fields: [{
+			name: "item",
+			type: "OrderItemInput"
+		}, {
+			name: "shipping",
+			type: "ShippingInput"
+		}] }
+	}
+};
+export const graphql = (artifact) => artifactMap[artifact];

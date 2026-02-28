@@ -1,0 +1,54 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetTheme = {
+	name: "GetTheme",
+	body: "query GetTheme {\n  user {\n    __typename\n    id\n    settings {\n      __typename\n      id\n      theme {\n        __typename\n        id\n        primaryColor\n      }\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "settings",
+			type: "Settings",
+			nullable: true,
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "theme",
+				type: "Theme",
+				selections: [{
+					kind: "Field",
+					name: "id",
+					type: "ID"
+				}, {
+					kind: "Field",
+					name: "primaryColor",
+					type: "String",
+					nullable: true,
+					directives: [{
+						name: "required",
+						args: { action: "CASCADE" }
+					}]
+				}]
+			}]
+		}]
+	}]
+};
+export const artifactMap = { "\n            query GetTheme {\n                user {\n                    id\n                    settings {\n                        id\n                        theme {\n                            id\n                            primaryColor @required(action: CASCADE)\n                        }\n                    }\n                }\n            }\n        ": $GetTheme };
+export const schema = { entities: {
+	"Settings": { keyFields: ["id"] },
+	"User": { keyFields: ["id"] },
+	"Theme": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

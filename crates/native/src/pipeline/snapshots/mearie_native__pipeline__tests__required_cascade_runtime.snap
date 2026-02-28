@@ -1,0 +1,43 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUserAvatar = {
+	name: "GetUserAvatar",
+	body: "query GetUserAvatar {\n  user {\n    __typename\n    id\n    profile {\n      __typename\n      id\n      avatar\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "profile",
+			type: "Profile",
+			selections: [{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			}, {
+				kind: "Field",
+				name: "avatar",
+				type: "String",
+				nullable: true,
+				directives: [{
+					name: "required",
+					args: { action: "CASCADE" }
+				}]
+			}]
+		}]
+	}]
+};
+export const artifactMap = { "\n            query GetUserAvatar {\n                user {\n                    id\n                    profile {\n                        id\n                        avatar @required(action: CASCADE)\n                    }\n                }\n            }\n        ": $GetUserAvatar };
+export const schema = { entities: {
+	"User": { keyFields: ["id"] },
+	"Profile": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

@@ -1,0 +1,81 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUserAddress = {
+	name: "GetUserAddress",
+	body: "query GetUserAddress {\n  user {\n    __typename\n    id\n    name\n    profile {\n      __typename\n      id\n      bio\n      address {\n        __typename\n        id\n        street\n        city\n        country\n      }\n    }\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "profile",
+				type: "Profile",
+				nullable: true,
+				selections: [
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "bio",
+						type: "String",
+						nullable: true
+					},
+					{
+						kind: "Field",
+						name: "address",
+						type: "Address",
+						nullable: true,
+						selections: [
+							{
+								kind: "Field",
+								name: "id",
+								type: "ID"
+							},
+							{
+								kind: "Field",
+								name: "street",
+								type: "String"
+							},
+							{
+								kind: "Field",
+								name: "city",
+								type: "String"
+							},
+							{
+								kind: "Field",
+								name: "country",
+								type: "String"
+							}
+						]
+					}
+				]
+			}
+		]
+	}]
+};
+export const artifactMap = { "\n            query GetUserAddress {\n                user {\n                    id\n                    name\n                    profile {\n                        id\n                        bio\n                        address {\n                            id\n                            street\n                            city\n                            country\n                        }\n                    }\n                }\n            }\n        ": $GetUserAddress };
+export const schema = { entities: {
+	"Address": { keyFields: ["id"] },
+	"User": { keyFields: ["id"] },
+	"Profile": { keyFields: ["id"] }
+} };
+export const graphql = (artifact) => artifactMap[artifact];

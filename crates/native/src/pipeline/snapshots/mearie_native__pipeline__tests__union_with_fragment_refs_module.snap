@@ -1,0 +1,15 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetFeed = import("./types.d.ts").GetFeed;
+type ArticlePreview = import("./types.d.ts").ArticlePreview;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetFeed = import("./types.d.ts").GetFeed;
+	export type ArticlePreview = import("./types.d.ts").ArticlePreview;
+	export type ArticlePreview$key = import("./types.d.ts").ArticlePreview$key;
+	export function graphql(artifact: "\n            query GetFeed {\n                feed {\n                    ... on Article {\n                        id\n                        ...ArticlePreview\n                    }\n                    ... on Comment {\n                        id\n                        body\n                    }\n                }\n            }\n        "): GetFeed;
+	export function graphql(artifact: "\n            fragment ArticlePreview on Article {\n                headline\n            }\n        "): ArticlePreview;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

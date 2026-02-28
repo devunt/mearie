@@ -1,0 +1,77 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser($id: ID!) {\n  user(id: $id) {\n    __typename\n    id\n    name\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		args: { id: {
+			kind: "variable",
+			name: "id"
+		} },
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "name",
+			type: "String"
+		}]
+	}],
+	variableDefs: [{
+		name: "id",
+		type: "ID"
+	}]
+};
+export const $ListUsers = {
+	name: "ListUsers",
+	body: "query ListUsers {\n  users {\n    __typename\n    id\n    name\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "users",
+		type: "User",
+		array: true,
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "name",
+			type: "String"
+		}]
+	}]
+};
+export const $DeleteUser = {
+	name: "DeleteUser",
+	body: "mutation DeleteUser($id: ID!) {\n  deleteUser(id: $id)\n}",
+	kind: "mutation",
+	selections: [{
+		kind: "Field",
+		name: "deleteUser",
+		type: "Boolean",
+		args: { id: {
+			kind: "variable",
+			name: "id"
+		} }
+	}],
+	variableDefs: [{
+		name: "id",
+		type: "ID"
+	}]
+};
+export const artifactMap = {
+	"\n            query GetUser($id: ID!) {\n                user(id: $id) {\n                    id\n                    name\n                }\n            }\n        ": $GetUser,
+	"\n            query ListUsers {\n                users {\n                    id\n                    name\n                }\n            }\n        ": $ListUsers,
+	"\n            mutation DeleteUser($id: ID!) {\n                deleteUser(id: $id)\n            }\n        ": $DeleteUser
+};
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

@@ -1,0 +1,54 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser {\n  user {\n    __typename\n    id\n    ...UserInfo\n  }\n}\n\nfragment UserInfo on User {\n  __typename\n  id\n  name\n  email\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "FragmentSpread",
+			name: "UserInfo",
+			selections: [{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			}, {
+				kind: "Field",
+				name: "email",
+				type: "String",
+				nullable: true
+			}]
+		}]
+	}]
+};
+export const $UserInfo = {
+	name: "UserInfo",
+	body: "fragment UserInfo on User {\n  __typename\n  id\n  name\n  email\n}",
+	kind: "fragment",
+	selections: [{
+		kind: "Field",
+		name: "name",
+		type: "String"
+	}, {
+		kind: "Field",
+		name: "email",
+		type: "String",
+		nullable: true
+	}]
+};
+export const artifactMap = {
+	"\n            query GetUser {\n                user {\n                    id\n                    ...UserInfo\n                }\n            }\n        ": $GetUser,
+	"\n            fragment UserInfo on User {\n                name\n                email\n            }\n        ": $UserInfo
+};
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

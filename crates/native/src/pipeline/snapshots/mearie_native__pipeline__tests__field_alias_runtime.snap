@@ -1,0 +1,69 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetTwoUsers = {
+	name: "GetTwoUsers",
+	body: "query GetTwoUsers($first: ID!, $second: ID!) {\n  firstUser: user(id: $first) {\n    __typename\n    id\n    displayName: name\n    email\n  }\n  secondUser: user(id: $second) {\n    __typename\n    id\n    displayName: name\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		alias: "firstUser",
+		args: { id: {
+			kind: "variable",
+			name: "first"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String",
+				alias: "displayName"
+			},
+			{
+				kind: "Field",
+				name: "email",
+				type: "String",
+				nullable: true
+			}
+		]
+	}, {
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		alias: "secondUser",
+		args: { id: {
+			kind: "variable",
+			name: "second"
+		} },
+		selections: [{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		}, {
+			kind: "Field",
+			name: "name",
+			type: "String",
+			alias: "displayName"
+		}]
+	}],
+	variableDefs: [{
+		name: "first",
+		type: "ID"
+	}, {
+		name: "second",
+		type: "ID"
+	}]
+};
+export const artifactMap = { "\n            query GetTwoUsers($first: ID!, $second: ID!) {\n                firstUser: user(id: $first) {\n                    id\n                    displayName: name\n                    email\n                }\n                secondUser: user(id: $second) {\n                    id\n                    displayName: name\n                }\n            }\n        ": $GetTwoUsers };
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

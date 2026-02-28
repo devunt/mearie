@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetTwoUsers = import("./types.d.ts").GetTwoUsers;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetTwoUsers = import("./types.d.ts").GetTwoUsers;
+	export function graphql(artifact: "\n            query GetTwoUsers($first: ID!, $second: ID!) {\n                firstUser: user(id: $first) {\n                    id\n                    displayName: name\n                    email\n                }\n                secondUser: user(id: $second) {\n                    id\n                    displayName: name\n                }\n            }\n        "): GetTwoUsers;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

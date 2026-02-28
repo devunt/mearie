@@ -1,0 +1,19 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetUser = import("./types.d.ts").GetUser;
+type UserContact = import("./types.d.ts").UserContact;
+type UserName = import("./types.d.ts").UserName;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetUser = import("./types.d.ts").GetUser;
+	export type UserContact = import("./types.d.ts").UserContact;
+	export type UserName = import("./types.d.ts").UserName;
+	export type UserContact$key = import("./types.d.ts").UserContact$key;
+	export type UserName$key = import("./types.d.ts").UserName$key;
+	export function graphql(artifact: "\n            query GetUser {\n                user {\n                    id\n                    ...UserName\n                    ...UserContact\n                }\n            }\n        "): GetUser;
+	export function graphql(artifact: "\n            fragment UserContact on User {\n                email\n                age\n            }\n        "): UserContact;
+	export function graphql(artifact: "\n            fragment UserName on User {\n                name\n            }\n        "): UserName;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

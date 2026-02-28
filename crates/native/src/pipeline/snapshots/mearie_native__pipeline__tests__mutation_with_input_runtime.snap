@@ -1,0 +1,59 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $CreateUser = {
+	name: "CreateUser",
+	body: "mutation CreateUser($input: CreateUserInput!) {\n  createUser(input: $input) {\n    __typename\n    id\n    name\n    email\n  }\n}",
+	kind: "mutation",
+	selections: [{
+		kind: "Field",
+		name: "createUser",
+		type: "User",
+		args: { input: {
+			kind: "variable",
+			name: "input"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "email",
+				type: "String"
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "input",
+		type: "CreateUserInput"
+	}]
+};
+export const artifactMap = { "\n            mutation CreateUser($input: CreateUserInput!) {\n                createUser(input: $input) {\n                    id\n                    name\n                    email\n                }\n            }\n        ": $CreateUser };
+export const schema = {
+	entities: { "User": { keyFields: ["id"] } },
+	inputs: { "CreateUserInput": { fields: [
+		{
+			name: "name",
+			type: "String"
+		},
+		{
+			name: "email",
+			type: "String"
+		},
+		{
+			name: "age",
+			type: "Int",
+			nullable: true
+		}
+	] } }
+};
+export const graphql = (artifact) => artifactMap[artifact];

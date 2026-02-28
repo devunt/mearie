@@ -1,0 +1,43 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUsersByRole = {
+	name: "GetUsersByRole",
+	body: "query GetUsersByRole($role: Role!) {\n  usersByRole(role: $role) {\n    __typename\n    id\n    name\n    role\n  }\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "usersByRole",
+		type: "User",
+		array: true,
+		args: { role: {
+			kind: "variable",
+			name: "role"
+		} },
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			},
+			{
+				kind: "Field",
+				name: "role",
+				type: "Role"
+			}
+		]
+	}],
+	variableDefs: [{
+		name: "role",
+		type: "Role"
+	}]
+};
+export const artifactMap = { "\n            query GetUsersByRole($role: Role!) {\n                usersByRole(role: $role) {\n                    id\n                    name\n                    role\n                }\n            }\n        ": $GetUsersByRole };
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

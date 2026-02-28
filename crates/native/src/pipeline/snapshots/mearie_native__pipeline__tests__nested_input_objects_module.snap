@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type CreateOrder = import("./types.d.ts").CreateOrder;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type CreateOrder = import("./types.d.ts").CreateOrder;
+	export function graphql(artifact: "\n            mutation CreateOrder($input: CreateOrderInput!) {\n                createOrder(input: $input) {\n                    id\n                    status\n                }\n            }\n        "): CreateOrder;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

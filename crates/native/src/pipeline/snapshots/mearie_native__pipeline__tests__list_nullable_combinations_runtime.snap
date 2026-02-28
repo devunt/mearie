@@ -1,0 +1,40 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $ListCombinations = {
+	name: "ListCombinations",
+	body: "query ListCombinations {\n  a\n  b\n  c\n  d\n}",
+	kind: "query",
+	selections: [
+		{
+			kind: "Field",
+			name: "a",
+			type: "String",
+			array: true
+		},
+		{
+			kind: "Field",
+			name: "b",
+			type: "String",
+			array: true,
+			nullable: true
+		},
+		{
+			kind: "Field",
+			name: "c",
+			type: "String",
+			array: true,
+			nullable: true
+		},
+		{
+			kind: "Field",
+			name: "d",
+			type: "String",
+			array: true
+		}
+	]
+};
+export const artifactMap = { "\n            query ListCombinations {\n                a\n                b\n                c\n                d\n            }\n        ": $ListCombinations };
+export const schema = { entities: {} };
+export const graphql = (artifact) => artifactMap[artifact];

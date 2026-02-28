@@ -1,0 +1,36 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		Message: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "text" | "sender" | "id";
+		};
+	};
+	queryFields: "_unused";
+}>;
+export type RequiredAction = "THROW" | "CASCADE";
+export type OnMessageAdded$data = {
+	messageAdded: {
+		text: $Scalars["String"];
+		sender: $Scalars["String"];
+		id: $Scalars["ID"];
+	};
+};
+export type OnMessageAdded$vars = {
+	channelId: $Scalars["ID"];
+};
+export type OnMessageAdded = $Artifact<"subscription", "OnMessageAdded", OnMessageAdded$data, OnMessageAdded$vars>;

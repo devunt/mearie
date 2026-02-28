@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type ListCombinations = import("./types.d.ts").ListCombinations;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type ListCombinations = import("./types.d.ts").ListCombinations;
+	export function graphql(artifact: "\n            query ListCombinations {\n                a\n                b\n                c\n                d\n            }\n        "): ListCombinations;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

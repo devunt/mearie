@@ -1,0 +1,11 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& module.code"
+---
+type GetEvent = import("./types.d.ts").GetEvent;
+declare module "$mearie" {
+	export type RequiredAction = import("./types.d.ts").RequiredAction;
+	export type GetEvent = import("./types.d.ts").GetEvent;
+	export function graphql(artifact: "\n            query GetEvent {\n                event {\n                    id\n                    name\n                    startAt\n                    metadata\n                }\n            }\n        "): GetEvent;
+	export declare const schema: import("./types.d.ts").$Schema;
+}

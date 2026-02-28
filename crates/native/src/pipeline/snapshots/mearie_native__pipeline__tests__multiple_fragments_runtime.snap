@@ -1,0 +1,79 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& runtime.code"
+---
+export const $GetUser = {
+	name: "GetUser",
+	body: "query GetUser {\n  user {\n    __typename\n    id\n    ...UserName\n    ...UserContact\n  }\n}\n\nfragment UserContact on User {\n  __typename\n  id\n  email\n  age\n}\n\nfragment UserName on User {\n  __typename\n  id\n  name\n}",
+	kind: "query",
+	selections: [{
+		kind: "Field",
+		name: "user",
+		type: "User",
+		nullable: true,
+		selections: [
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "FragmentSpread",
+				name: "UserName",
+				selections: [{
+					kind: "Field",
+					name: "name",
+					type: "String"
+				}]
+			},
+			{
+				kind: "FragmentSpread",
+				name: "UserContact",
+				selections: [{
+					kind: "Field",
+					name: "email",
+					type: "String",
+					nullable: true
+				}, {
+					kind: "Field",
+					name: "age",
+					type: "Int",
+					nullable: true
+				}]
+			}
+		]
+	}]
+};
+export const $UserContact = {
+	name: "UserContact",
+	body: "fragment UserContact on User {\n  __typename\n  id\n  email\n  age\n}",
+	kind: "fragment",
+	selections: [{
+		kind: "Field",
+		name: "email",
+		type: "String",
+		nullable: true
+	}, {
+		kind: "Field",
+		name: "age",
+		type: "Int",
+		nullable: true
+	}]
+};
+export const $UserName = {
+	name: "UserName",
+	body: "fragment UserName on User {\n  __typename\n  id\n  name\n}",
+	kind: "fragment",
+	selections: [{
+		kind: "Field",
+		name: "name",
+		type: "String"
+	}]
+};
+export const artifactMap = {
+	"\n            query GetUser {\n                user {\n                    id\n                    ...UserName\n                    ...UserContact\n                }\n            }\n        ": $GetUser,
+	"\n            fragment UserContact on User {\n                email\n                age\n            }\n        ": $UserContact,
+	"\n            fragment UserName on User {\n                name\n            }\n        ": $UserName
+};
+export const schema = { entities: { "User": { keyFields: ["id"] } } };
+export const graphql = (artifact) => artifactMap[artifact];

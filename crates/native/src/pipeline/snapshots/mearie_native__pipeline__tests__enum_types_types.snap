@@ -1,0 +1,37 @@
+---
+source: crates/native/src/pipeline/mod.rs
+expression: "& types.code"
+---
+import type { Artifact as $Artifact, Nullable as $Nullable, List as $List, FragmentRefs as $FragmentRefs, SchemaMeta as $SchemaMeta } from "mearie/types";
+export type $Scalars = {
+	ID: string;
+	String: string;
+	Int: number;
+	Float: number;
+	Boolean: boolean;
+};
+export type $Schema = $SchemaMeta<{
+	scalars: {};
+	entities: {
+		User: {
+			keyFields: {
+				id: $Scalars["ID"];
+			};
+			fields: "role" | "name" | "id";
+		};
+	};
+	queryFields: "usersByRole";
+}>;
+export type Role = "ADMIN" | "USER" | "MODERATOR";
+export type RequiredAction = "THROW" | "CASCADE";
+export type GetUsersByRole$data = {
+	usersByRole: $List<{
+		role: Role;
+		name: $Scalars["String"];
+		id: $Scalars["ID"];
+	}>;
+};
+export type GetUsersByRole$vars = {
+	role: Role;
+};
+export type GetUsersByRole = $Artifact<"query", "GetUsersByRole", GetUsersByRole$data, GetUsersByRole$vars>;

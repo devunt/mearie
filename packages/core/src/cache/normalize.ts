@@ -3,8 +3,6 @@ import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFie
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
-const SKIP = Symbol();
-
 export const normalize = (
   schemaMeta: SchemaMeta,
   selections: readonly Selection[],
@@ -25,13 +23,14 @@ export const normalize = (
     const data = value as Record<string, unknown>;
 
     const typename = data.__typename as string;
-    const entityMeta = schemaMeta.entities[typename];
+    let entityMeta = schemaMeta.entities[typename];
     if (entityMeta) {
       const keys = entityMeta.keyFields.map((field) => data[field]);
-      if (!keys.every((k) => k !== undefined && k !== null)) {
-        return SKIP;
+      if (keys.every((k) => k !== undefined && k !== null)) {
+        storageKey = makeEntityKey(typename, keys);
+      } else {
+        entityMeta = undefined;
       }
-      storageKey = makeEntityKey(typename, keys);
     }
 
     const fields: Record<string, unknown> = {};
@@ -48,9 +47,6 @@ export const normalize = (
         }
 
         const normalized = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;
-        if (normalized === SKIP) {
-          continue;
-        }
         fields[fieldKey] = normalized;
 
         if (
@@ -68,7 +64,7 @@ export const normalize = (
         (selection.kind === 'InlineFragment' && selection.on === typename)
       ) {
         const inner = normalizeField(storageKey, selection.selections, value);
-        if (inner !== SKIP && !isEntityLink(inner)) {
+        if (!isEntityLink(inner)) {
           mergeFields(fields, inner);
         }
       }

@@ -1,5 +1,18 @@
 # @mearie/solid
 
+## 0.3.0
+
+### Minor Changes
+
+- cda1217: Expose `metadata` from all framework binding hooks (query, mutation, subscription, fragment)
+
+### Patch Changes
+
+- 1b248b5: Add snapshot release support
+- Updated dependencies [1b248b5]
+- Updated dependencies [c7f0cea]
+  - @mearie/core@0.3.0
+
 ## 0.2.4
 
 ### Patch Changes

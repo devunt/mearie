@@ -1,5 +1,11 @@
 # @mearie/config
 
+## 0.1.2
+
+### Patch Changes
+
+- 1b248b5: Add snapshot release support
+
 ## 0.1.1
 
 ### Patch Changes

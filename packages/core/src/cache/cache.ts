@@ -2,7 +2,14 @@ import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@m
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
 import { stringify } from '../utils.ts';
-import { makeDependencyKey, makeFieldKeyFromArgs, makeMemoKey, replaceEqualDeep, resolveEntityKey } from './utils.ts';
+import {
+  isEntityLink,
+  makeDependencyKey,
+  makeFieldKeyFromArgs,
+  makeMemoKey,
+  replaceEqualDeep,
+  resolveEntityKey,
+} from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
   CacheSnapshot,
@@ -65,7 +72,7 @@ export class Cache {
     }
 
     for (const subscription of subscriptions) {
-      void subscription.listener();
+      void subscription.listener('write');
     }
   }
 
@@ -232,6 +239,8 @@ export class Cache {
           delete this.#storage[entityKey];
           this.#collectSubscriptions(entityKey, undefined, subscriptions);
         }
+
+        this.#collectLinkedEntitySubscriptions((linkedEntityKey) => linkedEntityKey === entityKey, subscriptions);
       } else {
         const prefix = `${target.__typename}:`;
         for (const key of Object.keys(this.#storage)) {
@@ -247,12 +256,40 @@ export class Cache {
             }
           }
         }
+
+        this.#collectLinkedEntitySubscriptions((linkedEntityKey) => linkedEntityKey.startsWith(prefix), subscriptions);
       }
     }
 
     for (const subscription of subscriptions) {
-      void subscription.listener();
+      void subscription.listener('invalidate');
     }
+  }
+
+  #collectLinkedEntitySubscriptions(matcher: (entityKey: EntityKey) => boolean, out: Set<Subscription>): void {
+    for (const [storageKey, fields] of Object.entries(this.#storage) as [StorageKey, Fields][]) {
+      for (const [fieldKey, value] of Object.entries(fields) as [FieldKey, unknown][]) {
+        if (this.#containsEntityLink(value, matcher)) {
+          this.#collectSubscriptions(storageKey, fieldKey, out);
+        }
+      }
+    }
+  }
+
+  #containsEntityLink(value: unknown, matcher: (entityKey: EntityKey) => boolean): boolean {
+    if (isEntityLink(value)) {
+      return matcher(value[EntityLinkKey]);
+    }
+
+    if (Array.isArray(value)) {
+      return value.some((item) => this.#containsEntityLink(item, matcher));
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.values(value).some((item) => this.#containsEntityLink(item, matcher));
+    }
+
+    return false;
   }
 
   #collectSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<Subscription>): void {

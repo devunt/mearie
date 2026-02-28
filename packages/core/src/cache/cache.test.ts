@@ -1365,6 +1365,34 @@ describe('Cache', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
+    it('should notify query subscriptions that depend on entity links', () => {
+      const cache = new Cache(schema);
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+
+      cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(queryArtifact, {}, listener);
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
     it('should handle multiple targets at once', () => {
       const cache = new Cache(schema);
 

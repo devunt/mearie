@@ -21,6 +21,9 @@ declare module '@mearie/core' {
   interface ExchangeExtensionMap {
     cache: CacheOperations;
   }
+  interface OperationResultMetadataMap {
+    cache?: { stale: boolean };
+  }
 }
 
 export type CacheOptions = {
@@ -85,7 +88,12 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                   ),
                 ),
                 takeUntil(teardown$),
-                map((data) => ({ operation: op, data, errors: [] })),
+                map(({ data, stale }) => ({
+                  operation: op,
+                  data,
+                  ...(stale && { metadata: { cache: { stale: true } } }),
+                  errors: [],
+                })),
               );
             }
 
@@ -119,7 +127,12 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                 ),
               ),
               takeUntil(teardown$),
-              map((data) => ({ operation: op, data, errors: [] })),
+              map(({ data, stale }) => ({
+                operation: op,
+                data,
+                ...(stale && { metadata: { cache: { stale: true } } }),
+                errors: [],
+              })),
             );
           }),
         );
@@ -172,10 +185,16 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                 ),
               ),
               takeUntil(teardown$),
-              mergeMap((data) => {
-                if (data !== null) {
+              mergeMap(({ data, stale }) => {
+                if (data !== null && !stale) {
                   hasData = true;
                   return fromValue({ operation: op, data, errors: [] });
+                }
+
+                if (data !== null && stale) {
+                  hasData = true;
+                  refetch$.next(op);
+                  return fromValue({ operation: op, data, metadata: { cache: { stale: true } }, errors: [] });
                 }
 
                 if (hasData) {
@@ -199,8 +218,8 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
         const network$ = pipe(
           query$,
           filter((op) => {
-            const cached = cache.readQuery(op.artifact, op.variables);
-            return fetchPolicy === 'cache-and-network' || cached === null;
+            const { data } = cache.readQuery(op.artifact, op.variables);
+            return fetchPolicy === 'cache-and-network' || data === null;
           }),
         );
 

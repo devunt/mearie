@@ -13,6 +13,7 @@ export type {
   OperationResult,
   OperationMetadata,
   OperationMetadataMap,
+  OperationResultMetadataMap,
 } from './exchange.ts';
 export type { ExchangeErrorExtensionsMap, OperationError } from './errors.ts';
 export {

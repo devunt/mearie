@@ -72,7 +72,7 @@ export const makeTestForward = (handler?: ForwardHandler): ExchangeIO => {
             data: result.data,
             errors: result.errors,
             extensions: result.extensions,
-            stale: result.stale,
+            metadata: result.metadata,
           };
         } else {
           return { operation: op };

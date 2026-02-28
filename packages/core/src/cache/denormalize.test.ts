@@ -1156,7 +1156,12 @@ describe('denormalize', () => {
         },
       });
       expect(partial).toBe(false);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+      ]);
     });
 
     it('nested fragment spreads', () => {
@@ -1575,6 +1580,8 @@ describe('denormalize', () => {
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
 
@@ -1680,6 +1687,8 @@ describe('denormalize', () => {
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
         ['User:1', 'age@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
 
@@ -1741,6 +1750,7 @@ describe('denormalize', () => {
         ['User:1', 'name@{}'],
         ['User:1', 'age@{}'],
         ['User:1', 'bio@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
 
@@ -1793,6 +1803,8 @@ describe('denormalize', () => {
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
         ['User:1', 'age@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
   });
@@ -2316,7 +2328,12 @@ describe('denormalize', () => {
         },
       });
       expect(partial).toBe(false);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+      ]);
     });
 
     it('no FragmentRefKey without fragment spread', () => {
@@ -2458,6 +2475,9 @@ describe('denormalize', () => {
         ['Post:1', '__typename@{}'],
         ['Post:1', 'id@{}'],
         ['Post:1', 'author@{}'],
+        ['User:10', '__typename@{}'],
+        ['User:10', 'id@{}'],
+        ['User:10', 'name@{}'],
       ]);
     });
 
@@ -2503,7 +2523,13 @@ describe('denormalize', () => {
         },
       });
       expect(partial).toBe(false);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
+      ]);
     });
 
     it('fragment spread only without fields', () => {
@@ -2542,7 +2568,12 @@ describe('denormalize', () => {
         },
       });
       expect(partial).toBe(false);
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+      ]);
     });
   });
 
@@ -2786,7 +2817,12 @@ describe('denormalize', () => {
         [FragmentRefKey]: 'User:1',
       });
       expect(partial).toBe(false);
-      expectSameCalls(calls, []);
+      expectSameCalls(calls, [
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
+      ]);
     });
 
     it('should handle inline fragment when starting from entity', () => {
@@ -3159,6 +3195,8 @@ describe('denormalize', () => {
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
         ['User:1', 'age@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
 
@@ -3754,7 +3792,7 @@ describe('denormalize', () => {
   });
 
   describe('fragment masking and accessor isolation', () => {
-    it('entity with only fragment spread - no accessor calls for fragment fields', () => {
+    it('entity with only fragment spread - accessor calls include fragment fields', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -3794,12 +3832,17 @@ describe('denormalize', () => {
       });
       expect(partial).toBe(false);
 
-      // Accessor isolation: no calls for fragment fields (name, email, etc.)
-      // Only the entity link field is accessed
-      expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
+      // Fragment fields are tracked via recursive denormalize call
+      expectSameCalls(calls, [
+        [RootFieldKey, 'user@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
+      ]);
     });
 
-    it('entity with direct fields + fragment spread - only direct fields tracked', () => {
+    it('entity with direct fields + fragment spread - direct and fragment fields tracked', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -3846,16 +3889,20 @@ describe('denormalize', () => {
       });
       expect(partial).toBe(false);
 
-      // Only direct fields are tracked, not fragment fields (email, bio)
+      // Both direct fields and fragment fields are tracked
       expectSameCalls(calls, [
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
         ['User:1', 'name@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'email@{}'],
+        ['User:1', 'bio@{}'],
       ]);
     });
 
-    it('entity with overlapping fields - direct selection tracked, not fragment', () => {
+    it('entity with overlapping fields - both direct and fragment fields tracked', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -3901,12 +3948,16 @@ describe('denormalize', () => {
       expect(partial).toBe(false);
 
       // name appears in both direct selection and fragment,
-      // but only counted once from direct selection
+      // both are tracked (direct + recursive fragment denormalize)
       expectSameCalls(calls, [
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
         ['User:1', 'name@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
       ]);
     });
 
@@ -3956,7 +4007,7 @@ describe('denormalize', () => {
       expectSameCalls(calls, [[RootFieldKey, 'metadata@{}']]);
     });
 
-    it('multiple fragments on entity - no accessor calls for any fragment fields', () => {
+    it('multiple fragments on entity - accessor calls include all fragment fields', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -4010,15 +4061,21 @@ describe('denormalize', () => {
       });
       expect(partial).toBe(false);
 
-      // No fragment field tracking (name, email, bio, avatar)
+      // All fragment fields are tracked via recursive denormalize
       expectSameCalls(calls, [
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'bio@{}'],
+        ['User:1', 'avatar@{}'],
       ]);
     });
 
-    it('nested entity with fragment - parent and child accessor isolation', () => {
+    it('nested entity with fragment - parent and child accessor calls', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -4081,7 +4138,7 @@ describe('denormalize', () => {
       });
       expect(partial).toBe(false);
 
-      // Fragment fields (industry, founded) are not tracked
+      // Fragment fields (industry, founded) are also tracked via recursive denormalize
       expectSameCalls(calls, [
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
@@ -4090,10 +4147,13 @@ describe('denormalize', () => {
         ['Company:1', '__typename@{}'],
         ['Company:1', 'id@{}'],
         ['Company:1', 'name@{}'],
+        ['Company:1', '__typename@{}'],
+        ['Company:1', 'industry@{}'],
+        ['Company:1', 'founded@{}'],
       ]);
     });
 
-    it('entity array with fragment - no accessor calls for fragment fields', () => {
+    it('entity array with fragment - accessor calls include fragment fields', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -4150,13 +4210,19 @@ describe('denormalize', () => {
       });
       expect(partial).toBe(false);
 
-      // Fragment fields (name, email) not tracked for either user
+      // Fragment fields (name, email) tracked for both users via recursive denormalize
       expectSameCalls(calls, [
         [RootFieldKey, 'users@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'name@{}'],
+        ['User:1', 'email@{}'],
         ['User:2', '__typename@{}'],
         ['User:2', 'id@{}'],
+        ['User:2', '__typename@{}'],
+        ['User:2', 'name@{}'],
+        ['User:2', 'email@{}'],
       ]);
     });
   });

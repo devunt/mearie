@@ -2,7 +2,7 @@ import type { Artifact, DataOf, FragmentRefs, SchemaMeta, VariablesOf } from '@m
 import { normalize } from './normalize.ts';
 import { denormalize } from './denormalize.ts';
 import { stringify } from '../utils.ts';
-import { makeDependencyKey, makeFieldKeyFromArgs, makeMemoKey, replaceEqualDeep, resolveEntityKey } from './utils.ts';
+import { makeDependencyKey, makeEntityKey, makeFieldKeyFromArgs, makeMemoKey, replaceEqualDeep } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
   CacheSnapshot,
@@ -257,8 +257,8 @@ export class Cache {
 
     for (const target of targets) {
       if (target.__typename === 'Query') {
-        if ('field' in target) {
-          const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
+        if ('$field' in target) {
+          const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
           const depKey = makeDependencyKey(RootFieldKey, fieldKey);
           this.#stale.add(depKey);
           this.#collectSubscriptions(RootFieldKey, fieldKey, subscriptions);
@@ -266,32 +266,35 @@ export class Cache {
           this.#stale.add(RootFieldKey as string);
           this.#collectSubscriptions(RootFieldKey, undefined, subscriptions);
         }
-      } else if ('id' in target) {
-        const entityKey = resolveEntityKey(
-          target.__typename,
-          target.id,
-          this.#schemaMeta.entities[target.__typename]?.keyFields,
-        );
-        if ('field' in target) {
-          const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
-          this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-          this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
-        } else {
-          this.#stale.add(entityKey);
-          this.#collectSubscriptions(entityKey, undefined, subscriptions);
-        }
       } else {
-        const prefix = `${target.__typename}:`;
-        for (const key of Object.keys(this.#storage)) {
-          if (key.startsWith(prefix)) {
-            const entityKey = key as EntityKey;
-            if ('field' in target) {
-              const fieldKey = makeFieldKeyFromArgs(target.field, target.args);
-              this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-              this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
-            } else {
-              this.#stale.add(entityKey);
-              this.#collectSubscriptions(entityKey, undefined, subscriptions);
+        const entityMeta = this.#schemaMeta.entities[target.__typename];
+        const keyFields = entityMeta?.keyFields;
+
+        if (keyFields && this.#hasKeyFields(target, keyFields)) {
+          const keyValues = keyFields.map((f) => (target as Record<string, unknown>)[f] as string | number);
+          const entityKey = makeEntityKey(target.__typename, keyValues);
+
+          if ('$field' in target) {
+            const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
+            this.#stale.add(makeDependencyKey(entityKey, fieldKey));
+            this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
+          } else {
+            this.#stale.add(entityKey);
+            this.#collectSubscriptions(entityKey, undefined, subscriptions);
+          }
+        } else {
+          const prefix = `${target.__typename}:`;
+          for (const key of Object.keys(this.#storage)) {
+            if (key.startsWith(prefix)) {
+              const entityKey = key as EntityKey;
+              if ('$field' in target) {
+                const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
+                this.#stale.add(makeDependencyKey(entityKey, fieldKey));
+                this.#collectSubscriptions(entityKey, fieldKey, subscriptions);
+              } else {
+                this.#stale.add(entityKey);
+                this.#collectSubscriptions(entityKey, undefined, subscriptions);
+              }
             }
           }
         }
@@ -301,6 +304,10 @@ export class Cache {
     for (const subscription of subscriptions) {
       void subscription.listener();
     }
+  }
+
+  #hasKeyFields(target: Record<string, unknown>, keyFields: string[]): boolean {
+    return keyFields.every((f) => f in target);
   }
 
   #collectSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<Subscription>): void {

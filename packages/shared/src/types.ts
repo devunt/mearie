@@ -10,12 +10,16 @@ export type ScalarMeta = Record<string, unknown>;
 
 export type SchemaMetaProps = {
   scalars: ScalarMeta;
+  entities: Record<string, { keyFields: Record<string, unknown>; fields: string }>;
+  queryFields: string;
 };
 
 export type SchemaMeta<T extends SchemaMetaProps = SchemaMetaProps> = {
   entities: Record<string, EntityMeta>;
   inputs: Record<string, InputMeta>;
   scalars: T['scalars'];
+  readonly ' $entityTypes'?: T['entities'];
+  readonly ' $queryFields'?: T['queryFields'];
 };
 
 export type EntityMeta = {

@@ -1,5 +1,12 @@
 # @mearie/solid
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [16eeca9]
+  - @mearie/core@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

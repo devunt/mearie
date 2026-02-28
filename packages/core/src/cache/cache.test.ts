@@ -14,7 +14,7 @@ const schema: SchemaMeta = {
   scalars: {},
 };
 
-const createArtifact = <K extends 'query' | 'fragment'>(
+const createArtifact = <K extends 'query' | 'mutation' | 'fragment'>(
   kind: K,
   name: string,
   selections: Artifact['selections'],
@@ -3428,6 +3428,139 @@ describe('Cache', () => {
 
         expect(listener).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('writeOptimistic / removeOptimistic', () => {
+    const userQueryArtifact = createArtifact('query', 'GetUser', [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ],
+      },
+    ]);
+
+    const mutationArtifact = createArtifact('mutation', 'UpdateUser', [
+      {
+        kind: 'Field',
+        name: 'updateUser',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ],
+      },
+    ]);
+
+    it('should write optimistic data to a separate layer', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      const result = cache.readQuery(userQueryArtifact, {});
+      expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+    });
+
+    it('should restore base data after removeOptimistic', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      cache.removeOptimistic('op-1');
+
+      const result = cache.readQuery(userQueryArtifact, {});
+      expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+    });
+
+    it('should merge multiple optimistic layers', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+      cache.writeOptimistic(
+        'op-2',
+        mutationArtifact,
+        {},
+        { updateUser: { __typename: 'User', id: '1', name: 'Charlie' } },
+      );
+
+      const result = cache.readQuery(userQueryArtifact, {});
+      expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Charlie' } });
+    });
+
+    it('should keep remaining layers when one is removed', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+      cache.writeOptimistic(
+        'op-2',
+        mutationArtifact,
+        {},
+        { updateUser: { __typename: 'User', id: '1', name: 'Charlie' } },
+      );
+
+      cache.removeOptimistic('op-2');
+
+      const result = cache.readQuery(userQueryArtifact, {});
+      expect(result.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+    });
+
+    it('should notify subscribers on writeOptimistic', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(userQueryArtifact, {}, listener);
+
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should notify subscribers on removeOptimistic', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(userQueryArtifact, {}, listener);
+
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      listener.mockClear();
+      cache.removeOptimistic('op-1');
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not affect base storage', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      const snapshot = cache.extract();
+      const baseStorage = (snapshot as unknown as { storage: Record<string, Record<string, unknown>> }).storage;
+
+      expect(baseStorage['User:1']?.['name@{}']).toBe('Alice');
+    });
+
+    it('should handle removeOptimistic for non-existent key gracefully', () => {
+      const cache = new Cache(schema);
+      expect(() => cache.removeOptimistic('non-existent')).not.toThrow();
     });
   });
 });

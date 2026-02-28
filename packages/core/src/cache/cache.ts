@@ -27,8 +27,112 @@ export class Cache {
   #memo = new Map<string, unknown>();
   #stale = new Set<string>();
 
+  #optimisticKeys: string[] = [];
+  #optimisticLayers = new Map<string, { storage: Storage; dependencies: Set<DependencyKey> }>();
+  #storageView: Storage | null = null;
+
   constructor(schemaMetadata: SchemaMeta) {
     this.#schemaMeta = schemaMetadata;
+  }
+
+  #getStorageView(): Storage {
+    if (this.#optimisticKeys.length === 0) {
+      return this.#storage;
+    }
+
+    if (this.#storageView) {
+      return this.#storageView;
+    }
+
+    const merged = { ...this.#storage } as Storage;
+    for (const storageKey of Object.keys(this.#storage) as StorageKey[]) {
+      merged[storageKey] = { ...this.#storage[storageKey] };
+    }
+
+    for (const key of this.#optimisticKeys) {
+      const layer = this.#optimisticLayers.get(key);
+      if (!layer) continue;
+
+      for (const storageKey of Object.keys(layer.storage) as StorageKey[]) {
+        merged[storageKey] = merged[storageKey]
+          ? { ...merged[storageKey], ...layer.storage[storageKey] }
+          : { ...layer.storage[storageKey] };
+      }
+    }
+
+    this.#storageView = merged;
+    return merged;
+  }
+
+  /**
+   * Writes an optimistic response to a separate cache layer.
+   * The optimistic data is immediately visible in reads but does not affect the base storage.
+   * @internal
+   * @param key - Unique key identifying this optimistic mutation (typically the operation key).
+   * @param artifact - GraphQL document artifact.
+   * @param variables - Operation variables.
+   * @param data - The optimistic response data.
+   */
+  writeOptimistic<T extends Artifact>(key: string, artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
+    const layerStorage = { [RootFieldKey]: {} } as Storage;
+    const dependencies = new Set<DependencyKey>();
+
+    normalize(
+      this.#schemaMeta,
+      artifact.selections,
+      layerStorage,
+      data,
+      variables as Record<string, unknown>,
+      (storageKey, fieldKey) => {
+        dependencies.add(makeDependencyKey(storageKey, fieldKey));
+      },
+    );
+
+    this.#optimisticKeys.push(key);
+    this.#optimisticLayers.set(key, { storage: layerStorage, dependencies });
+    this.#storageView = null;
+
+    const subscriptions = new Set<Subscription>();
+    for (const depKey of dependencies) {
+      const ss = this.#subscriptions.get(depKey);
+      if (ss) {
+        for (const s of ss) {
+          subscriptions.add(s);
+        }
+      }
+    }
+
+    for (const subscription of subscriptions) {
+      void subscription.listener();
+    }
+  }
+
+  /**
+   * Removes an optimistic layer and notifies affected subscribers.
+   * @internal
+   * @param key - The key of the optimistic layer to remove.
+   */
+  removeOptimistic(key: string): void {
+    const layer = this.#optimisticLayers.get(key);
+    if (!layer) return;
+
+    this.#optimisticLayers.delete(key);
+    this.#optimisticKeys = this.#optimisticKeys.filter((k) => k !== key);
+    this.#storageView = null;
+
+    const subscriptions = new Set<Subscription>();
+    for (const depKey of layer.dependencies) {
+      const ss = this.#subscriptions.get(depKey);
+      if (ss) {
+        for (const s of ss) {
+          subscriptions.add(s);
+        }
+      }
+    }
+
+    for (const subscription of subscriptions) {
+      void subscription.listener();
+    }
   }
 
   /**
@@ -96,10 +200,11 @@ export class Cache {
   ): { data: DataOf<T> | null; stale: boolean } {
     let stale = false;
 
+    const storage = this.#getStorageView();
     const { data, partial } = denormalize(
       artifact.selections,
-      this.#storage,
-      this.#storage[RootFieldKey],
+      storage,
+      storage[RootFieldKey],
       variables as Record<string, unknown>,
       (storageKey, fieldKey) => {
         if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
@@ -130,10 +235,11 @@ export class Cache {
   subscribeQuery<T extends Artifact<'query'>>(artifact: T, variables: VariablesOf<T>, listener: Listener): () => void {
     const dependencies = new Set<DependencyKey>();
 
+    const storageView = this.#getStorageView();
     denormalize(
       artifact.selections,
-      this.#storage,
-      this.#storage[RootFieldKey],
+      storageView,
+      storageView[RootFieldKey],
       variables as Record<string, unknown>,
       (storageKey, fieldKey) => {
         const dependencyKey = makeDependencyKey(storageKey, fieldKey);
@@ -157,7 +263,8 @@ export class Cache {
   ): { data: DataOf<T> | null; stale: boolean } {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
 
-    const entity = this.#storage[entityKey];
+    const storageView = this.#getStorageView();
+    const entity = storageView[entityKey];
     if (!entity) {
       return { data: null, stale: false };
     }
@@ -166,7 +273,7 @@ export class Cache {
 
     const { data, partial } = denormalize(
       artifact.selections,
-      this.#storage,
+      storageView,
       { [EntityLinkKey]: entityKey },
       {},
       (storageKey, fieldKey) => {
@@ -196,7 +303,8 @@ export class Cache {
     const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
     const dependencies = new Set<DependencyKey>();
 
-    denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
+    const storageView = this.#getStorageView();
+    denormalize(artifact.selections, storageView, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
       const dependencyKey = makeDependencyKey(storageKey, fieldKey);
       dependencies.add(dependencyKey);
     });
@@ -238,9 +346,10 @@ export class Cache {
   ): () => void {
     const dependencies = new Set<DependencyKey>();
 
+    const storageView = this.#getStorageView();
     for (const ref of fragmentRefs) {
       const entityKey = (ref as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
-      denormalize(artifact.selections, this.#storage, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
+      denormalize(artifact.selections, storageView, { [EntityLinkKey]: entityKey }, {}, (storageKey, fieldKey) => {
         dependencies.add(makeDependencyKey(storageKey, fieldKey));
       });
     }
@@ -353,6 +462,7 @@ export class Cache {
 
   /**
    * Extracts a serializable snapshot of the cache storage and structural sharing state.
+   * Optimistic layers are excluded because they represent transient in-flight state.
    */
   extract(): CacheSnapshot {
     return {
@@ -377,6 +487,8 @@ export class Cache {
     for (const [key, value] of Object.entries(memo)) {
       this.#memo.set(key, value);
     }
+
+    this.#storageView = null;
   }
 
   /**
@@ -387,5 +499,8 @@ export class Cache {
     this.#subscriptions.clear();
     this.#memo.clear();
     this.#stale.clear();
+    this.#optimisticKeys = [];
+    this.#optimisticLayers.clear();
+    this.#storageView = null;
   }
 }

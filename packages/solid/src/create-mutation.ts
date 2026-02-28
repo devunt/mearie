@@ -24,13 +24,13 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       metadata: OperationResult['metadata'];
     };
 
-export type CreateMutationOptions = MutationOptions;
+export type CreateMutationOptions<T extends Artifact<'mutation'> = Artifact<'mutation'>> = MutationOptions<T>;
 
 export type Mutation<T extends Artifact<'mutation'>> = [
   (
     ...[variables, options]: VariablesOf<T> extends Record<string, never>
-      ? [undefined?, CreateMutationOptions?]
-      : [VariablesOf<T>, CreateMutationOptions?]
+      ? [undefined?, CreateMutationOptions<T>?]
+      : [VariablesOf<T>, CreateMutationOptions<T>?]
   ) => Promise<DataOf<T>>,
   MutationResult<T>,
 ];
@@ -43,7 +43,7 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
   const [error, setError] = createSignal<AggregatedError | undefined>();
   const [metadata, setMetadata] = createSignal<OperationResult['metadata']>();
 
-  const execute = async (variables?: VariablesOf<T>, options?: CreateMutationOptions): Promise<DataOf<T>> => {
+  const execute = async (variables?: VariablesOf<T>, options?: CreateMutationOptions<T>): Promise<DataOf<T>> => {
     setLoading(true);
     setError(undefined);
     setMetadata(undefined);

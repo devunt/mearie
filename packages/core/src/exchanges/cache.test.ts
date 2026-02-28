@@ -1611,4 +1611,287 @@ describe('cacheExchange', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('optimistic updates', () => {
+    const userSelections = [
+      {
+        kind: 'Field' as const,
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ],
+      },
+    ];
+
+    const mutationSelections = [
+      {
+        kind: 'Field' as const,
+        name: 'updateUser',
+        type: 'User',
+        selections: [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ],
+      },
+    ];
+
+    it('should apply optimistic response to cache immediately', async () => {
+      vi.useFakeTimers();
+
+      const exchange = cacheExchange();
+      const subject = makeSubject<Operation>();
+      const networkResults: { resolve: (result: OperationResult) => void }[] = [];
+
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          mergeMapOp((op) => {
+            return fromPromise(
+              new Promise<OperationResult>((resolve) => {
+                networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
+              }),
+            );
+          }),
+        );
+
+      const results: OperationResult[] = [];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        selections: userSelections,
+      });
+
+      const sub = pipe(
+        subject.source,
+        exchange({ forward, client: client as never }).io,
+        subscribe({ next: (r) => results.push(r) }),
+      );
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      networkResults[0]!.resolve({
+        operation: queryOp,
+        data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        selections: mutationSelections,
+        metadata: {
+          cache: {
+            optimisticResponse: { updateUser: { __typename: 'User', id: '1', name: 'Bob' } },
+          },
+        },
+      });
+
+      subject.next(mutationOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const latestResult = results.at(-1)!;
+      expect(latestResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      networkResults[1]!.resolve({
+        operation: mutationOp,
+        data: { updateUser: { __typename: 'User', id: '1', name: 'Bob' } },
+      });
+
+      await vi.runAllTimersAsync();
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should replace optimistic data with server response on success', async () => {
+      vi.useFakeTimers();
+
+      const exchange = cacheExchange();
+      const subject = makeSubject<Operation>();
+      const networkResults: { resolve: (result: OperationResult) => void }[] = [];
+
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          mergeMapOp((op) => {
+            return fromPromise(
+              new Promise<OperationResult>((resolve) => {
+                networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
+              }),
+            );
+          }),
+        );
+
+      const results: OperationResult[] = [];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        selections: userSelections,
+      });
+
+      const sub = pipe(
+        subject.source,
+        exchange({ forward, client: client as never }).io,
+        subscribe({ next: (r) => results.push(r) }),
+      );
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      networkResults[0]!.resolve({
+        operation: queryOp,
+        data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        selections: mutationSelections,
+        metadata: {
+          cache: {
+            optimisticResponse: { updateUser: { __typename: 'User', id: '1', name: 'Optimistic' } },
+          },
+        },
+      });
+
+      subject.next(mutationOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const optimisticResult = results.at(-1)!;
+      expect(optimisticResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Optimistic' } });
+
+      networkResults[1]!.resolve({
+        operation: mutationOp,
+        data: { updateUser: { __typename: 'User', id: '1', name: 'ServerName' } },
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const finalResult = results.at(-1)!;
+      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'ServerName' } });
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should rollback optimistic data on error', async () => {
+      vi.useFakeTimers();
+
+      const exchange = cacheExchange();
+      const subject = makeSubject<Operation>();
+      const networkResults: { resolve: (result: OperationResult) => void }[] = [];
+
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          mergeMapOp((op) => {
+            return fromPromise(
+              new Promise<OperationResult>((resolve) => {
+                networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
+              }),
+            );
+          }),
+        );
+
+      const results: OperationResult[] = [];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        selections: userSelections,
+      });
+
+      const sub = pipe(
+        subject.source,
+        exchange({ forward, client: client as never }).io,
+        subscribe({ next: (r) => results.push(r) }),
+      );
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      networkResults[0]!.resolve({
+        operation: queryOp,
+        data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        selections: mutationSelections,
+        metadata: {
+          cache: {
+            optimisticResponse: { updateUser: { __typename: 'User', id: '1', name: 'Optimistic' } },
+          },
+        },
+      });
+
+      subject.next(mutationOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      networkResults[1]!.resolve({
+        operation: mutationOp,
+        errors: [{ message: 'Server error' }] as never,
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      const finalResult = results.at(-1)!;
+      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should forward mutations without optimisticResponse normally', async () => {
+      const forwardedOps: Operation[] = [];
+      const exchange = cacheExchange();
+      const forward = makeTestForward((op) => {
+        forwardedOps.push(op);
+        return { operation: op, data: { updateUser: { __typename: 'User', id: '1', name: 'Bob' } } };
+      });
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateUser',
+        selections: mutationSelections,
+      });
+
+      const results = await testExchange(exchange, forward, [mutationOp], client);
+
+      expect(results).toHaveLength(1);
+      expect(forwardedOps.length).toBeGreaterThan(0);
+    });
+  });
 });

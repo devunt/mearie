@@ -37,7 +37,10 @@ pub struct VariableRules<'a, 'b> {
     fragment_variable_definitions: FxHashMap<&'a str, VariableInfo<'a>>,
     fragment_defined_vars: Vec<&'a str>,
     fragment_used_vars: Vec<&'a str>,
-    fragments: Vec<(&'a str, Vec<&'a str>, Vec<&'a str>, Span)>,
+    fragment_op_var_refs: Vec<&'a str>,
+    current_spread_refs: Vec<&'a str>,
+    op_spread_graph: Vec<(&'a str, Vec<&'a str>)>,
+    fragments: Vec<(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)>,
     _phantom: PhantomData<&'b ()>,
 }
 
@@ -67,6 +70,8 @@ impl<'a, 'b> VariableRules<'a, 'b> {
                 let var_name = var.as_str();
                 if self.fragment_variable_definitions.contains_key(var_name) {
                     self.fragment_used_vars.push(var_name);
+                } else {
+                    self.fragment_op_var_refs.push(var_name);
                 }
             }
             Value::List(list) => {
@@ -183,6 +188,7 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
         self.current_operation_span = Some(operation.span);
         self.current_defined_vars.clear();
         self.current_used_vars.clear();
+        self.current_spread_refs.clear();
         self.variable_definitions.clear();
         self.variable_usage_infos.clear();
 
@@ -313,6 +319,11 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
         Control::Next
     }
 
+    fn enter_fragment_spread(&mut self, _ctx: &mut ValidationContext<'a, 'b>, spread: &FragmentSpread<'a>) -> Control {
+        self.current_spread_refs.push(spread.fragment_name.as_str());
+        Control::Next
+    }
+
     fn leave_operation(
         &mut self,
         ctx: &mut ValidationContext<'a, 'b>,
@@ -341,12 +352,14 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
             self.operations
                 .push((op_name, self.current_defined_vars.clone(), *op_span));
             self.variable_usages.push((op_name, self.current_used_vars.clone()));
+            self.op_spread_graph.push((op_name, self.current_spread_refs.clone()));
         }
 
         self.current_operation = None;
         self.current_operation_span = None;
         self.current_defined_vars.clear();
         self.current_used_vars.clear();
+        self.current_spread_refs.clear();
         self.type_stack.pop();
 
         Control::Next
@@ -358,6 +371,8 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
         self.fragment_variable_definitions.clear();
         self.fragment_defined_vars.clear();
         self.fragment_used_vars.clear();
+        self.fragment_op_var_refs.clear();
+        self.current_spread_refs.clear();
 
         let type_name = fragment.type_condition.as_str();
         if ctx.schema().has_type(type_name) {
@@ -388,6 +403,8 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
             fragment_name,
             self.fragment_defined_vars.clone(),
             self.fragment_used_vars.clone(),
+            self.fragment_op_var_refs.clone(),
+            self.current_spread_refs.clone(),
             fragment.span,
         ));
 
@@ -397,37 +414,49 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
     }
 
     fn leave_document(&mut self, ctx: &mut ValidationContext<'a, 'b>, _document: &Document<'a>) -> Control {
-        for (op_name, used_vars) in &self.variable_usages {
-            let empty_vec = Vec::new();
-            let operation_data = self.operations.iter().find(|(name, _, _)| name == op_name);
-
-            let defined_vars = operation_data.map(|(_, vars, _)| vars).unwrap_or(&empty_vec);
-
-            let op_span = operation_data
-                .map(|(_, _, span)| *span)
-                .unwrap_or(Span { start: 0, end: 0 });
-
-            for used_var in used_vars {
-                if !defined_vars.contains(used_var) {
-                    ctx.add_error(
-                        format!("Variable '{}' is not defined in operation '{}'", used_var, op_name),
-                        op_span,
-                    );
-                }
-            }
-        }
-
         for (op_name, defined_vars, op_span) in &self.operations {
             let empty_vec = Vec::new();
-            let used_vars = self
+
+            let direct_used_vars = self
                 .variable_usages
                 .iter()
                 .find(|(name, _)| name == op_name)
                 .map(|(_, vars)| vars)
                 .unwrap_or(&empty_vec);
 
+            let direct_spreads = self
+                .op_spread_graph
+                .iter()
+                .find(|(name, _)| name == op_name)
+                .map(|(_, refs)| refs)
+                .unwrap_or(&empty_vec);
+
+            let transitive_fragments = collect_transitive_fragments(direct_spreads, &self.fragments);
+
+            let mut all_used_vars: Vec<&str> = direct_used_vars.to_vec();
+            for frag_name in &transitive_fragments {
+                if let Some((_, frag_defined_vars, _, frag_op_vars, _, _)) =
+                    self.fragments.iter().find(|(name, _, _, _, _, _)| name == frag_name)
+                {
+                    for op_var in frag_op_vars {
+                        if !frag_defined_vars.contains(op_var) {
+                            all_used_vars.push(op_var);
+                        }
+                    }
+                }
+            }
+
+            for used_var in &all_used_vars {
+                if !defined_vars.contains(used_var) {
+                    ctx.add_error(
+                        format!("Variable '{}' is not defined in operation '{}'", used_var, op_name),
+                        *op_span,
+                    );
+                }
+            }
+
             for defined_var in defined_vars {
-                if !used_vars.contains(defined_var) {
+                if !all_used_vars.contains(defined_var) {
                     ctx.add_error(
                         format!(
                             "Variable '{}' is defined but not used in operation '{}'",
@@ -440,6 +469,37 @@ impl<'a, 'b> Visitor<'a, ValidationContext<'a, 'b>> for VariableRules<'a, 'b> {
         }
 
         Control::Next
+    }
+}
+
+fn collect_transitive_fragments<'a>(
+    direct_spreads: &[&'a str],
+    fragments: &[(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)],
+) -> Vec<&'a str> {
+    let mut result = Vec::new();
+    let mut visited = Vec::new();
+    for name in direct_spreads {
+        collect_transitive_fragments_inner(name, fragments, &mut result, &mut visited);
+    }
+    result
+}
+
+fn collect_transitive_fragments_inner<'a>(
+    name: &'a str,
+    fragments: &[(&'a str, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Span)],
+    result: &mut Vec<&'a str>,
+    visited: &mut Vec<&'a str>,
+) {
+    if visited.contains(&name) {
+        return;
+    }
+    visited.push(name);
+    result.push(name);
+
+    if let Some((_, _, _, _, spread_refs, _)) = fragments.iter().find(|(n, _, _, _, _, _)| *n == name) {
+        for spread_name in spread_refs {
+            collect_transitive_fragments_inner(spread_name, fragments, result, visited);
+        }
     }
 }
 
@@ -691,6 +751,160 @@ mod tests {
             VariableRules,
             r#"type Query { field(arg: String): String }"#,
             r#"query Q($var: [String]) { field(arg: $var) }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_uniqueness_valid() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int, quality: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $quality: Int!) on User { profilePic(size: $size, quality: $quality) } query Q { user { ...Avatar(size: 50, quality: 80) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_uniqueness_duplicate() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 50) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_input_type_valid() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 50) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_object_type_invalid() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { id: ID! name: String }"#,
+            r#"fragment F($u: User) on User { name } query Q { user { ...F(u: null) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_used() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 50) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_unused() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { name: String }"#,
+            r#"fragment F($unused: Int!) on User { name } query Q { user { ...F(unused: 1) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_used_in_spread_argument() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String name: String }"#,
+            r#"
+                fragment Wrapper($size: Int!) on User { ...Avatar(size: $size) }
+                fragment Avatar($size: Int!) on User { profilePic(size: $size) }
+                query Q { user { ...Wrapper(size: 50) } }
+            "#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_does_not_leak_to_operation_scope() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String name: String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_accesses_operation_variable() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { posts(limit: Int): String }"#,
+            r#"fragment UserPosts on User { posts(limit: $limit) } query Q($limit: Int!) { user { ...UserPosts } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_op_var_undefined_in_operation() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { posts(limit: Int): String }"#,
+            r#"fragment UserPosts on User { posts(limit: $limit) } query Q { user { ...UserPosts } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_var_shadows_operation_var() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q($size: Int!) { user { ...Avatar(size: $size) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_operation_var_used_transitively_through_fragment() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { posts(limit: Int): String name: String }"#,
+            r#"
+                fragment UserPosts on User { posts(limit: $limit) }
+                query Q($limit: Int!) { user { name ...UserPosts } }
+            "#
+        ));
+    }
+
+    #[test]
+    fn test_operation_var_unused_when_fragment_shadows() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"
+                fragment Avatar($size: Int!) on User { profilePic(size: $size) }
+                query Q($size: Int!) { user { ...Avatar(size: 100) } }
+            "#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_with_default_and_no_args() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_multiple_vars_all_used() {
+        assert_ok!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int, quality: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $quality: Int!) on User { profilePic(size: $size, quality: $quality) } query Q { user { ...Avatar(size: 50, quality: 80) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_variable_multiple_vars_one_unused() {
+        assert_err!(validate_rules!(
+            VariableRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $unused: String!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 50, unused: "x") } }"#
         ));
     }
 }

@@ -534,4 +534,103 @@ mod tests {
             r#"query Q { user { ... on Status { field } } }"#
         ));
     }
+
+    #[test]
+    fn test_fragment_spread_argument_names_valid() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_names_unknown() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar(unknownArg: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_provided() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_missing() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_required_argument_null() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: null) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_optional_argument_omitted() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_non_null_with_default_omitted() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int! = 50) on User { profilePic(size: $size) } query Q { user { ...Avatar } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_uniqueness_valid() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int, quality: Int): String }"#,
+            r#"fragment Avatar($size: Int!, $quality: Int!) on User { profilePic(size: $size, quality: $quality) } query Q { user { ...Avatar(size: 100, quality: 80) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_argument_uniqueness_duplicate() {
+        assert_err!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q { user { ...Avatar(size: 100, size: 200) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_with_variable_argument() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { profilePic(size: Int): String }"#,
+            r#"fragment Avatar($size: Int!) on User { profilePic(size: $size) } query Q($s: Int!) { user { ...Avatar(size: $s) } }"#
+        ));
+    }
+
+    #[test]
+    fn test_fragment_spread_without_args_on_fragment_without_vars() {
+        assert_ok!(validate_rules!(
+            FragmentRules,
+            r#"type Query { user: User } type User { name: String }"#,
+            r#"fragment UserFields on User { name } query Q { user { ...UserFields } }"#
+        ));
+    }
 }

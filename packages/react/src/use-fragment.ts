@@ -1,5 +1,12 @@
 import { useSyncExternalStore, useCallback, useRef } from 'react';
-import { AggregatedError, type Artifact, type DataOf, type FragmentOptions, type FragmentRefs } from '@mearie/core';
+import {
+  AggregatedError,
+  type Artifact,
+  type DataOf,
+  type FragmentOptions,
+  type FragmentRefs,
+  type OperationResult,
+} from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -7,14 +14,17 @@ export type UseFragmentOptions = FragmentOptions;
 
 export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
+  metadata: OperationResult['metadata'];
 };
 
 export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
+  metadata: OperationResult['metadata'];
 };
 
 export type OptionalFragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T> | null;
+  metadata: OperationResult['metadata'];
 };
 
 type UseFragmentFn = {
@@ -35,18 +45,20 @@ type UseFragmentFn = {
   ): OptionalFragment<T>;
 };
 
+const NULL_STORE = { data: null, metadata: undefined } as const;
+
 export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   fragment: T,
   fragmentRef: FragmentRefs<T['name']> | FragmentRefs<T['name']>[] | null | undefined,
   options?: UseFragmentOptions,
 ) => {
   const client = useClient();
-  const dataRef = useRef<unknown>(undefined);
+  const storeRef = useRef<{ data: unknown; metadata: OperationResult['metadata'] }>(undefined);
 
   const subscribe_ = useCallback(
     (onChange: () => void) => {
       if (fragmentRef == null) {
-        dataRef.current = null;
+        storeRef.current = NULL_STORE;
         return () => {};
       }
 
@@ -58,7 +70,7 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
               throw new AggregatedError(result.errors);
             }
 
-            dataRef.current = result.data;
+            storeRef.current = { data: result.data, metadata: result.metadata };
             onChange();
           },
         }),
@@ -69,27 +81,30 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
 
   const snapshot = useCallback(() => {
     if (fragmentRef == null) {
-      return null;
+      return NULL_STORE;
     }
 
-    if (dataRef.current === undefined) {
+    if (storeRef.current === undefined) {
       const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 
       if (result.errors && result.errors.length > 0) {
         throw new AggregatedError(result.errors);
       }
 
-      dataRef.current = result.data;
+      storeRef.current = { data: result.data, metadata: result.metadata };
     }
 
-    return dataRef.current;
+    return storeRef.current;
   }, [client, fragment, fragmentRef, options]);
 
-  const data = useSyncExternalStore(subscribe_, snapshot, snapshot);
+  const store = useSyncExternalStore(subscribe_, snapshot, snapshot);
 
   return {
     get data() {
-      return data;
+      return store.data;
+    },
+    get metadata() {
+      return store.metadata;
     },
   };
 }) as unknown as UseFragmentFn;

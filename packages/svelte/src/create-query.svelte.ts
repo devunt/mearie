@@ -1,5 +1,5 @@
 import { untrack } from 'svelte';
-import type { Artifact, VariablesOf, DataOf, QueryOptions } from '@mearie/core';
+import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
@@ -13,18 +13,21 @@ export type Query<T extends Artifact<'query'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     };
 
@@ -33,18 +36,21 @@ export type DefinedQuery<T extends Artifact<'query'>> =
       data: DataOf<T>;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     };
 
@@ -73,6 +79,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   let data = $state.raw<DataOf<T> | undefined>(initialOpts?.initialData);
   let loading = $state<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   let error = $state<AggregatedError | undefined>();
+  let metadata = $state<OperationResult['metadata']>();
 
   let unsubscribe: (() => void) | null = null;
   let initialized = false;
@@ -96,6 +103,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
       client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options?.()),
       subscribe({
         next: (result) => {
+          metadata = result.metadata;
           if (result.errors && result.errors.length > 0) {
             error = new AggregatedError(result.errors);
             loading = false;
@@ -129,6 +137,9 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
     },
     get error() {
       return error;
+    },
+    get metadata() {
+      return metadata;
     },
     refetch,
   } as Query<T>;

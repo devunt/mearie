@@ -6,14 +6,17 @@ export type CreateFragmentOptions = FragmentOptions;
 
 export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
+  metadata: OperationResult['metadata'];
 };
 
 export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
+  metadata: OperationResult['metadata'];
 };
 
 export type OptionalFragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T> | null;
+  metadata: OperationResult['metadata'];
 };
 
 type CreateFragmentFn = {
@@ -44,6 +47,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
   const ref = fragmentRef();
 
   let data: unknown;
+  let initialMetadata: OperationResult['metadata'];
   if (ref == null) {
     data = null;
   } else {
@@ -52,14 +56,17 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
       throw new Error('Fragment data not found');
     }
     data = result.data;
+    initialMetadata = result.metadata;
   }
 
   let state = $state(data);
+  let metadata = $state<OperationResult['metadata']>(initialMetadata);
 
   $effect(() => {
     const currentRef = fragmentRef();
     if (currentRef == null) {
       state = null;
+      metadata = undefined;
       return;
     }
 
@@ -67,6 +74,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
       client.executeFragment(fragment, $state.snapshot(currentRef) as typeof currentRef, options?.()),
       subscribe({
         next: (result: OperationResult) => {
+          metadata = result.metadata;
           if (result.data !== undefined) {
             state = result.data;
           }
@@ -82,6 +90,9 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
   return {
     get data() {
       return state;
+    },
+    get metadata() {
+      return metadata;
     },
   };
 }) as unknown as CreateFragmentFn;

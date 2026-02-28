@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, MutationOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, take, collect } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -9,16 +9,19 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
     };
 
 export type CreateMutationOptions = MutationOptions;
@@ -38,10 +41,12 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
   const [data, setData] = createSignal<DataOf<T> | undefined>();
   const [loading, setLoading] = createSignal<boolean>(false);
   const [error, setError] = createSignal<AggregatedError | undefined>();
+  const [metadata, setMetadata] = createSignal<OperationResult['metadata']>();
 
   const execute = async (variables?: VariablesOf<T>, options?: CreateMutationOptions): Promise<DataOf<T>> => {
     setLoading(true);
     setError(undefined);
+    setMetadata(undefined);
 
     try {
       const result = await pipe(
@@ -50,6 +55,8 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
         take(1),
         collect,
       );
+
+      setMetadata(result.metadata);
 
       if (result.errors && result.errors.length > 0) {
         const err = new AggregatedError(result.errors);
@@ -86,6 +93,9 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
       },
       get error() {
         return error();
+      },
+      get metadata() {
+        return metadata();
       },
     },
   ] as Mutation<T>;

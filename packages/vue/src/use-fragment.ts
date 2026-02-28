@@ -7,14 +7,17 @@ export type UseFragmentOptions = FragmentOptions;
 
 export type Fragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T>;
+  metadata: OperationResult['metadata'];
 };
 
 export type FragmentList<T extends Artifact<'fragment'>> = {
   data: DataOf<T>[];
+  metadata: OperationResult['metadata'];
 };
 
 export type OptionalFragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T> | null;
+  metadata: OperationResult['metadata'];
 };
 
 type UseFragmentFn = {
@@ -44,6 +47,7 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
 
   const initialRef = toValue(fragmentRef);
   let initialData: unknown;
+  let initialMetadata: OperationResult['metadata'];
   if (initialRef == null) {
     initialData = null;
   } else {
@@ -52,14 +56,17 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
       throw new Error('Fragment data not found');
     }
     initialData = result.data;
+    initialMetadata = result.metadata;
   }
 
   const data = ref(initialData);
+  const metadata = ref<OperationResult['metadata']>(initialMetadata);
 
   watchEffect((onCleanup) => {
     const currentRef = toValue(fragmentRef);
     if (currentRef == null) {
       data.value = null;
+      metadata.value = undefined;
       return;
     }
 
@@ -67,6 +74,7 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
       client.executeFragment(fragment, currentRef, toValue(options)),
       subscribe({
         next: (result: OperationResult) => {
+          metadata.value = result.metadata;
           if (result.data !== undefined) {
             data.value = result.data;
           }
@@ -80,6 +88,9 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   return {
     get data() {
       return data.value;
+    },
+    get metadata() {
+      return metadata.value;
     },
   };
 }) as unknown as UseFragmentFn;

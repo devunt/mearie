@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Artifact, DataOf, QueryOptions, VariablesOf } from '@mearie/core';
+import type { Artifact, DataOf, OperationResult, QueryOptions, VariablesOf } from '@mearie/core';
 import { AggregatedError, stringify } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -13,18 +13,21 @@ export type Query<T extends Artifact<'query'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     };
 
@@ -33,18 +36,21 @@ export type DefinedQuery<T extends Artifact<'query'>> =
       data: DataOf<T>;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
       refetch: () => void;
     };
 
@@ -72,6 +78,7 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   const [data, setData] = useState<DataOf<T> | undefined>(options?.initialData);
   const [loading, setLoading] = useState(!options?.skip && !options?.initialData);
   const [error, setError] = useState<AggregatedError | undefined>();
+  const [metadata, setMetadata] = useState<OperationResult['metadata']>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
   const initialized = useRef(false);
@@ -97,6 +104,7 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
       client.executeQuery(query, variables, stableOptions),
       subscribe({
         next: (result) => {
+          setMetadata(result.metadata);
           if (result.errors && result.errors.length > 0) {
             setError(new AggregatedError(result.errors));
             setLoading(false);
@@ -119,6 +127,7 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     data,
     loading,
     error,
+    metadata,
     refetch: execute,
   } as Query<T>;
 }) as unknown as UseQueryFn;

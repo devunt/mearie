@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onCleanup, type Accessor } from 'solid-js';
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, SubscriptionOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -9,16 +9,19 @@ export type Subscription<T extends Artifact<'subscription'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
     };
 
 export type CreateSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
@@ -38,6 +41,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
   const [data, setData] = createSignal<DataOf<T> | undefined>();
   const [loading, setLoading] = createSignal<boolean>(!options?.()?.skip);
   const [error, setError] = createSignal<AggregatedError | undefined>();
+  const [metadata, setMetadata] = createSignal<OperationResult['metadata']>();
 
   createEffect(() => {
     if (options?.()?.skip) {
@@ -52,6 +56,7 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
       client.executeSubscription(subscription, typeof variables === 'function' ? variables() : variables, options?.()),
       subscribe({
         next: (result) => {
+          setMetadata(result.metadata);
           if (result.errors && result.errors.length > 0) {
             const err = new AggregatedError(result.errors);
 
@@ -86,6 +91,9 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
     },
     get error() {
       return error();
+    },
+    get metadata() {
+      return metadata();
     },
   } as Subscription<T>;
 };

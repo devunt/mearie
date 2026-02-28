@@ -1,4 +1,4 @@
-import type { VariablesOf, DataOf, Artifact, MutationOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, MutationOptions, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { pipe, take, collect } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
@@ -8,16 +8,19 @@ export type MutationResult<T extends Artifact<'mutation'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
     };
 
 export type CreateMutationOptions = MutationOptions;
@@ -37,10 +40,12 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
   let data = $state<DataOf<T> | undefined>();
   let loading = $state<boolean>(false);
   let error = $state<AggregatedError | undefined>();
+  let metadata = $state<OperationResult['metadata']>();
 
   const execute = async (variables?: VariablesOf<T>, options?: CreateMutationOptions): Promise<DataOf<T>> => {
     loading = true;
     error = undefined;
+    metadata = undefined;
 
     try {
       const result = await pipe(
@@ -49,6 +54,8 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
         take(1),
         collect,
       );
+
+      metadata = result.metadata;
 
       if (result.errors && result.errors.length > 0) {
         const err = new AggregatedError(result.errors);
@@ -85,6 +92,9 @@ export const createMutation = <T extends Artifact<'mutation'>>(mutation: T): Mut
       },
       get error() {
         return error;
+      },
+      get metadata() {
+        return metadata;
       },
     },
   ] as Mutation<T>;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions } from '@mearie/core';
+import type { VariablesOf, DataOf, Artifact, OperationResult, SubscriptionOptions } from '@mearie/core';
 import { AggregatedError, stringify } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -9,16 +9,19 @@ export type Subscription<T extends Artifact<'subscription'>> =
       data: undefined;
       loading: true;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: undefined;
+      metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
+      metadata: OperationResult['metadata'];
     };
 
 export type UseSubscriptionOptions<T extends Artifact<'subscription'>> = SubscriptionOptions & {
@@ -38,6 +41,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
   const [data, setData] = useState<DataOf<T> | undefined>();
   const [loading, setLoading] = useState(!options?.skip);
   const [error, setError] = useState<AggregatedError | undefined>();
+  const [metadata, setMetadata] = useState<OperationResult['metadata']>();
 
   const unsubscribe = useRef<(() => void) | null>(null);
   const stableVariables = useMemo(() => stringify(variables), [variables]);
@@ -58,6 +62,7 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
       client.executeSubscription(subscription, variables, stableOptions),
       subscribe({
         next: (result) => {
+          setMetadata(result.metadata);
           if (result.errors && result.errors.length > 0) {
             const err = new AggregatedError(result.errors);
 
@@ -88,5 +93,6 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
     data,
     loading,
     error,
+    metadata,
   } as Subscription<T>;
 };

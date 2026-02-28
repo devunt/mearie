@@ -306,18 +306,18 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn build_query_fields_type(&self) -> TSType<'b> {
-        if let Some(query_type_name) = self.schema.query_type() {
-            if let Some(fields) = self.schema.get_object_fields(query_type_name) {
-                let field_types: Vec<TSType<'b>> = fields
-                    .keys()
-                    .map(|&field_name| {
-                        let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
-                        self.ast.ts_type_literal_type(SPAN, string_literal)
-                    })
-                    .collect();
+        if let Some(query_type_name) = self.schema.query_type()
+            && let Some(fields) = self.schema.get_object_fields(query_type_name)
+        {
+            let field_types: Vec<TSType<'b>> = fields
+                .keys()
+                .map(|&field_name| {
+                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
+                    self.ast.ts_type_literal_type(SPAN, string_literal)
+                })
+                .collect();
 
-                return self.create_union(field_types);
-            }
+            return self.create_union(field_types);
         }
 
         self.ast.ts_type_string_keyword(SPAN)

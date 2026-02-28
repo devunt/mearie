@@ -1,5 +1,13 @@
 # @mearie/core
 
+## 0.2.4
+
+### Patch Changes
+
+- 16eeca9: Fix cache invalidation behavior for query and fragment subscriptions.
+
+  When invalidating an entity, the cache now notifies query subscribers that depend on links to that entity (including fragment-only query selections), so query refetch is triggered correctly. During invalidation/refetch, previously resolved query and fragment results are kept as stale data instead of emitting transient `null` values.
+
 ## 0.2.3
 
 ### Patch Changes

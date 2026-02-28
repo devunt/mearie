@@ -716,7 +716,7 @@ describe('normalize', () => {
       ]);
     });
 
-    it('entity with missing key field skips normalization', () => {
+    it('entity with missing key field stores as inline object', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -739,12 +739,17 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {},
+        [RootFieldKey]: {
+          'user@{}': {
+            '__typename@{}': 'User',
+            'name@{}': 'Alice',
+          },
+        },
       });
       expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with null key field skips normalization', () => {
+    it('entity with null key field stores as inline object', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -769,12 +774,18 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {},
+        [RootFieldKey]: {
+          'user@{}': {
+            '__typename@{}': 'User',
+            'id@{}': null,
+            'name@{}': 'Alice',
+          },
+        },
       });
       expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with undefined key field skips normalization', () => {
+    it('entity with undefined key field stores as inline object', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -798,12 +809,17 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {},
+        [RootFieldKey]: {
+          'user@{}': {
+            '__typename@{}': 'User',
+            'name@{}': 'Alice',
+          },
+        },
       });
       expectSameCalls(calls, [[RootFieldKey, 'user@{}']]);
     });
 
-    it('entity with partial key fields skips normalization', () => {
+    it('entity with partial key fields stores as inline object', () => {
       const selections = [
         {
           kind: 'Field' as const,
@@ -828,7 +844,13 @@ describe('normalize', () => {
       const { storage, calls } = normalizeTest(selections, data);
 
       expect(storage).toEqual({
-        [RootFieldKey]: {},
+        [RootFieldKey]: {
+          'comment@{}': {
+            '__typename@{}': 'Comment',
+            'postId@{}': 'post-1',
+            'text@{}': 'Great!',
+          },
+        },
       });
       expectSameCalls(calls, [[RootFieldKey, 'comment@{}']]);
     });

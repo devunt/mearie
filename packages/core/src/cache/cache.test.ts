@@ -3563,4 +3563,193 @@ describe('Cache', () => {
       expect(() => cache.removeOptimistic('non-existent')).not.toThrow();
     });
   });
+
+  describe('union type with entity types and inline fragments', () => {
+    const unionSchema: SchemaMeta = {
+      entities: {
+        Entity: { keyFields: ['id'] },
+        Post: { keyFields: ['id'] },
+        Folder: { keyFields: ['id'] },
+        Site: { keyFields: ['id'] },
+      },
+      inputs: {},
+      scalars: {},
+    };
+
+    it('should not return partial when union field has non-matching entity type without key fields', () => {
+      const cache = new Cache(unionSchema);
+
+      const artifact = createArtifact('query', 'GetEntity', [
+        {
+          kind: 'Field',
+          name: 'entity',
+          type: 'Entity',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'site',
+              type: 'Site',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                {
+                  kind: 'Field',
+                  name: 'entities',
+                  type: '[Entity]',
+                  selections: [
+                    { kind: 'Field', name: '__typename', type: 'String' },
+                    { kind: 'Field', name: 'id', type: 'ID' },
+                    { kind: 'Field', name: 'slug', type: 'String' },
+                    {
+                      kind: 'Field',
+                      name: 'node',
+                      type: 'Node',
+                      selections: [
+                        { kind: 'Field', name: '__typename', type: 'String' },
+                        {
+                          kind: 'InlineFragment',
+                          on: 'Post',
+                          selections: [
+                            { kind: 'Field', name: 'id', type: 'ID' },
+                            { kind: 'Field', name: 'title', type: 'String' },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      const data = {
+        entity: {
+          __typename: 'Entity',
+          id: 'entity-1',
+          site: {
+            __typename: 'Site',
+            id: 'site-1',
+            entities: [
+              {
+                __typename: 'Entity',
+                id: 'entity-1',
+                slug: 'my-post',
+                node: {
+                  __typename: 'Post',
+                  id: 'post-1',
+                  title: 'My Post',
+                },
+              },
+              {
+                __typename: 'Entity',
+                id: 'entity-2',
+                slug: 'my-folder',
+                node: {
+                  __typename: 'Folder',
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      cache.writeQuery(artifact, {}, data);
+
+      const result = cache.readQuery(artifact, {});
+
+      expect(result.data).not.toBeNull();
+      expect(result.data).toEqual({
+        entity: {
+          __typename: 'Entity',
+          id: 'entity-1',
+          site: {
+            __typename: 'Site',
+            id: 'site-1',
+            entities: [
+              {
+                __typename: 'Entity',
+                id: 'entity-1',
+                slug: 'my-post',
+                node: {
+                  __typename: 'Post',
+                  id: 'post-1',
+                  title: 'My Post',
+                },
+              },
+              {
+                __typename: 'Entity',
+                id: 'entity-2',
+                slug: 'my-folder',
+                node: {
+                  __typename: 'Folder',
+                },
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should not return partial when union field is null for non-matching entity type', () => {
+      const cache = new Cache(unionSchema);
+
+      const artifact = createArtifact('query', 'GetEntities', [
+        {
+          kind: 'Field',
+          name: 'entities',
+          type: '[Entity]',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'node',
+              type: 'Node',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                {
+                  kind: 'InlineFragment',
+                  on: 'Post',
+                  selections: [
+                    { kind: 'Field', name: 'id', type: 'ID' },
+                    { kind: 'Field', name: 'title', type: 'String' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      const data = {
+        entities: [
+          {
+            __typename: 'Entity',
+            id: 'entity-1',
+            node: {
+              __typename: 'Post',
+              id: 'post-1',
+              title: 'Hello',
+            },
+          },
+          {
+            __typename: 'Entity',
+            id: 'entity-2',
+            node: {
+              __typename: 'Folder',
+            },
+          },
+        ],
+      };
+
+      cache.writeQuery(artifact, {}, data);
+
+      const result = cache.readQuery(artifact, {});
+      expect(result.data).not.toBeNull();
+    });
+  });
 });

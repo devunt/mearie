@@ -96,13 +96,13 @@ jobs:
         run: pnpm publish:prepare
 
       - name: Download native artifacts
-        if: needs.detect-release.outputs.native_changed == 'true'
+        if: needs.detect-release.outputs.is_release == 'true' && needs.detect-release.outputs.native_changed == 'true'
         uses: actions/download-artifact@v7
         with:
           path: crates/native/artifacts
 
       - name: Prepare native artifacts
-        if: needs.detect-release.outputs.native_changed == 'true'
+        if: needs.detect-release.outputs.is_release == 'true' && needs.detect-release.outputs.native_changed == 'true'
         working-directory: crates/native
         run: pnpm napi:prepare
 

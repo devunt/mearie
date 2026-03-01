@@ -225,12 +225,32 @@ export const replaceEqualDeep = (prev: unknown, next: unknown): unknown => {
   return allSame ? prev : result;
 };
 
+const NormalizedKey: unique symbol = Symbol('mearie.normalized');
+
 /**
- * Deeply merges two values. Objects are recursively merged, arrays are element-wise merged,
- * entity links and primitives use last-write-wins.
+ * Marks a record as a normalized cache object so that {@link mergeFields}
+ * can distinguish it from opaque scalar values (e.g. JSON scalars).
+ * Only normalized records are deep-merged; unmarked objects are treated as
+ * atomic values and replaced entirely on write.
  * @internal
  */
-const mergeFieldValue = (existing: unknown, incoming: unknown): unknown => {
+export const markNormalized = (obj: object): void => {
+  Object.defineProperty(obj, NormalizedKey, { value: true });
+};
+
+const isNormalizedRecord = (value: unknown): boolean => {
+  return typeof value === 'object' && value !== null && NormalizedKey in value;
+};
+
+/**
+ * Deeply merges two values. When {@link deep} is false (default), only
+ * {@link markNormalized normalized} cache objects are recursively merged;
+ * unmarked plain objects (e.g. JSON scalars) are atomically replaced.
+ * When {@link deep} is true, all objects are recursively merged unconditionally.
+ * Arrays are element-wise merged, entity links and primitives use last-write-wins.
+ * @internal
+ */
+const mergeFieldValue = (existing: unknown, incoming: unknown, deep: boolean): unknown => {
   if (isNullish(existing) || isNullish(incoming)) {
     return incoming;
   }
@@ -245,7 +265,7 @@ const mergeFieldValue = (existing: unknown, incoming: unknown): unknown => {
 
   if (Array.isArray(existing) && Array.isArray(incoming)) {
     return incoming.map((item: unknown, i: number): unknown =>
-      i < existing.length ? mergeFieldValue(existing[i], item) : item,
+      i < existing.length ? mergeFieldValue(existing[i], item, deep) : item,
     );
   }
 
@@ -253,21 +273,27 @@ const mergeFieldValue = (existing: unknown, incoming: unknown): unknown => {
     return incoming;
   }
 
-  mergeFields(existing as Record<string, unknown>, incoming);
+  if (!deep && !isNormalizedRecord(incoming)) {
+    return incoming;
+  }
+
+  mergeFields(existing as Record<string, unknown>, incoming, deep);
   return existing;
 };
 
 /**
- * Deeply merges source fields into target. Objects are recursively merged,
- * arrays are element-wise merged, entity links and primitives use last-write-wins.
+ * Deeply merges source fields into target.
+ * When {@link deep} is false (default), only {@link markNormalized normalized}
+ * objects are recursively merged; unmarked objects are atomically replaced.
+ * When {@link deep} is true, all objects are recursively merged unconditionally.
  * @internal
  */
-export const mergeFields = (target: Record<string, unknown>, source: unknown): void => {
+export const mergeFields = (target: Record<string, unknown>, source: unknown, deep?: boolean): void => {
   if (isNullish(source) || typeof source !== 'object' || Array.isArray(source)) {
     return;
   }
   for (const key of Object.keys(source)) {
-    target[key] = mergeFieldValue(target[key], (source as Record<string, unknown>)[key]);
+    target[key] = mergeFieldValue(target[key], (source as Record<string, unknown>)[key], deep ?? false);
   }
 };
 

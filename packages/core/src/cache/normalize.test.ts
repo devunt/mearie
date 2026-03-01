@@ -4177,4 +4177,149 @@ describe('normalize', () => {
       });
     });
   });
+
+  describe('JSON scalar (object-valued scalar) merging', () => {
+    it('should atomically replace a JSON scalar object instead of deep merging', () => {
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'user@{}': { [EntityLinkKey]: 'User:1' },
+        },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'metadata@{}': { a: 1, b: 2 },
+        },
+      };
+
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'metadata', type: 'JSON' },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          id: '1',
+          metadata: { a: 3, c: 4 },
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // JSON scalar should be atomically replaced, not deep merged
+      // Expected: { a: 3, c: 4 }
+      // Bug produces: { a: 3, b: 2, c: 4 } (deep merged)
+      expect(storage['User:1']!['metadata@{}']).toEqual({ a: 3, c: 4 });
+    });
+
+    it('should atomically replace a JSON scalar object on root field', () => {
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'config@{}': { theme: 'dark', locale: 'en' },
+        },
+      };
+
+      const selections: Selection[] = [{ kind: 'Field', name: 'config', type: 'JSON' }];
+
+      const data = {
+        config: { theme: 'light', currency: 'USD' },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // Root-level JSON scalar should also be replaced atomically
+      expect(storage[RootFieldKey]['config@{}']).toEqual({ theme: 'light', currency: 'USD' });
+    });
+
+    it('should atomically replace a JSON scalar array of objects', () => {
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'user@{}': { [EntityLinkKey]: 'User:1' },
+        },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'tags@{}': [
+            { key: 'role', value: 'admin' },
+            { key: 'dept', value: 'eng' },
+          ],
+        },
+      };
+
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'tags', type: 'JSON' },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          id: '1',
+          tags: [{ key: 'role', value: 'viewer' }],
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // JSON scalar array should be replaced entirely
+      expect(storage['User:1']!['tags@{}']).toEqual([{ key: 'role', value: 'viewer' }]);
+    });
+
+    it('should atomically replace a deeply nested JSON scalar', () => {
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'user@{}': { [EntityLinkKey]: 'User:1' },
+        },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'settings@{}': { notifications: { email: true, sms: false }, privacy: { public: true } },
+        },
+      };
+
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'settings', type: 'JSON' },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          id: '1',
+          settings: { notifications: { email: false } },
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // Entire JSON scalar should be replaced, not deep merged
+      // Expected: { notifications: { email: false } }
+      // Bug produces: { notifications: { email: false, sms: false }, privacy: { public: true } }
+      expect(storage['User:1']!['settings@{}']).toEqual({ notifications: { email: false } });
+    });
+  });
 });

@@ -63,7 +63,7 @@ export const denormalize = (
         const value = selection.selections ? denormalizeField(null, selection.selections, fieldValue) : fieldValue;
 
         if (name in fields) {
-          mergeFields(fields, { [name]: value });
+          mergeFields(fields, { [name]: value }, true);
         } else {
           fields[name] = value;
         }
@@ -80,10 +80,10 @@ export const denormalize = (
             denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor);
           }
         } else {
-          mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
+          mergeFields(fields, denormalizeField(storageKey, selection.selections, value), true);
         }
       } else if (selection.kind === 'InlineFragment' && selection.on === data[typenameFieldKey]) {
-        mergeFields(fields, denormalizeField(storageKey, selection.selections, value));
+        mergeFields(fields, denormalizeField(storageKey, selection.selections, value), true);
       }
     }
 

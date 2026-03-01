@@ -1,5 +1,5 @@
 import type { Selection, SchemaMeta } from '@mearie/shared';
-import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFields } from './utils.ts';
+import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFields, markNormalized } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
@@ -102,6 +102,8 @@ export const normalize = (
         }
       }
     }
+
+    markNormalized(fields);
 
     if (entityKey) {
       const existing = storage[entityKey];

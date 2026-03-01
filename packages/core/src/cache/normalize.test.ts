@@ -4020,4 +4020,161 @@ describe('normalize', () => {
       );
     });
   });
+
+  describe('aliased __typename', () => {
+    it('should normalize entity correctly when __typename is aliased', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String', alias: 'myType' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          myType: 'User',
+          id: '1',
+          name: 'Alice',
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data);
+
+      expect(storage[RootFieldKey]['user@{}']).toEqual({ [EntityLinkKey]: 'User:1' });
+      expect(storage['User:1']).toEqual({
+        '__typename@{}': 'User',
+        'id@{}': '1',
+        'name@{}': 'Alice',
+      });
+    });
+  });
+
+  describe('entity with invalid keys should not overwrite existing entity link', () => {
+    it('should preserve entity link when fragment re-normalizes entity without key fields', () => {
+      // Previously normalized: User:1 stored as entity with valid keys
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'user@{}': { [EntityLinkKey]: 'User:1' },
+        },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+          'email@{}': 'alice@example.com',
+        },
+      };
+
+      // query { user { ...UserFragment } }
+      // fragment UserFragment on User { name }
+      // Response lacks 'id' field → entity key invalid
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFragment',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          name: 'Bob',
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // Entity link must NOT be overwritten by inline object
+      expect(storage[RootFieldKey]['user@{}']).toEqual({ [EntityLinkKey]: 'User:1' });
+      // Entity storage must remain intact
+      expect(storage['User:1']).toEqual({
+        '__typename@{}': 'User',
+        'id@{}': '1',
+        'name@{}': 'Alice',
+        'email@{}': 'alice@example.com',
+      });
+    });
+
+    it('should preserve nested entity link inside parent entity when fragment re-normalizes without key fields', () => {
+      // Post:1 has author stored as entity link to User:1
+      const existingStorage: Storage = {
+        [RootFieldKey]: {
+          'post@{}': { [EntityLinkKey]: 'Post:1' },
+        },
+        'Post:1': {
+          '__typename@{}': 'Post',
+          'id@{}': '1',
+          'title@{}': 'Hello',
+          'author@{}': { [EntityLinkKey]: 'User:1' },
+        },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      // query { post { id ...PostFragment } }
+      // fragment PostFragment on Post { author { name } }
+      // Response has author without 'id' → User key invalid
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'post',
+          type: 'Post',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'PostFragment',
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'author',
+                  type: 'User',
+                  selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const data = {
+        post: {
+          __typename: 'Post',
+          id: '1',
+          author: {
+            __typename: 'User',
+            name: 'Bob',
+          },
+        },
+      };
+
+      const { storage } = normalizeTest(selections, data, {}, existingStorage);
+
+      // Post:1.author should remain as entity link, not overwritten by inline object
+      expect(storage['Post:1']!['author@{}']).toEqual({ [EntityLinkKey]: 'User:1' });
+      // User:1 entity storage should remain intact
+      expect(storage['User:1']).toEqual({
+        '__typename@{}': 'User',
+        'id@{}': '1',
+        'name@{}': 'Alice',
+      });
+    });
+  });
 });

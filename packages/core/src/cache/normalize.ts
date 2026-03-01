@@ -3,6 +3,15 @@ import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFie
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
+const resolveTypename = (selections: readonly Selection[], data: Record<string, unknown>): string | undefined => {
+  for (const s of selections) {
+    if (s.kind === 'Field' && s.name === '__typename') {
+      return data[s.alias ?? '__typename'] as string;
+    }
+  }
+  return data.__typename as string | undefined;
+};
+
 export const normalize = (
   schemaMeta: SchemaMeta,
   selections: readonly Selection[],
@@ -11,6 +20,17 @@ export const normalize = (
   variables: Record<string, unknown>,
   accessor?: (storageKey: StorageKey, fieldKey: FieldKey, oldValue: unknown, newValue: unknown) => void,
 ): void => {
+  const resolveEntityKey = (typename: string | undefined, data: Record<string, unknown>): StorageKey | null => {
+    if (!typename) return null;
+    const entityMeta = schemaMeta.entities[typename];
+    if (!entityMeta) return null;
+    const keys = entityMeta.keyFields.map((field) => data[field]);
+    if (keys.every((k) => k !== undefined && k !== null)) {
+      return makeEntityKey(typename, keys);
+    }
+    return null;
+  };
+
   const normalizeField = (storageKey: StorageKey | null, selections: readonly Selection[], value: unknown): unknown => {
     if (isNullish(value)) {
       return value;
@@ -22,15 +42,10 @@ export const normalize = (
 
     const data = value as Record<string, unknown>;
 
-    const typename = data.__typename as string;
-    let entityMeta = schemaMeta.entities[typename];
-    if (entityMeta) {
-      const keys = entityMeta.keyFields.map((field) => data[field]);
-      if (keys.every((k) => k !== undefined && k !== null)) {
-        storageKey = makeEntityKey(typename, keys);
-      } else {
-        entityMeta = undefined;
-      }
+    const typename = resolveTypename(selections, data);
+    const entityKey = resolveEntityKey(typename, data);
+    if (entityKey) {
+      storageKey = entityKey;
     }
 
     const fields: Record<string, unknown> = {};
@@ -39,6 +54,24 @@ export const normalize = (
       if (selection.kind === 'Field') {
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[selection.alias ?? selection.name];
+
+        if (
+          storageKey !== null &&
+          selection.selections &&
+          typeof fieldValue === 'object' &&
+          fieldValue !== null &&
+          !Array.isArray(fieldValue)
+        ) {
+          const fieldTypename = resolveTypename(selection.selections, fieldValue as Record<string, unknown>);
+          if (
+            fieldTypename &&
+            schemaMeta.entities[fieldTypename] &&
+            !resolveEntityKey(fieldTypename, fieldValue as Record<string, unknown>) &&
+            isEntityLink(storage[storageKey]?.[fieldKey])
+          ) {
+            continue;
+          }
+        }
 
         const oldValue = storageKey === null ? undefined : storage[storageKey]?.[fieldKey];
 
@@ -70,14 +103,14 @@ export const normalize = (
       }
     }
 
-    if (entityMeta && storageKey !== null) {
-      const existing = storage[storageKey];
+    if (entityKey) {
+      const existing = storage[entityKey];
       if (existing) {
         mergeFields(existing, fields);
       } else {
-        storage[storageKey] = fields as Storage[StorageKey];
+        storage[entityKey] = fields as Storage[StorageKey];
       }
-      return { [EntityLinkKey]: storageKey };
+      return { [EntityLinkKey]: entityKey };
     }
 
     return fields;

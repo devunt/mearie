@@ -31,18 +31,24 @@ export const normalize = (
     return null;
   };
 
-  const normalizeField = (storageKey: StorageKey | null, selections: readonly Selection[], value: unknown): unknown => {
+  const normalizeField = (
+    storageKey: StorageKey | null,
+    selections: readonly Selection[],
+    value: unknown,
+    parentType?: string,
+  ): unknown => {
     if (isNullish(value)) {
       return value;
     }
 
     if (Array.isArray(value)) {
-      return value.map((item: unknown) => normalizeField(storageKey, selections, item));
+      return value.map((item: unknown) => normalizeField(storageKey, selections, item, parentType));
     }
 
     const data = value as Record<string, unknown>;
 
-    const typename = resolveTypename(selections, data);
+    const typename =
+      resolveTypename(selections, data) ?? (parentType && schemaMeta.entities[parentType] ? parentType : undefined);
     const entityKey = resolveEntityKey(typename, data);
     if (entityKey) {
       storageKey = entityKey;
@@ -53,7 +59,11 @@ export const normalize = (
     for (const selection of selections) {
       if (selection.kind === 'Field') {
         const fieldKey = makeFieldKey(selection, variables);
-        const fieldValue = data[selection.alias ?? selection.name];
+        let fieldValue = data[selection.alias ?? selection.name];
+
+        if (selection.name === '__typename' && fieldValue === undefined && typename) {
+          fieldValue = typename;
+        }
 
         if (
           storageKey !== null &&
@@ -62,7 +72,9 @@ export const normalize = (
           fieldValue !== null &&
           !Array.isArray(fieldValue)
         ) {
-          const fieldTypename = resolveTypename(selection.selections, fieldValue as Record<string, unknown>);
+          const fieldTypename =
+            resolveTypename(selection.selections, fieldValue as Record<string, unknown>) ??
+            (selection.type && schemaMeta.entities[selection.type] ? selection.type : undefined);
           if (
             fieldTypename &&
             schemaMeta.entities[fieldTypename] &&
@@ -79,7 +91,9 @@ export const normalize = (
           accessor?.(storageKey, fieldKey, oldValue, fieldValue);
         }
 
-        const normalized = selection.selections ? normalizeField(null, selection.selections, fieldValue) : fieldValue;
+        const normalized = selection.selections
+          ? normalizeField(null, selection.selections, fieldValue, selection.type)
+          : fieldValue;
         fields[fieldKey] = normalized;
 
         if (

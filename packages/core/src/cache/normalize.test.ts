@@ -4321,5 +4321,190 @@ describe('normalize', () => {
       // Bug produces: { notifications: { email: false, sms: false }, privacy: { public: true } }
       expect(storage['User:1']!['settings@{}']).toEqual({ notifications: { email: false } });
     });
+
+    describe('typename inference from field selection type', () => {
+      it('should normalize entity when __typename is missing but field type is a known entity', () => {
+        const selections: Selection[] = [
+          {
+            kind: 'Field',
+            name: 'updateUser',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ];
+
+        const data = {
+          updateUser: {
+            id: '1',
+            name: 'Alice',
+          },
+        };
+
+        const { storage, calls } = normalizeTest(selections, data);
+
+        expect(storage).toEqual({
+          [RootFieldKey]: { 'updateUser@{}': { [EntityLinkKey]: 'User:1' } },
+          'User:1': {
+            '__typename@{}': 'User',
+            'id@{}': '1',
+            'name@{}': 'Alice',
+          },
+        });
+        expectSameCalls(calls, [
+          [RootFieldKey, 'updateUser@{}'],
+          ['User:1' as StorageKey, '__typename@{}'],
+          ['User:1' as StorageKey, 'id@{}'],
+          ['User:1' as StorageKey, 'name@{}'],
+        ]);
+      });
+
+      it('should infer typename for nested entities without __typename', () => {
+        const selections: Selection[] = [
+          {
+            kind: 'Field',
+            name: 'updatePost',
+            type: 'Post',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'title', type: 'String' },
+              {
+                kind: 'Field',
+                name: 'author',
+                type: 'User',
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'name', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ];
+
+        const data = {
+          updatePost: {
+            id: 'p1',
+            title: 'Hello',
+            author: {
+              id: '1',
+              name: 'Alice',
+            },
+          },
+        };
+
+        const { storage } = normalizeTest(selections, data);
+
+        expect(storage).toEqual({
+          [RootFieldKey]: { 'updatePost@{}': { [EntityLinkKey]: 'Post:p1' } },
+          'Post:p1': {
+            '__typename@{}': 'Post',
+            'id@{}': 'p1',
+            'title@{}': 'Hello',
+            'author@{}': { [EntityLinkKey]: 'User:1' },
+          },
+          'User:1': {
+            '__typename@{}': 'User',
+            'id@{}': '1',
+            'name@{}': 'Alice',
+          },
+        });
+      });
+
+      it('should infer typename for entities in arrays', () => {
+        const selections: Selection[] = [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: 'User',
+            array: true,
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ];
+
+        const data = {
+          users: [
+            { id: '1', name: 'Alice' },
+            { id: '2', name: 'Bob' },
+          ],
+        };
+
+        const { storage } = normalizeTest(selections, data);
+
+        expect(storage).toEqual({
+          [RootFieldKey]: {
+            'users@{}': [{ [EntityLinkKey]: 'User:1' }, { [EntityLinkKey]: 'User:2' }],
+          },
+          'User:1': { '__typename@{}': 'User', 'id@{}': '1', 'name@{}': 'Alice' },
+          'User:2': { '__typename@{}': 'User', 'id@{}': '2', 'name@{}': 'Bob' },
+        });
+      });
+
+      it('should not infer typename when field type is not a known entity', () => {
+        const selections: Selection[] = [
+          {
+            kind: 'Field',
+            name: 'result',
+            type: 'UpdateResult',
+            selections: [{ kind: 'Field', name: 'success', type: 'Boolean' }],
+          },
+        ];
+
+        const data = {
+          result: {
+            success: true,
+          },
+        };
+
+        const { storage, calls } = normalizeTest(selections, data);
+
+        expect(storage).toEqual({
+          [RootFieldKey]: { 'result@{}': { 'success@{}': true } },
+        });
+        expectSameCalls(calls, [[RootFieldKey, 'result@{}']]);
+      });
+
+      it('should prefer data __typename over inferred field type', () => {
+        const selections: Selection[] = [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ];
+
+        const data = {
+          user: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+          },
+        };
+
+        const { storage } = normalizeTest(selections, data);
+
+        expect(storage).toEqual({
+          [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+          'User:1': {
+            '__typename@{}': 'User',
+            'id@{}': '1',
+            'name@{}': 'Alice',
+          },
+        });
+      });
+    });
   });
 });

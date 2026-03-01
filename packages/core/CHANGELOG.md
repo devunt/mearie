@@ -1,5 +1,11 @@
 # @mearie/core
 
+## 0.5.1
+
+### Patch Changes
+
+- 97b17bc: Fix cache normalization overwriting existing entity links when entity key fields are missing, and support aliased `__typename` fields during entity resolution
+
 ## 0.5.0
 
 ### Minor Changes

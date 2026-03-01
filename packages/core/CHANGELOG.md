@@ -1,5 +1,12 @@
 # @mearie/core
 
+## 0.5.2
+
+### Patch Changes
+
+- 1d541c5: Fix normalized cache incorrectly deep-merging object-valued scalar fields (e.g. JSON scalars) instead of atomically replacing them
+- 93b52da: Infer `__typename` from field selection type during normalization, fixing optimistic responses that omit `__typename` from being silently ignored by the normalized cache
+
 ## 0.5.1
 
 ### Patch Changes

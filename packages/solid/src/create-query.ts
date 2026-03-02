@@ -84,14 +84,15 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   let unsubscribe: (() => void) | null = null;
   let initialized = false;
 
-  const execute = () => {
+  const execute = (force = false) => {
     unsubscribe?.();
 
-    if (options?.()?.skip) {
+    if (!force && options?.()?.skip) {
+      setLoading(false);
       return;
     }
 
-    if (!initialized && initialOpts?.initialData) {
+    if (initialized || !initialOpts?.initialData) {
       setLoading(true);
     }
 
@@ -118,7 +119,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   };
 
   const refetch = () => {
-    untrack(execute);
+    untrack(() => execute(true));
   };
 
   createEffect(() => {

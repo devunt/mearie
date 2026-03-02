@@ -84,14 +84,15 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   let unsubscribe: (() => void) | null = null;
   let initialized = false;
 
-  const execute = () => {
+  const execute = (force = false) => {
     unsubscribe?.();
 
-    if (toValue(options)?.skip) {
+    if (!force && toValue(options)?.skip) {
+      loading.value = false;
       return;
     }
 
-    if (!initialized && initialOpts?.initialData) {
+    if (initialized || !initialOpts?.initialData) {
       loading.value = true;
     }
 
@@ -117,6 +118,8 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     );
   };
 
+  const refetch = () => execute(true);
+
   watchEffect((onCleanup) => {
     execute();
 
@@ -130,6 +133,6 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     loading,
     error,
     metadata,
-    refetch: execute,
+    refetch,
   } as Query<T>;
 }) as unknown as UseQueryFn;

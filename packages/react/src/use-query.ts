@@ -85,38 +85,44 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   const stableVariables = useMemo(() => stringify(variables), [variables]);
   const stableOptions = useMemo(() => options, [options?.skip]);
 
-  const execute = useCallback(() => {
-    unsubscribe.current?.();
+  const execute = useCallback(
+    (force = false) => {
+      unsubscribe.current?.();
 
-    if (stableOptions?.skip) {
-      return;
-    }
+      if (!force && stableOptions?.skip) {
+        setLoading(false);
+        return;
+      }
 
-    if (!initialized.current && options?.initialData) {
-      setLoading(true);
-    }
+      if (initialized.current || !options?.initialData) {
+        setLoading(true);
+      }
 
-    initialized.current = true;
-    setError(undefined);
+      initialized.current = true;
+      setError(undefined);
 
-    unsubscribe.current = pipe(
-      // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, variables, stableOptions),
-      subscribe({
-        next: (result) => {
-          setMetadata(result.metadata);
-          if (result.errors && result.errors.length > 0) {
-            setError(new AggregatedError(result.errors));
-            setLoading(false);
-          } else {
-            setData(result.data as DataOf<T>);
-            setLoading(false);
-            setError(undefined);
-          }
-        },
-      }),
-    );
-  }, [client, query, stableVariables, stableOptions]);
+      unsubscribe.current = pipe(
+        // @ts-expect-error - conditional signature makes this hard to type correctly
+        client.executeQuery(query, variables, stableOptions),
+        subscribe({
+          next: (result) => {
+            setMetadata(result.metadata);
+            if (result.errors && result.errors.length > 0) {
+              setError(new AggregatedError(result.errors));
+              setLoading(false);
+            } else {
+              setData(result.data as DataOf<T>);
+              setLoading(false);
+              setError(undefined);
+            }
+          },
+        }),
+      );
+    },
+    [client, query, stableVariables, stableOptions],
+  );
+
+  const refetch = useCallback(() => execute(true), [execute]);
 
   useEffect(() => {
     execute();
@@ -128,6 +134,6 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     loading,
     error,
     metadata,
-    refetch: execute,
+    refetch,
   } as Query<T>;
 }) as unknown as UseQueryFn;

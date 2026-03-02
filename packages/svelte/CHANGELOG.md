@@ -1,5 +1,11 @@
 # @mearie/svelte
 
+## 0.3.5
+
+### Patch Changes
+
+- 7043953: Fix `skip` option not setting `loading` to `false` when activated, and `refetch()` not executing when `skip` is `true`
+
 ## 0.3.4
 
 ### Patch Changes

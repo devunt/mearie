@@ -15,13 +15,16 @@ msvc
 napi
 nums
 pife
+resub
 rfind
 rlib
 rustc
+sels
 serde
 shikijs
 solidjs
 tmdb
+unsub
 unsubscription
 urql
 vitepress

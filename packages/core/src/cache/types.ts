@@ -1,4 +1,4 @@
-import type { MaybePromise, SchemaMeta } from '@mearie/shared';
+import type { Selection, SchemaMeta } from '@mearie/shared';
 import type { EntityLinkKey, RootFieldKey } from './constants.ts';
 
 /**
@@ -30,12 +30,6 @@ export type Scalar = string | number | boolean | null;
  * @internal
  */
 export type QueryKey = `${string}@${string}`;
-
-/**
- * Key for tracking previous denormalized results for structural sharing.
- * @internal
- */
-export type MemoKey = string;
 
 /**
  * Dependency key in the format "storageKey.field" used to track field dependencies.
@@ -76,12 +70,47 @@ export type Data = {
 };
 
 /**
- * Listener function.
+ * Path into a denormalized query result tree.
+ */
+export type PropertyPath = (string | number)[];
+
+/**
+ * Describes a targeted mutation to a denormalized query result.
+ */
+export type Patch =
+  | { type: 'set'; path: PropertyPath; value: unknown }
+  | { type: 'splice'; path: PropertyPath; index: number; deleteCount: number; items: unknown[] }
+  | { type: 'swap'; path: PropertyPath; i: number; j: number };
+
+/**
+ * Node in the entry tree that mirrors the denormalized result structure.
  * @internal
  */
-export type Listener = () => MaybePromise<void>;
+export type EntryTreeNode = {
+  depKey: DependencyKey;
+  children: Map<string, EntryTreeNode>;
+  selections?: readonly Selection[];
+};
 
-export type Subscription = { listener: Listener };
+/**
+ * Active subscription for a query or fragment, holding its listener, entry tree, and context.
+ * @internal
+ */
+export type QuerySubscription = {
+  listener: (patches: Patch[] | null) => void;
+  selections: readonly Selection[];
+  variables: Record<string, unknown>;
+  entryTree: EntryTreeNode;
+};
+
+/**
+ * Entry in the #subscriptions map linking a dependency key to a specific subscription with its path.
+ * @internal
+ */
+export type SubscriptionEntry = {
+  path: PropertyPath;
+  subscription: QuerySubscription;
+};
 
 type EntityTypes<TMeta extends SchemaMeta> = NonNullable<TMeta[' $entityTypes']>;
 type QueryFields<TMeta extends SchemaMeta> = NonNullable<TMeta[' $queryFields']>;

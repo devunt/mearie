@@ -1,5 +1,7 @@
 import { createSignal, createEffect, onCleanup, type Accessor } from 'solid-js';
+import { createStore, produce, reconcile } from 'solid-js/store';
 import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
+import { applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -59,13 +61,13 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
     initialMetadata = result.metadata;
   }
 
-  const [data, setData] = createSignal(initialData);
+  const [data, setData] = createStore<{ value: unknown }>({ value: initialData });
   const [metadata, setMetadata] = createSignal<OperationResult['metadata']>(initialMetadata);
 
   createEffect(() => {
     const currentRef = fragmentRef();
     if (currentRef == null) {
-      setData(() => null);
+      setData('value', reconcile(null));
       setMetadata(undefined);
       return;
     }
@@ -75,8 +77,17 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
       subscribe({
         next: (result: OperationResult) => {
           setMetadata(result.metadata);
-          if (result.data !== undefined) {
-            setData(() => result.data);
+          const patches = result.metadata?.cache?.patches;
+          if (patches) {
+            setData(
+              'value',
+              produce((draft) => {
+                const root = applyPatchesMutable(draft, patches);
+                if (root !== undefined) return root;
+              }),
+            );
+          } else if (result.data !== undefined) {
+            setData('value', reconcile(result.data));
           }
         },
       }),
@@ -89,7 +100,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 
   return {
     get data() {
-      return data();
+      return data.value;
     },
     get metadata() {
       return metadata();

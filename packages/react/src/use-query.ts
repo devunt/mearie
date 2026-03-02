@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Artifact, DataOf, OperationResult, QueryOptions, VariablesOf } from '@mearie/core';
-import { AggregatedError, stringify } from '@mearie/core';
+import { AggregatedError, stringify, applyPatchesImmutable } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -111,7 +111,12 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
               setError(new AggregatedError(result.errors));
               setLoading(false);
             } else {
-              setData(result.data as DataOf<T>);
+              const patches = result.metadata?.cache?.patches;
+              if (patches) {
+                setData((prev) => applyPatchesImmutable(prev, patches)!);
+              } else {
+                setData(result.data as DataOf<T>);
+              }
               setLoading(false);
               setError(undefined);
             }

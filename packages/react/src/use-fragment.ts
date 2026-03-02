@@ -1,6 +1,7 @@
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import {
   AggregatedError,
+  applyPatchesImmutable,
   type Artifact,
   type DataOf,
   type FragmentOptions,
@@ -70,7 +71,16 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
               throw new AggregatedError(result.errors);
             }
 
-            storeRef.current = { data: result.data, metadata: result.metadata };
+            const patches = result.metadata?.cache?.patches;
+            if (patches) {
+              const prevData = storeRef.current?.data;
+              storeRef.current = {
+                data: applyPatchesImmutable(prevData, patches),
+                metadata: result.metadata,
+              };
+            } else {
+              storeRef.current = { data: result.data, metadata: result.metadata };
+            }
             onChange();
           },
         }),

@@ -467,10 +467,9 @@ describe('cacheExchange', () => {
         { __typename: 'User', id: '1', email: 'alice@example.com' },
         { __typename: 'User', id: '2', email: 'bob@example.com' },
       ]);
-      expect(fragmentResults[1]!.data).toEqual([
-        { __typename: 'User', id: '1', email: 'alice-new@example.com' },
-        { __typename: 'User', id: '2', email: 'bob@example.com' },
-      ]);
+      const patches = fragmentResults[1]!.metadata?.cache?.patches;
+      expect(patches).toBeDefined();
+      expect(patches).toEqual([{ type: 'set', path: [0, 'email'], value: 'alice-new@example.com' }]);
     });
   });
 
@@ -686,12 +685,13 @@ describe('cacheExchange', () => {
       expect(results[0]!.data).toEqual({
         user: { __typename: 'User', id: '1', name: 'Alice' },
       });
-      expect(results[1]!.data).toEqual({
-        updateUser: { __typename: 'User', id: '1', name: 'Bob' },
+      expect(results[1]!.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Bob',
       });
-
       expect(results[2]!.data).toEqual({
-        user: { __typename: 'User', id: '1', name: 'Bob' },
+        updateUser: { __typename: 'User', id: '1', name: 'Bob' },
       });
     });
 
@@ -778,16 +778,18 @@ describe('cacheExchange', () => {
         id: '1',
         email: 'alice@example.com',
       });
-      expect(results[2]!.data).toEqual({
-        updateUser: { __typename: 'User', id: '1', email: 'bob@example.com' },
+      expect(results[2]!.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'email'],
+        value: 'bob@example.com',
       });
-      expect(results[3]!.data).toEqual({
-        user: { __typename: 'User', id: '1', name: 'Alice', email: 'bob@example.com' },
+      expect(results[3]!.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['email'],
+        value: 'bob@example.com',
       });
       expect(results[4]!.data).toEqual({
-        __typename: 'User',
-        id: '1',
-        email: 'bob@example.com',
+        updateUser: { __typename: 'User', id: '1', email: 'bob@example.com' },
       });
     });
   });
@@ -893,7 +895,7 @@ describe('cacheExchange', () => {
             kind: 'Field',
             name: 'user',
             type: 'User',
-            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+            selections: fragmentSelections,
           },
         ],
       });
@@ -925,8 +927,12 @@ describe('cacheExchange', () => {
 
       const fragmentResults = results.filter((r) => r.operation.key === 'f1');
       expect(callCount).toBe(2);
-      expect(fragmentResults.some((r) => r.data === null)).toBe(false);
-      expect(fragmentResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+      const lastFragment = fragmentResults.at(-1)!;
+      expect(lastFragment.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['name'],
+        value: 'Bob',
+      });
 
       sub();
       vi.useRealTimers();
@@ -971,7 +977,7 @@ describe('cacheExchange', () => {
             kind: 'Field',
             name: 'user',
             type: 'User',
-            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+            selections: fragmentSelections,
           },
         ],
       });
@@ -1001,8 +1007,12 @@ describe('cacheExchange', () => {
 
       const fragmentResults = results.filter((r) => r.operation.key === 'f2');
       expect(callCount).toBe(2);
-      expect(fragmentResults.some((r) => r.data === null)).toBe(false);
-      expect(fragmentResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+      const lastF2 = fragmentResults.at(-1)!;
+      expect(lastF2.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['name'],
+        value: 'Bob',
+      });
 
       sub();
       vi.useRealTimers();
@@ -1161,7 +1171,7 @@ describe('cacheExchange', () => {
             kind: 'Field',
             name: 'user',
             type: 'User',
-            selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+            selections: fragmentSelections,
           },
         ],
       });
@@ -1202,8 +1212,12 @@ describe('cacheExchange', () => {
       await Promise.resolve();
 
       const resubscribeResults = results.filter((r) => r.operation.key === 'f4');
-      expect(resubscribeResults.some((r) => r.data === null)).toBe(false);
-      expect(resubscribeResults.at(-1)!.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+      const lastF4 = resubscribeResults.at(-1)!;
+      expect(lastF4.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['name'],
+        value: 'Bob',
+      });
 
       sub();
       vi.useRealTimers();
@@ -1288,7 +1302,11 @@ describe('cacheExchange', () => {
       expect(callCount).toBe(2);
 
       const freshResult = results.at(-1)!;
-      expect(freshResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+      expect(freshResult.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Bob',
+      });
       expect(freshResult.metadata?.cache?.stale).toBeFalsy();
 
       sub();
@@ -1483,7 +1501,7 @@ describe('cacheExchange', () => {
             kind: 'Field',
             name: 'user',
             type: 'User',
-            selections: [{ kind: 'FragmentSpread', name: 'StaleUserFragment', selections: fragmentSelections }],
+            selections: fragmentSelections,
           },
         ],
       });
@@ -1524,7 +1542,11 @@ describe('cacheExchange', () => {
 
       const finalFragments = results.filter((r) => r.operation.key === 'stale-f1');
       const freshFragment = finalFragments.at(-1)!;
-      expect(freshFragment.data).toEqual({ __typename: 'User', id: '1', name: 'Bob' });
+      expect(freshFragment.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['name'],
+        value: 'Bob',
+      });
       expect(freshFragment.metadata?.cache?.stale).toBeFalsy();
 
       sub();
@@ -1604,7 +1626,11 @@ describe('cacheExchange', () => {
       expect(callCount).toBe(2);
 
       const finalResult = results.at(-1)!;
-      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+      expect(finalResult.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Bob',
+      });
       expect(finalResult.metadata?.cache?.stale).toBeFalsy();
 
       sub();
@@ -1702,7 +1728,11 @@ describe('cacheExchange', () => {
       await vi.runAllTimersAsync();
 
       const latestResult = results.at(-1)!;
-      expect(latestResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Bob' } });
+      expect(latestResult.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Bob',
+      });
 
       networkResults[1]!.resolve({
         operation: mutationOp,
@@ -1778,7 +1808,11 @@ describe('cacheExchange', () => {
       await vi.runAllTimersAsync();
 
       const optimisticResult = results.at(-1)!;
-      expect(optimisticResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Optimistic' } });
+      expect(optimisticResult.metadata?.cache?.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Optimistic',
+      });
 
       networkResults[1]!.resolve({
         operation: mutationOp,
@@ -1789,8 +1823,13 @@ describe('cacheExchange', () => {
       await Promise.resolve();
       await vi.runAllTimersAsync();
 
-      const finalResult = results.at(-1)!;
-      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'ServerName' } });
+      const patchResults = results.filter((r) => r.metadata?.cache?.patches);
+      const lastPatch = patchResults.at(-1)!;
+      expect(lastPatch.metadata!.cache!.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'ServerName',
+      });
 
       sub();
       vi.useRealTimers();
@@ -1867,8 +1906,13 @@ describe('cacheExchange', () => {
       await Promise.resolve();
       await vi.runAllTimersAsync();
 
-      const finalResult = results.at(-1)!;
-      expect(finalResult.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      const patchResults = results.filter((r) => r.metadata?.cache?.patches);
+      const lastPatch = patchResults.at(-1)!;
+      expect(lastPatch.metadata!.cache!.patches).toContainEqual({
+        type: 'set',
+        path: ['user', 'name'],
+        value: 'Alice',
+      });
 
       sub();
       vi.useRealTimers();

@@ -2644,6 +2644,7 @@ describe('cacheExchange', () => {
 
       const realClient = new Client({
         schema,
+        scalars: {},
         exchanges: [cacheExchange(), mockHttpExchange()],
       });
 
@@ -2667,7 +2668,7 @@ describe('cacheExchange', () => {
 
       const queryResults: OperationResult[] = [];
       const querySub = pipe(
-        realClient.executeQuery(queryArtifact),
+        realClient.executeQuery(queryArtifact, {} as never),
         subscribe({ next: (r: OperationResult) => queryResults.push(r) }),
       );
 
@@ -2725,6 +2726,7 @@ describe('cacheExchange', () => {
 
       const realClient = new Client({
         schema: entitySchema,
+        scalars: {},
         exchanges: [cacheExchange(), mockHttpExchange()],
       });
 

@@ -1110,8 +1110,8 @@ describe('denormalize', () => {
       const { data, partial, calls } = denormalizeTest(selections, storage);
 
       expect(data).toEqual({
-        name: 'Alice',
-        email: 'alice@example.com',
+        [FragmentRefKey]: RootFieldKey,
+        [FragmentVarsKey]: { UserFields: {} },
       });
       expect(partial).toBe(false);
       expectSameCalls(calls, [
@@ -1153,6 +1153,7 @@ describe('denormalize', () => {
       expect(data).toEqual({
         user: {
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserFields: {} },
         },
       });
       expect(partial).toBe(false);
@@ -1239,9 +1240,8 @@ describe('denormalize', () => {
       const { data, partial, calls } = denormalizeTest(selections, storage);
 
       expect(data).toEqual({
-        name: 'Alice',
-        email: 'alice@example.com',
-        age: 30,
+        [FragmentRefKey]: RootFieldKey,
+        [FragmentVarsKey]: { BasicInfo: {}, AgeInfo: {} },
       });
       expect(partial).toBe(false);
       expectSameCalls(calls, [
@@ -1271,7 +1271,8 @@ describe('denormalize', () => {
       const { data, partial, calls } = denormalizeTest(selections, storage);
 
       expect(data).toEqual({
-        name: 'Alice',
+        [FragmentRefKey]: RootFieldKey,
+        [FragmentVarsKey]: { UserFields: {} },
       });
       expect(partial).toBe(true);
       expectSameCalls(calls, [
@@ -1573,6 +1574,7 @@ describe('denormalize', () => {
           __typename: 'User',
           id: '1',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserDetails: {} },
         },
       });
       expect(partial).toBe(false);
@@ -1679,6 +1681,7 @@ describe('denormalize', () => {
           id: '1',
           age: 30,
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { BasicInfo: {} },
         },
       });
       expect(partial).toBe(false);
@@ -1740,6 +1743,7 @@ describe('denormalize', () => {
           age: 30,
           bio: 'Developer',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { ContactInfo: {} },
         },
       });
       expect(partial).toBe(false);
@@ -1795,6 +1799,7 @@ describe('denormalize', () => {
           __typename: 'User',
           id: '1',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { BasicInfo: {} },
         },
       });
       expect(partial).toBe(true);
@@ -2325,6 +2330,7 @@ describe('denormalize', () => {
       expect(data).toEqual({
         user: {
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserFields: {} },
         },
       });
       expect(partial).toBe(false);
@@ -2466,6 +2472,7 @@ describe('denormalize', () => {
           id: '1',
           author: {
             [FragmentRefKey]: 'User:10',
+            [FragmentVarsKey]: { UserFields: {} },
           },
         },
       });
@@ -2520,6 +2527,7 @@ describe('denormalize', () => {
       expect(data).toEqual({
         user: {
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { BasicInfo: {}, ContactInfo: {} },
         },
       });
       expect(partial).toBe(false);
@@ -2565,6 +2573,7 @@ describe('denormalize', () => {
       expect(data).toEqual({
         user: {
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserFields: {} },
         },
       });
       expect(partial).toBe(false);
@@ -2815,6 +2824,7 @@ describe('denormalize', () => {
 
       expect(data).toEqual({
         [FragmentRefKey]: 'User:1',
+        [FragmentVarsKey]: { UserFields: {} },
       });
       expect(partial).toBe(false);
       expectSameCalls(calls, [
@@ -3189,6 +3199,7 @@ describe('denormalize', () => {
         id: '1',
         age: 30,
         [FragmentRefKey]: 'User:1',
+        [FragmentVarsKey]: { UserBasicInfo: {} },
       });
       expect(partial).toBe(false);
       expectSameCalls(calls, [
@@ -3828,6 +3839,7 @@ describe('denormalize', () => {
       expect(data).toEqual({
         user: {
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserFields: {} },
         },
       });
       expect(partial).toBe(false);
@@ -3885,6 +3897,7 @@ describe('denormalize', () => {
           id: '1',
           name: 'Alice',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserDetails: {} },
         },
       });
       expect(partial).toBe(false);
@@ -3943,6 +3956,7 @@ describe('denormalize', () => {
           id: '1',
           name: 'Alice',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { UserFields: {} },
         },
       });
       expect(partial).toBe(false);
@@ -4057,6 +4071,7 @@ describe('denormalize', () => {
           __typename: 'User',
           id: '1',
           [FragmentRefKey]: 'User:1',
+          [FragmentVarsKey]: { BasicInfo: {}, ProfileInfo: {} },
         },
       });
       expect(partial).toBe(false);
@@ -4133,6 +4148,7 @@ describe('denormalize', () => {
             id: '1',
             name: 'Acme Corp',
             [FragmentRefKey]: 'Company:1',
+            [FragmentVarsKey]: { CompanyDetails: {} },
           },
         },
       });
@@ -4200,11 +4216,13 @@ describe('denormalize', () => {
             __typename: 'User',
             id: '1',
             [FragmentRefKey]: 'User:1',
+            [FragmentVarsKey]: { UserFields: {} },
           },
           {
             __typename: 'User',
             id: '2',
             [FragmentRefKey]: 'User:2',
+            [FragmentVarsKey]: { UserFields: {} },
           },
         ],
       });
@@ -4232,6 +4250,7 @@ describe('denormalize', () => {
       // query test { ...fragment1 ...fragment2 }
       // fragment fragment1 on Query { account { field1 } }
       // fragment fragment2 on Query { account { field2 } }
+      // With fragment masking, root fragment spreads produce __fragmentRef instead of inlined data.
       const selections = [
         {
           kind: 'FragmentSpread' as const,
@@ -4270,20 +4289,16 @@ describe('denormalize', () => {
       const { data, partial } = denormalizeTest(selections, storage);
 
       expect(data).toEqual({
-        account: {
-          field1: 'value1',
-          field2: 'value2',
-        },
+        [FragmentRefKey]: RootFieldKey,
+        [FragmentVarsKey]: { fragment1: {}, fragment2: {} },
       });
       expect(partial).toBe(false);
     });
   });
 
   describe('duplicate field selections', () => {
-    it('fragment spread followed by direct field with fewer sub-selections merges instead of overwrites', () => {
-      // A FragmentSpread selects richer sub-fields for `items`, then a direct Field
-      // for `items` with fewer sub-fields comes after. The direct Field should merge
-      // into the existing value, not overwrite it.
+    it('fragment spread followed by direct field: fragment is masked, direct field is present', () => {
+      // Root fragment spread sets __fragmentRef; direct Field still renders normally.
       const selections = [
         {
           kind: 'FragmentSpread' as const,
@@ -4322,12 +4337,12 @@ describe('denormalize', () => {
       const { data, partial } = denormalizeTest(selections, storage);
 
       expect(partial).toBe(false);
-      expect((data as Record<string, unknown>).items).toEqual([{ id: '1', title: 'Hello', extra: 'bonus' }]);
+      expect((data as Record<string, unknown>)[FragmentRefKey]).toBe(RootFieldKey);
+      expect((data as Record<string, unknown>).items).toEqual([{ id: '1', title: 'Hello' }]);
     });
 
-    it('direct field followed by fragment spread with more sub-selections merges', () => {
-      // The direct Field comes first with fewer sub-fields, then a FragmentSpread
-      // merges in more fields. Both should appear in the result.
+    it('direct field followed by fragment spread: direct field is present, fragment is masked', () => {
+      // Direct Field renders normally; root fragment spread sets __fragmentRef.
       const selections = [
         {
           kind: 'Field' as const,
@@ -4362,7 +4377,8 @@ describe('denormalize', () => {
       const { data, partial } = denormalizeTest(selections, storage);
 
       expect(partial).toBe(false);
-      expect((data as Record<string, unknown>).items).toEqual([{ id: '1', title: 'Hello' }]);
+      expect((data as Record<string, unknown>)[FragmentRefKey]).toBe(RootFieldKey);
+      expect((data as Record<string, unknown>).items).toEqual([{ id: '1' }]);
     });
 
     it('two direct fields for the same key merges sub-selections', () => {
@@ -4438,7 +4454,7 @@ describe('denormalize', () => {
       expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
     });
 
-    it('does not store FragmentVarsKey when fragment spread has no args', () => {
+    it('stores empty FragmentVarsKey when fragment spread has no args', () => {
       const selections: Selection[] = [
         {
           kind: 'Field',
@@ -4469,7 +4485,7 @@ describe('denormalize', () => {
       const user = (data as Record<string, Record<string, unknown>>).user!;
 
       expect(user[FragmentRefKey]).toBe('User:1');
-      expect(user[FragmentVarsKey]).toBeUndefined();
+      expect(user[FragmentVarsKey]).toEqual({ UserFields: {} });
     });
 
     it('resolves variable arguments from operation variables', () => {
@@ -4610,6 +4626,169 @@ describe('denormalize', () => {
       const user = (data as Record<string, Record<string, unknown>>).user!;
 
       expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
+    });
+  });
+
+  describe('fragment variable propagation without fragment arguments', () => {
+    it('entity fragment without args should propagate query variables', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserPosts',
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'posts',
+                  type: 'PostConnection',
+                  args: { count: { kind: 'variable', name: 'count' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'posts@{"count":5}': [{ title: 'Post 1' }],
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { count: 5 });
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toEqual({ UserPosts: { count: 5 } });
+    });
+
+    it('root fragment without args should propagate query variables', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'FragmentSpread',
+          name: 'PageFragment',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'entity',
+              type: 'Entity',
+              args: { slug: { kind: 'variable', name: 'slug' } },
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: {
+          'entity@{"slug":"hello"}': { [EntityLinkKey]: 'Entity:1' },
+        },
+        ['Entity:1' as StorageKey]: {
+          '__typename@{}': 'Entity',
+          'id@{}': '1',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { slug: 'hello' });
+
+      expect(data).toEqual({
+        [FragmentRefKey]: RootFieldKey,
+        [FragmentVarsKey]: { PageFragment: { slug: 'hello' } },
+      });
+    });
+
+    it('entity fragment without args should propagate multiple query variables', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserActivity',
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'posts',
+                  type: 'PostConnection',
+                  args: { count: { kind: 'variable', name: 'postCount' } },
+                },
+                {
+                  kind: 'Field',
+                  name: 'comments',
+                  type: 'CommentConnection',
+                  args: { count: { kind: 'variable', name: 'commentCount' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'posts@{"count":10}': [],
+          'comments@{"count":20}': [],
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { postCount: 10, commentCount: 20 });
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toEqual({ UserActivity: { postCount: 10, commentCount: 20 } });
+    });
+
+    it('entity fragment without args and no variable-dependent fields should still propagate query variables', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserBasic',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { data } = denormalizeTest(selections, storage, { someVar: 'unused' });
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toEqual({ UserBasic: { someVar: 'unused' } });
     });
   });
 
@@ -5064,7 +5243,7 @@ describe('denormalize', () => {
       expect(profilePicCalls).toHaveLength(0);
     });
 
-    it('trackFragmentDeps: false still processes non-entity fragment spreads normally', () => {
+    it('trackFragmentDeps: false masks root fragment spreads without tracking sub-field deps', () => {
       const selections: Selection[] = [
         {
           kind: 'FragmentSpread',
@@ -5081,9 +5260,8 @@ describe('denormalize', () => {
 
       const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
 
-      expect(data).toEqual({ name: 'Alice', email: 'alice@example.com' });
-      expect(calls).toContainEqual([RootFieldKey, 'name@{}', ['name'], undefined]);
-      expect(calls).toContainEqual([RootFieldKey, 'email@{}', ['email'], undefined]);
+      expect(data).toEqual({ [FragmentRefKey]: RootFieldKey, [FragmentVarsKey]: { RootFields: {} } });
+      expect(calls).toHaveLength(0);
     });
   });
 

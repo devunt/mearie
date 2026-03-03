@@ -1,15 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import { cacheExchange } from './cache.ts';
 import { makeTestOperation, makeTestForward, testExchange, makeTestClient } from './test-utils.ts';
-import type { SchemaMeta } from '@mearie/shared';
-import type { Operation, ExchangeIO, OperationResult } from '../exchange.ts';
+import type { SchemaMeta, Artifact, FragmentRefs } from '@mearie/shared';
+import type { Operation, RequestOperation, Exchange, ExchangeIO, OperationResult } from '../exchange.ts';
+import { Client } from '../client.ts';
 import { pipe } from '../stream/pipe.ts';
 import { subscribe } from '../stream/sinks/subscribe.ts';
+import { peek } from '../stream/sinks/peek.ts';
 import { makeSubject } from '../stream/sources/make-subject.ts';
 import { map } from '../stream/operators/map.ts';
 import { filter } from '../stream/operators/filter.ts';
-import { mergeMap as mergeMapOp } from '../stream/operators/merge-map.ts';
+import { share } from '../stream/operators/share.ts';
+import { initialize } from '../stream/operators/initialize.ts';
+import { finalize } from '../stream/operators/finalize.ts';
+import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromPromise } from '../stream/sources/from-promise.ts';
+import type { Source } from '../stream/types.ts';
+import { fromValue } from '../stream/index.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -1130,7 +1137,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
 
             return fromPromise(
@@ -1234,7 +1241,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1462,7 +1469,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1562,7 +1569,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1676,7 +1683,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -1756,7 +1763,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -1846,7 +1853,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -1976,6 +1983,1076 @@ describe('cacheExchange', () => {
       expect(errors).toBeDefined();
       expect(errors?.length).toBeGreaterThan(0);
       expect(errors?.[0]?.message).toContain('denormalize');
+    });
+  });
+
+  describe('Query root fragment operations', () => {
+    const entitySchema: SchemaMeta = {
+      entities: { Entity: { keyFields: ['id'] } },
+      inputs: {},
+      scalars: {},
+    };
+
+    const entityClient = makeTestClient({ schema: entitySchema });
+
+    it('should subscribe Query root fragment to cache and receive patches on mutation', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') {
+          return { operation: op };
+        }
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              entity: {
+                __typename: 'Entity',
+                id: '1',
+                slug: 'test-slug',
+                title: 'Original Title',
+              },
+            },
+          };
+        }
+        if ((op as RequestOperation).artifact?.kind === 'mutation') {
+          return {
+            operation: op,
+            data: {
+              updateEntity: {
+                __typename: 'Entity',
+                id: '1',
+                title: 'Updated Title',
+              },
+            },
+          };
+        }
+        return { operation: op };
+      });
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: entityClient as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'EntityPage_Query',
+        key: 'root-frag-q1',
+        selections: [
+          {
+            kind: 'FragmentSpread',
+            name: 'Page_query',
+            args: { slug: { kind: 'variable', name: 'slug' } },
+            selections: [
+              {
+                kind: 'Field',
+                name: 'entity',
+                type: 'Entity',
+                args: { slug: { kind: 'variable', name: 'slug' } },
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'slug', type: 'String' },
+                  { kind: 'Field', name: 'title', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+        variableDefs: [{ name: 'slug', type: 'String!' }],
+        variables: { slug: 'test-slug' },
+      });
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      const queryResult = results.find((r) => r.operation.key === 'root-frag-q1');
+      expect(queryResult).toBeDefined();
+      expect((queryResult!.data as Record<string, unknown>).__fragmentRef).toBe('__root');
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'Page_query',
+        key: 'root-frag-f1',
+        metadata: { fragment: { ref: queryResult!.data } },
+        selections: [
+          {
+            kind: 'Field',
+            name: 'entity',
+            type: 'Entity',
+            args: { slug: { kind: 'variable', name: 'slug' } },
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'slug', type: 'String' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(fragmentOp);
+      await Promise.resolve();
+
+      const fragmentResult = results.find((r) => r.operation.key === 'root-frag-f1');
+      expect(fragmentResult).toBeDefined();
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateEntity',
+        key: 'root-frag-m1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'updateEntity',
+            type: 'Entity',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(mutationOp);
+      await Promise.resolve();
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'root-frag-f1');
+      expect(fragmentResults.length).toBeGreaterThanOrEqual(2);
+
+      const patchResult = fragmentResults.find((r) => r.metadata?.cache?.patches);
+      expect(patchResult).toBeDefined();
+      expect(patchResult!.metadata!.cache!.patches).toContainEqual({
+        type: 'set',
+        path: ['entity', 'title'],
+        value: 'Updated Title',
+      });
+
+      sub();
+    });
+
+    it('should subscribe Query root fragment without fragment args to cache and receive patches on mutation', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') {
+          return { operation: op };
+        }
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              entity: {
+                __typename: 'Entity',
+                id: '1',
+                slug: 'test-slug',
+                title: 'Original Title',
+              },
+            },
+          };
+        }
+        if ((op as RequestOperation).artifact?.kind === 'mutation') {
+          return {
+            operation: op,
+            data: {
+              updateEntity: {
+                __typename: 'Entity',
+                id: '1',
+                title: 'Updated Title',
+              },
+            },
+          };
+        }
+        return { operation: op };
+      });
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: entityClient as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'EntityPage_Query',
+        key: 'root-no-frag-args-q1',
+        selections: [
+          {
+            kind: 'FragmentSpread',
+            name: 'Page_query',
+            selections: [
+              {
+                kind: 'Field',
+                name: 'entity',
+                type: 'Entity',
+                args: { slug: { kind: 'variable', name: 'slug' } },
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'slug', type: 'String' },
+                  { kind: 'Field', name: 'title', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+        variableDefs: [{ name: 'slug', type: 'String!' }],
+        variables: { slug: 'test-slug' },
+      });
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      const queryResult = results.find((r) => r.operation.key === 'root-no-frag-args-q1');
+      expect(queryResult).toBeDefined();
+      expect((queryResult!.data as Record<string, unknown>).__fragmentRef).toBe('__root');
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'Page_query',
+        key: 'root-no-frag-args-f1',
+        metadata: { fragment: { ref: queryResult!.data } },
+        selections: [
+          {
+            kind: 'Field',
+            name: 'entity',
+            type: 'Entity',
+            args: { slug: { kind: 'variable', name: 'slug' } },
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'slug', type: 'String' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(fragmentOp);
+      await Promise.resolve();
+
+      const fragmentResult = results.find((r) => r.operation.key === 'root-no-frag-args-f1');
+      expect(fragmentResult).toBeDefined();
+      expect(fragmentResult!.data as Record<string, unknown>).toEqual({
+        entity: {
+          __typename: 'Entity',
+          id: '1',
+          slug: 'test-slug',
+          title: 'Original Title',
+        },
+      });
+
+      const mutationOp = makeTestOperation({
+        kind: 'mutation',
+        name: 'UpdateEntity',
+        key: 'root-no-frag-args-m1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'updateEntity',
+            type: 'Entity',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(mutationOp);
+      await Promise.resolve();
+
+      const fragmentResults = results.filter((r) => r.operation.key === 'root-no-frag-args-f1');
+      expect(fragmentResults.length).toBeGreaterThanOrEqual(2);
+
+      const patchResult = fragmentResults.find((r) => r.metadata?.cache?.patches);
+      expect(patchResult).toBeDefined();
+      expect(patchResult!.metadata!.cache!.patches).toContainEqual({
+        type: 'set',
+        path: ['entity', 'title'],
+        value: 'Updated Title',
+      });
+
+      sub();
+    });
+  });
+
+  describe('synchronous fragment emission', () => {
+    it('should emit entity fragment data synchronously when entity exists in cache', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+          };
+        }
+        return { operation: op };
+      });
+
+      const subject = makeSubject<Operation>();
+      const results: OperationResult[] = [];
+
+      const exchangeResult = exchange({ forward, client: client as never });
+
+      const unsub = pipe(subject.source, exchangeResult.io, subscribe({ next: (result) => results.push(result) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'query-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await Promise.resolve();
+
+      const fragmentRef = { __fragmentRef: 'User:1' };
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'fragment-1',
+        metadata: { fragment: { ref: fragmentRef } },
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ],
+      });
+
+      const resultCountBefore = results.length;
+      subject.next(fragmentOp);
+
+      const fragmentResult = results.find((r) => r.operation.key === 'fragment-1');
+      expect(fragmentResult).toBeDefined();
+      expect(results.length).toBeGreaterThan(resultCountBefore);
+      expect(fragmentResult!.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        name: 'Alice',
+      });
+
+      unsub();
+    });
+
+    it('should emit entity fragment data synchronously via peek through Client-like pipeline', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+          };
+        }
+        return { operation: op };
+      });
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: client as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'query-peek-1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'query-peek-1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const fragmentRef = { __fragmentRef: 'User:1' };
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'fragment-peek-1',
+        metadata: { fragment: { ref: fragmentRef } },
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ],
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'fragment-peek-1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'fragment-peek-1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect(result.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        name: 'Alice',
+      });
+
+      queryUnsub();
+    });
+
+    it('should emit Query root fragment data synchronously via peek', async () => {
+      const entitySchema: SchemaMeta = {
+        entities: { Entity: { keyFields: ['id'] } },
+        inputs: {},
+        scalars: {},
+      };
+
+      const entityClient = makeTestClient({ schema: entitySchema });
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              entity: { __typename: 'Entity', id: '1', title: 'Hello' },
+            },
+          };
+        }
+        return { operation: op };
+      });
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: entityClient as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'entity',
+          type: 'Entity',
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
+          ],
+        },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'Page_Query',
+        key: 'root-sync-q1',
+        selections: [
+          {
+            kind: 'FragmentSpread',
+            name: 'Page_fragment',
+            selections: fragmentSelections,
+          },
+        ],
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-sync-q1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const queryData = queryResults[0]!.data as Record<string, unknown>;
+      expect(queryData.__fragmentRef).toBe('__root');
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'Page_fragment',
+        key: 'root-sync-f1',
+        metadata: { fragment: { ref: queryData } },
+        selections: fragmentSelections,
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-sync-f1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'root-sync-f1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect((result.data as Record<string, unknown>).entity).toEqual({
+        __typename: 'Entity',
+        id: '1',
+        title: 'Hello',
+      });
+
+      queryUnsub();
+    });
+
+    it('should detect partial and refetch when __root is partially populated by a different query with root fragment spread', async () => {
+      const entitySchema: SchemaMeta = {
+        entities: { Widget: { keyFields: ['id'] }, User: { keyFields: ['id'] } },
+        inputs: {},
+        scalars: {},
+      };
+
+      const entityClient = makeTestClient({ schema: entitySchema });
+      const exchange = cacheExchange();
+
+      const dashboardResponse$ = makeSubject<OperationResult>();
+
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          mergeMap((op): Source<OperationResult> => {
+            if (op.variant !== 'request') return fromValue({ operation: op });
+            const reqOp = op as RequestOperation;
+            if (reqOp.artifact?.kind === 'query' && reqOp.artifact.name === 'Layout_Query') {
+              return fromValue({
+                operation: op,
+                data: {
+                  me: { __typename: 'User', id: '1' },
+                  impersonation: null,
+                  notes: [{ __typename: 'Note', id: 'n1' }],
+                },
+              });
+            }
+            if (reqOp.artifact?.kind === 'query' && reqOp.artifact.name === 'DashboardSlugPage_Query') {
+              return dashboardResponse$.source;
+            }
+            return fromValue({ operation: op });
+          }),
+        );
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: entityClient as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      // Step 1: Execute layout query (populates __root with me, impersonation, notes)
+      const layoutOp = makeTestOperation({
+        kind: 'query',
+        name: 'Layout_Query',
+        key: 'layout-q1',
+        selections: [
+          {
+            kind: 'Field' as const,
+            name: 'me',
+            type: 'User',
+            nullable: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+          { kind: 'Field' as const, name: 'impersonation', type: 'Impersonation', nullable: true as const },
+          {
+            kind: 'Field' as const,
+            name: 'notes',
+            type: 'Note',
+            array: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+        ],
+      });
+
+      const layoutResults: OperationResult[] = [];
+      pipe(
+        results$,
+        initialize(() => operations$.next(layoutOp)),
+        filter((r: OperationResult) => r.operation.key === 'layout-q1'),
+        subscribe({ next: (result: OperationResult) => layoutResults.push(result) }),
+      );
+      await Promise.resolve();
+      expect(layoutResults.length).toBeGreaterThan(0);
+
+      // Step 2: Execute dashboard query (has root-level fragment spread for widgets)
+      // The cache has `me` from layout but NOT `widgets` from the fragment spread.
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'widgets',
+          type: 'Widget',
+          array: true as const,
+          selections: [
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'data', type: 'JSON' },
+            { kind: 'Field' as const, name: 'order', type: 'String' },
+          ],
+        },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'DashboardSlugPage_Query',
+        key: 'root-mixed-q1',
+        selections: [
+          {
+            kind: 'Field' as const,
+            name: 'me',
+            type: 'User',
+            nullable: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+          {
+            kind: 'FragmentSpread' as const,
+            name: 'WidgetGroup_query',
+            selections: fragmentSelections as never,
+          },
+        ],
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-mixed-q1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+      await Promise.resolve();
+
+      // Step 3: Cache correctly detects partial (fragment's `widgets` missing from __root)
+      // so no synchronous cache emission occurs — the query is forwarded to network.
+      expect(queryResults.length).toBe(0);
+
+      // Step 4: Network response arrives with full data
+      dashboardResponse$.next({
+        operation: queryOp,
+        data: {
+          me: { __typename: 'User', id: '1' },
+          widgets: [
+            { __typename: 'Widget', id: 'w1', name: 'Widget 1', data: '{}', order: 'a0' },
+            { __typename: 'Widget', id: 'w2', name: 'Widget 2', data: '{}', order: 'a1' },
+          ],
+        },
+      });
+      await Promise.resolve();
+
+      // Step 5: Cache writes the response and emits data with fragment masking
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const queryData = queryResults[0]!.data as Record<string, unknown>;
+      expect(queryData.__fragmentRef).toBe('__root');
+
+      // Step 6: Fragment read via peek now finds widgets in __root
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'WidgetGroup_query',
+        key: 'root-mixed-f1',
+        metadata: { fragment: { ref: queryData } },
+        selections: fragmentSelections as never,
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-mixed-f1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'root-mixed-f1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect(result.data).toBeDefined();
+      expect((result.data as Record<string, unknown>).widgets).toEqual([
+        { id: 'w1', name: 'Widget 1', data: '{}', order: 'a0' },
+        { id: 'w2', name: 'Widget 2', data: '{}', order: 'a1' },
+      ]);
+
+      queryUnsub();
+    });
+
+    it('should emit Query root fragment with args data synchronously via peek', async () => {
+      const entitySchema: SchemaMeta = {
+        entities: { Entity: { keyFields: ['id'] } },
+        inputs: {},
+        scalars: {},
+      };
+
+      const entityClient = makeTestClient({ schema: entitySchema });
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              entity: { __typename: 'Entity', id: '1', slug: 'test-slug', title: 'Hello' },
+            },
+          };
+        }
+        return { operation: op };
+      });
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: entityClient as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'entity',
+          type: 'Entity',
+          args: { slug: { kind: 'variable' as const, name: 'slug' } },
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'slug', type: 'String' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
+          ],
+        },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'EntityPage_Query',
+        key: 'root-args-sync-q1',
+        selections: [
+          {
+            kind: 'FragmentSpread',
+            name: 'Page_query',
+            args: { slug: { kind: 'variable', name: 'slug' } },
+            selections: fragmentSelections,
+          },
+        ],
+        variableDefs: [{ name: 'slug', type: 'String!' }],
+        variables: { slug: 'test-slug' },
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-args-sync-q1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const queryData = queryResults[0]!.data as Record<string, unknown>;
+      expect(queryData.__fragmentRef).toBe('__root');
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'Page_query',
+        key: 'root-args-sync-f1',
+        metadata: { fragment: { ref: queryData } },
+        selections: fragmentSelections,
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-args-sync-f1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'root-args-sync-f1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect((result.data as Record<string, unknown>).entity).toEqual({
+        __typename: 'Entity',
+        id: '1',
+        slug: 'test-slug',
+        title: 'Hello',
+      });
+
+      queryUnsub();
+    });
+
+    it('should emit entity fragment data synchronously via peek on real Client', async () => {
+      const mockHttpExchange = (): Exchange => {
+        return () => ({
+          name: 'mock-http',
+          io: (ops$) =>
+            pipe(
+              ops$,
+              filter((op) => op.variant === 'request'),
+              map((op) => ({
+                operation: op,
+                data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+              })),
+            ),
+        });
+      };
+
+      const realClient = new Client({
+        schema,
+        scalars: {},
+        exchanges: [cacheExchange(), mockHttpExchange()],
+      });
+
+      const queryArtifact = {
+        kind: 'query' as const,
+        name: 'GetUser',
+        body: '',
+        selections: [
+          {
+            kind: 'Field' as const,
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field' as const, name: '__typename', type: 'String' },
+              { kind: 'Field' as const, name: 'id', type: 'ID' },
+              { kind: 'Field' as const, name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      } as Artifact<'query'>;
+
+      const queryResults: OperationResult[] = [];
+      const querySub = pipe(
+        realClient.executeQuery(queryArtifact, {} as never),
+        subscribe({ next: (r: OperationResult) => queryResults.push(r) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const fragmentArtifact = {
+        kind: 'fragment' as const,
+        name: 'UserFragment',
+        body: '',
+        selections: [
+          { kind: 'Field' as const, name: '__typename', type: 'String' },
+          { kind: 'Field' as const, name: 'id', type: 'ID' },
+          { kind: 'Field' as const, name: 'name', type: 'String' },
+        ],
+      } as Artifact<'fragment'>;
+
+      const fragmentRef = { __fragmentRef: 'User:1' } as unknown as FragmentRefs<string>;
+
+      const result = pipe(realClient.executeFragment(fragmentArtifact, fragmentRef), peek);
+
+      expect(result).toBeDefined();
+      expect(result.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        name: 'Alice',
+      });
+
+      querySub();
+    });
+
+    it('should emit Query root fragment data synchronously via peek on real Client', async () => {
+      const entitySchema: SchemaMeta = {
+        entities: { Entity: { keyFields: ['id'] } },
+        inputs: {},
+        scalars: {},
+      };
+
+      const mockHttpExchange = (): Exchange => {
+        return () => ({
+          name: 'mock-http',
+          io: (ops$) =>
+            pipe(
+              ops$,
+              filter((op) => op.variant === 'request'),
+              map((op) => ({
+                operation: op,
+                data: {
+                  entity: { __typename: 'Entity', id: '1', slug: 'test', title: 'Hello' },
+                },
+              })),
+            ),
+        });
+      };
+
+      const realClient = new Client({
+        schema: entitySchema,
+        scalars: {},
+        exchanges: [cacheExchange(), mockHttpExchange()],
+      });
+
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'entity',
+          type: 'Entity',
+          args: { slug: { kind: 'variable' as const, name: 'slug' } },
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'slug', type: 'String' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
+          ],
+        },
+      ];
+
+      const queryArtifact = {
+        kind: 'query' as const,
+        name: 'EntityPage_Query',
+        body: '',
+        variableDefs: [{ name: 'slug', type: 'String!' }],
+        selections: [
+          {
+            kind: 'FragmentSpread' as const,
+            name: 'Page_query',
+            args: { slug: { kind: 'variable' as const, name: 'slug' } },
+            selections: fragmentSelections,
+          },
+        ],
+      } as Artifact<'query'>;
+
+      const queryResults: OperationResult[] = [];
+      const querySub = pipe(
+        realClient.executeQuery(queryArtifact, { slug: 'test' } as never),
+        subscribe({ next: (r: OperationResult) => queryResults.push(r) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const queryData = queryResults[0]!.data as Record<string, unknown>;
+      expect(queryData.__fragmentRef).toBe('__root');
+
+      const fragmentArtifact = {
+        kind: 'fragment' as const,
+        name: 'Page_query',
+        body: '',
+        selections: fragmentSelections,
+      } as Artifact<'fragment'>;
+
+      const result = pipe(
+        realClient.executeFragment(fragmentArtifact, queryData as unknown as FragmentRefs<string>),
+        peek,
+      );
+
+      expect(result).toBeDefined();
+      expect((result.data as Record<string, unknown>).entity).toEqual({
+        __typename: 'Entity',
+        id: '1',
+        slug: 'test',
+        title: 'Hello',
+      });
+
+      querySub();
+    });
+
+    it('should emit fragment array data synchronously via peek', async () => {
+      const exchange = cacheExchange();
+
+      const forward = makeTestForward((op) => {
+        if (op.variant !== 'request') return { operation: op };
+        if ((op as RequestOperation).artifact?.kind === 'query') {
+          return {
+            operation: op,
+            data: {
+              users: [
+                { __typename: 'User', id: '1', name: 'Alice' },
+                { __typename: 'User', id: '2', name: 'Bob' },
+              ],
+            },
+          };
+        }
+        return { operation: op };
+      });
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: client as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUsers',
+        key: 'arr-sync-q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'users',
+            type: '[User]',
+            selections: [
+              ...fragmentSelections,
+              { kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections },
+            ],
+          },
+        ],
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'arr-sync-q1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+
+      await Promise.resolve();
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const usersData = (queryResults[0]!.data as Record<string, unknown>).users as Record<string, unknown>[];
+      const fragmentRefs = usersData.map((u) => ({ __fragmentRef: `User:${String(u.id)}` }));
+
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'UserFragment',
+        key: 'arr-sync-f1',
+        metadata: { fragment: { ref: fragmentRefs } },
+        selections: fragmentSelections,
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'arr-sync-f1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'arr-sync-f1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect(result.data).toEqual([
+        { __typename: 'User', id: '1', name: 'Alice' },
+        { __typename: 'User', id: '2', name: 'Bob' },
+      ]);
+
+      queryUnsub();
     });
   });
 });

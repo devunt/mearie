@@ -1336,6 +1336,85 @@ describe('Cache', () => {
       unsub1();
       unsub2();
     });
+
+    it('should resolve variable-dependent fields in entity fragment without fragment arguments', () => {
+      const cache = new Cache(schema);
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        {
+          kind: 'Field' as const,
+          name: 'posts',
+          type: 'PostConnection',
+          args: { count: { kind: 'variable' as const, name: 'count' } },
+        },
+      ];
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserPosts', selections: fragmentSelections }],
+        },
+      ]);
+      cache.writeQuery(
+        queryArtifact,
+        { count: 5 },
+        { user: { __typename: 'User', id: '1', posts: ['post1', 'post2'] } },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, { count: 5 }).data as { user: FragmentRefs<string> };
+      const fragmentArtifact = createArtifact('fragment', 'UserPosts', fragmentSelections);
+
+      const listener = vi.fn();
+      const { data, unsubscribe } = cache.subscribeFragment(fragmentArtifact, queryResult.user, listener);
+
+      expect(data).not.toBeNull();
+      expect((data as Record<string, unknown>).posts).toEqual(['post1', 'post2']);
+
+      unsubscribe();
+    });
+
+    it('should resolve variable-dependent fields in root fragment without fragment arguments', () => {
+      const entitySchema: SchemaMeta = { entities: { Entity: { keyFields: ['id'] } }, inputs: {}, scalars: {} };
+      const cache = new Cache(entitySchema);
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'entity',
+          type: 'Entity',
+          args: { slug: { kind: 'variable' as const, name: 'slug' } },
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'title', type: 'String' },
+          ],
+        },
+      ];
+      const queryArtifact = createArtifact('query', 'GetPage', [
+        { kind: 'FragmentSpread', name: 'PageFragment', selections: fragmentSelections },
+      ]);
+      cache.writeQuery(
+        queryArtifact,
+        { slug: 'hello' },
+        { entity: { __typename: 'Entity', id: '1', title: 'Hello World' } },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, { slug: 'hello' }).data as FragmentRefs<string>;
+      const fragmentArtifact = createArtifact('fragment', 'PageFragment', fragmentSelections);
+
+      const listener = vi.fn();
+      const { data, unsubscribe } = cache.subscribeFragment(fragmentArtifact, queryResult, listener);
+
+      expect(data).not.toBeNull();
+      expect((data as Record<string, unknown>).entity).toEqual({
+        __typename: 'Entity',
+        id: '1',
+        title: 'Hello World',
+      });
+
+      unsubscribe();
+    });
   });
 
   describe('readFragment', () => {

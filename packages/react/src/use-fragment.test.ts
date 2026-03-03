@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act } from 'react';
-import { AggregatedError } from '@mearie/core';
 import type { FragmentRefs, OperationResult } from '@mearie/core';
 import { makeSubject } from '@mearie/core/stream';
 import type { Sink, Subscription } from '@mearie/core/stream';
@@ -62,19 +61,14 @@ describe('useFragment', () => {
     unmount();
   });
 
-  it('should throw on errors', () => {
-    const { client } = createMockClient();
-    const errorResult = makeResult(undefined, { errors: [{ message: 'Fragment error' }] });
-
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    vi.mocked(client.executeFragment).mockImplementation(() => (sink: Sink<OperationResult>): Subscription => {
-      sink.next(errorResult);
-      return { unsubscribe: () => {} };
-    });
+  it('should throw when fragment data is not found', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined
+    const initialResult = makeResult(undefined);
+    const { client } = createSyncFragmentClient(initialResult);
 
     expect(() => {
       renderHook(() => useFragment(mockFragment, createFragmentRef()), client);
-    }).toThrow(AggregatedError);
+    }).toThrow('Fragment data not found');
   });
 
   it('should update on patch-based changes', () => {

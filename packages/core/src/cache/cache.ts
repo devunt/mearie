@@ -340,24 +340,25 @@ export class Cache {
     artifact: T,
     fragmentRef: FragmentRefs<string>,
   ): { data: DataOf<T> | null; stale: boolean } {
-    const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
+    const storageKey = (fragmentRef as unknown as { [FragmentRefKey]: StorageKey })[FragmentRefKey];
     const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
 
     const storageView = this.#getStorageView();
-    const entity = storageView[entityKey];
-    if (!entity) {
-      return { data: null, stale: false };
-    }
 
     let stale = false;
+
+    const value = storageView[storageKey];
+    if (!value) {
+      return { data: null, stale: false };
+    }
 
     const { data, partial } = denormalize(
       artifact.selections,
       storageView,
-      { [EntityLinkKey]: entityKey },
+      storageKey === RootFieldKey ? value : { [EntityLinkKey]: storageKey },
       fragmentVars,
-      (storageKey, fieldKey) => {
-        if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
+      (sk, fieldKey) => {
+        if (this.#stale.has(sk as string) || this.#stale.has(makeDependencyKey(sk, fieldKey))) {
           stale = true;
         }
       },
@@ -382,12 +383,12 @@ export class Cache {
     fragmentRef: FragmentRefs<string>,
     listener: (patches: Patch[] | null) => void,
   ): { data: DataOf<T> | null; stale: boolean; unsubscribe: () => void; subscription: QuerySubscription } {
-    const entityKey = (fragmentRef as unknown as { [FragmentRefKey]: EntityKey })[FragmentRefKey];
+    const storageKey = (fragmentRef as unknown as { [FragmentRefKey]: StorageKey })[FragmentRefKey];
     const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
 
     const storageView = this.#getStorageView();
-    const entity = storageView[entityKey];
-    if (!entity) {
+    const value = storageKey === RootFieldKey ? storageView[RootFieldKey] : storageView[storageKey];
+    if (!value) {
       const entryTree = buildEntryTree([]);
       const subscription: QuerySubscription = {
         listener,
@@ -401,20 +402,20 @@ export class Cache {
     let stale = false;
     const tuples: EntryTuple[] = [];
 
+    const denormalizeValue = storageKey === RootFieldKey ? value : { [EntityLinkKey]: storageKey };
     const { data, partial } = denormalize(
       artifact.selections,
       storageView,
-      { [EntityLinkKey]: entityKey },
+      denormalizeValue,
       fragmentVars,
-      (storageKey, fieldKey, path, selections) => {
-        tuples.push({ storageKey, fieldKey, path, selections });
-        if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
+      (sk, fieldKey, path, selections) => {
+        tuples.push({ storageKey: sk, fieldKey, path, selections });
+        if (this.#stale.has(sk as string) || this.#stale.has(makeDependencyKey(sk, fieldKey))) {
           stale = true;
         }
       },
       { trackFragmentDeps: false },
     );
-
     if (partial) {
       const entryTree = buildEntryTree([]);
       const subscription: QuerySubscription = {
@@ -426,7 +427,8 @@ export class Cache {
       return { data: null, stale: false, unsubscribe: () => {}, subscription };
     }
 
-    const entryTree = buildEntryTree(tuples, entityKey as unknown as DependencyKey);
+    const rootDepKey = storageKey === RootFieldKey ? undefined : (storageKey as unknown as DependencyKey);
+    const entryTree = buildEntryTree(tuples, rootDepKey);
 
     const subscription: QuerySubscription = {
       listener,

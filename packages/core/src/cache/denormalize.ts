@@ -80,14 +80,33 @@ export const denormalize = (
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
-          if (selection.args) {
-            const resolvedArgs = resolveArguments(selection.args, variables);
-            const mergedVars = { ...variables, ...resolvedArgs };
-            const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
-            fields[FragmentVarsKey] = { ...existing, [selection.name]: mergedVars };
-          }
+          const entityMergedVars = selection.args
+            ? { ...variables, ...resolveArguments(selection.args, variables) }
+            : { ...variables };
+          const entityExisting = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+          fields[FragmentVarsKey] = { ...entityExisting, [selection.name]: entityMergedVars };
           if (accessor && options?.trackFragmentDeps !== false) {
             denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor, options);
+          }
+        } else if (storageKey === RootFieldKey) {
+          fields[FragmentRefKey] = RootFieldKey;
+          const rootMergedVars = selection.args
+            ? { ...variables, ...resolveArguments(selection.args, variables) }
+            : { ...variables };
+          const rootExisting = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+          fields[FragmentVarsKey] = { ...rootExisting, [selection.name]: rootMergedVars };
+          if (accessor && options?.trackFragmentDeps !== false) {
+            const innerResult = denormalize(
+              selection.selections,
+              storage,
+              storage[RootFieldKey],
+              variables,
+              accessor,
+              options,
+            );
+            if (innerResult.partial) {
+              partial = true;
+            }
           }
         } else {
           mergeFields(fields, denormalizeField(storageKey, selection.selections, value, path), true);

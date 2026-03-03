@@ -3784,8 +3784,8 @@ describe('Cache', () => {
       );
       expect(setPatch).toBeDefined();
       const value = setPatch!.value as Record<string, unknown>;
-      expect(value['theme@{}']).toBe('light');
-      expect(value['language@{}']).toBe('en');
+      expect(value.theme).toBe('light');
+      expect(value.language).toBe('en');
 
       unsubscribe();
     });

@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onCleanup, untrack, type Accessor } from 'solid-js';
+import { createStore, produce, reconcile } from 'solid-js/store';
 import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
 
@@ -76,7 +77,9 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   const client = useClient();
 
   const initialOpts = options?.();
-  const [data, setData] = createSignal<DataOf<T> | undefined>(initialOpts?.initialData);
+  const [data, setData] = createStore<{ value: DataOf<T> | undefined }>({
+    value: initialOpts?.initialData,
+  });
   const [loading, setLoading] = createSignal<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   const [error, setError] = createSignal<AggregatedError | undefined>();
   const [metadata, setMetadata] = createSignal<OperationResult['metadata']>();
@@ -109,7 +112,18 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
             setError(new AggregatedError(result.errors));
             setLoading(false);
           } else {
-            setData(() => result.data as DataOf<T>);
+            const patches = result.metadata?.cache?.patches;
+            if (patches) {
+              setData(
+                'value',
+                produce((draft) => {
+                  const root = applyPatchesMutable(draft, patches);
+                  if (root !== undefined) return root;
+                }),
+              );
+            } else {
+              setData('value', reconcile(result.data as DataOf<T>));
+            }
             setLoading(false);
             setError(undefined);
           }
@@ -132,7 +146,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   return {
     get data() {
-      return data();
+      return data.value;
     },
     get loading() {
       return loading();

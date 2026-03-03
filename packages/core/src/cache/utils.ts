@@ -1,7 +1,7 @@
 import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
 import { EntityLinkKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
-import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink, MemoKey } from './types.ts';
+import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
 
 /**
  * Generates a unique cache key for an entity based on its typename and key field values.
@@ -57,16 +57,6 @@ export const makeFieldKey = (selection: FieldSelection, variables: Record<string
 export const makeQueryKey = (operationName: string, variables: Record<string, unknown>): QueryKey => {
   return `${operationName}@${stringify(variables)}`;
 };
-
-/**
- * Generates a unique key for tracking memoized denormalized results for structural sharing.
- * @internal
- * @param kind - The operation kind ('query', 'fragment', 'fragments').
- * @param name - The artifact name.
- * @param id - Serialized identifier (variables, entity key, etc.).
- * @returns A unique memo key.
- */
-export const makeMemoKey = (kind: string, name: string, id: string): MemoKey => `${kind}:${name}:${id}`;
 
 /**
  * Gets a unique key for tracking a field dependency.
@@ -163,68 +153,6 @@ export const isEqual = (a: unknown, b: unknown): boolean => {
   return false;
 };
 
-/**
- * Recursively replaces a new value tree with the previous one wherever structurally equal,
- * preserving referential identity for unchanged subtrees.
- *
- * Returns `prev` (same reference) when the entire subtree is structurally equal.
- * @internal
- */
-export const replaceEqualDeep = (prev: unknown, next: unknown): unknown => {
-  if (prev === next) {
-    return prev;
-  }
-
-  if (typeof prev !== typeof next || prev === null || next === null || typeof prev !== 'object') {
-    return next;
-  }
-
-  if (Array.isArray(prev)) {
-    if (!Array.isArray(next)) {
-      return next;
-    }
-
-    let allSame = prev.length === next.length;
-    const result: unknown[] = [];
-
-    for (const [i, item] of (next as unknown[]).entries()) {
-      const shared = i < prev.length ? replaceEqualDeep((prev as unknown[])[i], item) : item;
-      result.push(shared);
-      if (shared !== (prev as unknown[])[i]) {
-        allSame = false;
-      }
-    }
-
-    return allSame ? prev : result;
-  }
-
-  if (Array.isArray(next)) {
-    return next;
-  }
-
-  const prevObj = prev as Record<string, unknown>;
-  const nextObj = next as Record<string, unknown>;
-  const nextKeys = Object.keys(nextObj);
-  const prevKeys = Object.keys(prevObj);
-
-  let allSame = nextKeys.length === prevKeys.length;
-  const result: Record<string, unknown> = {};
-
-  for (const key of nextKeys) {
-    if (key in prevObj) {
-      result[key] = replaceEqualDeep(prevObj[key], nextObj[key]);
-      if (result[key] !== prevObj[key]) {
-        allSame = false;
-      }
-    } else {
-      result[key] = nextObj[key];
-      allSame = false;
-    }
-  }
-
-  return allSame ? prev : result;
-};
-
 const NormalizedKey: unique symbol = Symbol('mearie.normalized');
 
 /**
@@ -307,4 +235,57 @@ export const mergeFields = (target: Record<string, unknown>, source: unknown, de
 export const makeFieldKeyFromArgs = (field: string, args?: Record<string, unknown>): FieldKey => {
   const argsStr = args && Object.keys(args).length > 0 ? stringify(args) : '{}';
   return `${field}@${argsStr}`;
+};
+
+/**
+ * Type guard to check if a value is an array containing entity links.
+ * @internal
+ * @param value - Value to check.
+ * @returns True if the value is an array containing at least one entity link.
+ */
+export const isEntityLinkArray = (value: unknown): boolean => {
+  if (!Array.isArray(value) || value.length === 0) return false;
+
+  for (const item of value) {
+    if (item === null || item === undefined) continue;
+    if (typeof item === 'object' && !Array.isArray(item) && EntityLinkKey in (item as object)) return true;
+    if (Array.isArray(item) && isEntityLinkArray(item)) return true;
+    return false;
+  }
+
+  return false;
+};
+
+/**
+ * Compares two entity link arrays by their entity keys.
+ * @internal
+ * @param a - First entity link array.
+ * @param b - Second entity link array.
+ * @returns True if both arrays have the same entity keys at each position.
+ */
+export const isEntityLinkArrayEqual = (a: unknown[], b: unknown[]): boolean => {
+  if (a.length !== b.length) return false;
+
+  for (const [i, element] of a.entries()) {
+    const aKey = (element as EntityLink | null)?.[EntityLinkKey] ?? null;
+    const bKey = (b[i] as EntityLink | null)?.[EntityLinkKey] ?? null;
+    if (aKey !== bKey) return false;
+  }
+
+  return true;
+};
+
+/**
+ * Parses a dependency key into its storage key and field key components.
+ * @internal
+ * @param depKey - The dependency key to parse.
+ * @returns The storage key and field key.
+ */
+export const parseDependencyKey = (depKey: DependencyKey): { storageKey: StorageKey; fieldKey: FieldKey } => {
+  const atIdx = depKey.indexOf('@');
+  const dotIdx = depKey.lastIndexOf('.', atIdx);
+  return {
+    storageKey: depKey.slice(0, dotIdx) as StorageKey,
+    fieldKey: depKey.slice(dotIdx + 1) as FieldKey,
+  };
 };

@@ -1,6 +1,6 @@
 import { untrack } from 'svelte';
 import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
@@ -76,7 +76,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   const client = getClient();
 
   const initialOpts = options?.();
-  let data = $state.raw<DataOf<T> | undefined>(initialOpts?.initialData);
+  let data = $state<DataOf<T> | undefined>(initialOpts?.initialData);
   let loading = $state<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   let error = $state<AggregatedError | undefined>();
   let metadata = $state<OperationResult['metadata']>();
@@ -109,7 +109,13 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
             error = new AggregatedError(result.errors);
             loading = false;
           } else {
-            data = result.data as DataOf<T>;
+            const patches = result.metadata?.cache?.patches;
+            if (patches) {
+              const root = applyPatchesMutable(data, patches);
+              if (root !== undefined) data = root as DataOf<T>;
+            } else {
+              data = result.data as DataOf<T>;
+            }
             loading = false;
           }
         },

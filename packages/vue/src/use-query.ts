@@ -1,6 +1,6 @@
-import { ref, watchEffect, toValue, type Ref, type MaybeRefOrGetter } from 'vue';
+import { ref, shallowRef, reactive, watchEffect, toValue, type Ref, type MaybeRefOrGetter } from 'vue';
 import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
 
@@ -76,7 +76,9 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   const client = useClient();
 
   const initialOpts = toValue(options);
-  const data = ref<DataOf<T> | undefined>(initialOpts?.initialData);
+  const data = shallowRef<DataOf<T> | undefined>(
+    initialOpts?.initialData ? (reactive(initialOpts.initialData) as DataOf<T>) : undefined,
+  );
   const loading = ref<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
   const error = ref<AggregatedError | undefined>(undefined);
   const metadata = ref<OperationResult['metadata']>();
@@ -109,7 +111,13 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
             error.value = new AggregatedError(result.errors);
             loading.value = false;
           } else {
-            data.value = result.data as DataOf<T>;
+            const patches = result.metadata?.cache?.patches;
+            if (patches) {
+              const root = applyPatchesMutable(data.value, patches);
+              if (root !== undefined) data.value = reactive(root as object) as DataOf<T>;
+            } else {
+              data.value = reactive(result.data as object) as DataOf<T>;
+            }
             loading.value = false;
             error.value = undefined;
           }

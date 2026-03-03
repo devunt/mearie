@@ -1,7 +1,7 @@
 import type { Selection } from '@mearie/shared';
 import { makeFieldKey, resolveArguments, isEntityLink, isNullish, mergeFields } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
-import type { Storage, StorageKey, FieldKey } from './types.ts';
+import type { Storage, StorageKey, FieldKey, PropertyPath } from './types.ts';
 
 const typenameFieldKey = makeFieldKey({ kind: 'Field', name: '__typename', type: 'String' }, {});
 
@@ -10,7 +10,13 @@ export const denormalize = (
   storage: Storage,
   value: unknown,
   variables: Record<string, unknown>,
-  accessor?: (storageKey: StorageKey, fieldKey: FieldKey) => void,
+  accessor?: (
+    storageKey: StorageKey,
+    fieldKey: FieldKey,
+    path: PropertyPath,
+    selections?: readonly Selection[],
+  ) => void,
+  options?: { trackFragmentDeps?: boolean },
 ): { data: unknown; partial: boolean } => {
   let partial = false;
 
@@ -18,13 +24,14 @@ export const denormalize = (
     storageKey: StorageKey | null,
     selections: readonly Selection[],
     value: unknown,
+    path: PropertyPath,
   ): unknown => {
     if (isNullish(value)) {
       return value;
     }
 
     if (Array.isArray(value)) {
-      return value.map((item: unknown) => denormalizeField(storageKey, selections, item));
+      return value.map((item: unknown, i: number) => denormalizeField(storageKey, selections, item, [...path, i]));
     }
 
     const data = value as Record<string, unknown>;
@@ -34,13 +41,13 @@ export const denormalize = (
       const entity = storage[entityKey];
 
       if (!entity) {
-        accessor?.(entityKey, typenameFieldKey);
+        accessor?.(entityKey, typenameFieldKey, path);
         partial = true;
 
         return null;
       }
 
-      return denormalizeField(entityKey, selections, entity);
+      return denormalizeField(entityKey, selections, entity, path);
     }
 
     const fields: Record<string, unknown> = {};
@@ -49,9 +56,10 @@ export const denormalize = (
       if (selection.kind === 'Field') {
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[fieldKey];
+        const fieldPath = [...path, selection.alias ?? selection.name];
 
         if (storageKey !== null) {
-          accessor?.(storageKey, fieldKey);
+          accessor?.(storageKey, fieldKey, fieldPath, selection.selections);
         }
 
         if (fieldValue === undefined) {
@@ -60,12 +68,14 @@ export const denormalize = (
         }
 
         const name = selection.alias ?? selection.name;
-        const value = selection.selections ? denormalizeField(null, selection.selections, fieldValue) : fieldValue;
+        const resolvedValue = selection.selections
+          ? denormalizeField(null, selection.selections, fieldValue, fieldPath)
+          : fieldValue;
 
         if (name in fields) {
-          mergeFields(fields, { [name]: value }, true);
+          mergeFields(fields, { [name]: resolvedValue }, true);
         } else {
-          fields[name] = value;
+          fields[name] = resolvedValue;
         }
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
@@ -76,21 +86,21 @@ export const denormalize = (
             const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
             fields[FragmentVarsKey] = { ...existing, [selection.name]: mergedVars };
           }
-          if (accessor) {
-            denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor);
+          if (accessor && options?.trackFragmentDeps !== false) {
+            denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor, options);
           }
         } else {
-          mergeFields(fields, denormalizeField(storageKey, selection.selections, value), true);
+          mergeFields(fields, denormalizeField(storageKey, selection.selections, value, path), true);
         }
       } else if (selection.kind === 'InlineFragment' && selection.on === data[typenameFieldKey]) {
-        mergeFields(fields, denormalizeField(storageKey, selection.selections, value), true);
+        mergeFields(fields, denormalizeField(storageKey, selection.selections, value, path), true);
       }
     }
 
     return fields;
   };
 
-  const data = denormalizeField(RootFieldKey, selections, value);
+  const data = denormalizeField(RootFieldKey, selections, value, []);
 
   return { data, partial };
 };

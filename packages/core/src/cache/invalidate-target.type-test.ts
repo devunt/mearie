@@ -15,7 +15,7 @@ type TestSchema = SchemaMeta<TestSchemaProps>;
 
 type Target = InvalidateTarget<TestSchema>;
 
-// eslint-disable-next-line func-style, @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const accept = (_target: Target): void => {};
 
 accept({ __typename: 'Movie', id: '1' });

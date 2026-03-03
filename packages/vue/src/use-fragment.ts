@@ -1,5 +1,6 @@
-import { ref, watchEffect, toValue, type MaybeRefOrGetter } from 'vue';
+import { shallowRef, reactive, watchEffect, toValue, type MaybeRefOrGetter } from 'vue';
 import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
+import { applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
 
@@ -59,8 +60,8 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
     initialMetadata = result.metadata;
   }
 
-  const data = ref(initialData);
-  const metadata = ref<OperationResult['metadata']>(initialMetadata);
+  const data = shallowRef(initialData == null ? initialData : reactive(initialData as object));
+  const metadata = shallowRef<OperationResult['metadata']>(initialMetadata);
 
   watchEffect((onCleanup) => {
     const currentRef = toValue(fragmentRef);
@@ -75,8 +76,12 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
       subscribe({
         next: (result: OperationResult) => {
           metadata.value = result.metadata;
-          if (result.data !== undefined) {
-            data.value = result.data;
+          const patches = result.metadata?.cache?.patches;
+          if (patches) {
+            const root = applyPatchesMutable(data.value, patches);
+            if (root !== undefined) data.value = reactive(root as object);
+          } else if (result.data !== undefined) {
+            data.value = reactive(result.data as object);
           }
         },
       }),

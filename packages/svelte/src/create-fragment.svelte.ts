@@ -1,4 +1,5 @@
 import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
+import { applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
@@ -75,7 +76,11 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
       subscribe({
         next: (result: OperationResult) => {
           metadata = result.metadata;
-          if (result.data !== undefined) {
+          const patches = result.metadata?.cache?.patches;
+          if (patches) {
+            const root = applyPatchesMutable(state, patches);
+            if (root !== undefined) state = root;
+          } else if (result.data !== undefined) {
             state = result.data;
           }
         },

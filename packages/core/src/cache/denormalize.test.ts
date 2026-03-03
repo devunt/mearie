@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { denormalize } from './denormalize.ts';
 import { RootFieldKey, EntityLinkKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
-import type { Storage, StorageKey, FieldKey } from './types.ts';
+import type { Storage, StorageKey, FieldKey, PropertyPath } from './types.ts';
 import type { Selection } from '@mearie/shared';
 
 const denormalizeTest = (
@@ -4610,6 +4610,728 @@ describe('denormalize', () => {
       const user = (data as Record<string, Record<string, unknown>>).user!;
 
       expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
+    });
+  });
+
+  describe('path tracking', () => {
+    const denormalizeWithPaths = (
+      selections: readonly Selection[],
+      storage: Storage,
+      variables?: Record<string, unknown>,
+      value?: unknown,
+      options?: { trackFragmentDeps?: boolean },
+    ) => {
+      variables ??= {};
+      value ??= storage[RootFieldKey];
+
+      const calls: [StorageKey, FieldKey, PropertyPath, readonly Selection[] | undefined][] = [];
+
+      const result = denormalize(
+        selections,
+        storage,
+        value,
+        variables,
+        (storageKey, fieldKey, path, sels) => {
+          calls.push([storageKey, fieldKey, [...path], sels]);
+        },
+        options,
+      );
+
+      return { ...result, calls };
+    };
+
+    it('single scalar field', () => {
+      const selections: Selection[] = [{ kind: 'Field', name: 'name', type: 'String' }];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual([RootFieldKey, 'name@{}', ['name'], undefined]);
+    });
+
+    it('nested entity: post { author { name } }', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'post',
+          type: 'Post',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'author',
+              type: 'User',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'post@{}': { [EntityLinkKey]: 'Post:1' } },
+        ['Post:1' as StorageKey]: { 'author@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: { 'name@{}': 'Alice' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toHaveLength(3);
+      expect(calls).toContainEqual([RootFieldKey, 'post@{}', ['post'], expect.anything()]);
+      expect(calls).toContainEqual(['Post:1', 'author@{}', ['post', 'author'], expect.anything()]);
+      expect(calls).toContainEqual(['User:1', 'name@{}', ['post', 'author', 'name'], undefined]);
+    });
+
+    it('array field: posts { title }', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          selections: [{ kind: 'Field', name: 'title', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: {
+          'posts@{}': [{ [EntityLinkKey]: 'Post:1' }, { [EntityLinkKey]: 'Post:2' }],
+        },
+        ['Post:1' as StorageKey]: { 'title@{}': 'First' },
+        ['Post:2' as StorageKey]: { 'title@{}': 'Second' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toContainEqual([RootFieldKey, 'posts@{}', ['posts'], expect.anything()]);
+      expect(calls).toContainEqual(['Post:1', 'title@{}', ['posts', 0, 'title'], undefined]);
+      expect(calls).toContainEqual(['Post:2', 'title@{}', ['posts', 1, 'title'], undefined]);
+    });
+
+    it('alias: myPost: post { title }', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'post',
+          alias: 'myPost',
+          type: 'Post',
+          selections: [{ kind: 'Field', name: 'title', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'post@{}': { [EntityLinkKey]: 'Post:1' } },
+        ['Post:1' as StorageKey]: { 'title@{}': 'Hello' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toContainEqual([RootFieldKey, 'post@{}', ['myPost'], expect.anything()]);
+      expect(calls).toContainEqual(['Post:1', 'title@{}', ['myPost', 'title'], undefined]);
+    });
+
+    it('multiple fields: name, email', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        { kind: 'Field', name: 'email', type: 'String' },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@example.com' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toHaveLength(2);
+      expect(calls).toContainEqual([RootFieldKey, 'name@{}', ['name'], undefined]);
+      expect(calls).toContainEqual([RootFieldKey, 'email@{}', ['email'], undefined]);
+    });
+
+    it('arguments do not affect path', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'variable' as const, name: 'id' } },
+          selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{"id":"1"}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: { 'name@{}': 'Alice' },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage, { id: '1' });
+
+      expect(calls).toContainEqual([RootFieldKey, 'user@{"id":"1"}', ['user'], expect.anything()]);
+      expect(calls).toContainEqual(['User:1', 'name@{}', ['user', 'name'], undefined]);
+    });
+
+    it('nullable entity means no sub-field accessor calls', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': null },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual([RootFieldKey, 'user@{}', ['user'], expect.anything()]);
+    });
+
+    it('missing entity calls accessor with path and undefined selections', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      expect(calls).toContainEqual([RootFieldKey, 'user@{}', ['user'], expect.anything()]);
+      expect(calls).toContainEqual(['User:1', '__typename@{}', ['user'], undefined]);
+    });
+  });
+
+  describe('selections delivery', () => {
+    const denormalizeWithPaths = (
+      selections: readonly Selection[],
+      storage: Storage,
+      variables?: Record<string, unknown>,
+    ) => {
+      variables ??= {};
+      const value = storage[RootFieldKey];
+      const calls: [StorageKey, FieldKey, PropertyPath, readonly Selection[] | undefined][] = [];
+
+      denormalize(selections, storage, value, variables, (storageKey, fieldKey, path, sels) => {
+        calls.push([storageKey, fieldKey, [...path], sels]);
+      });
+
+      return calls;
+    };
+
+    it('leaf field gets undefined selections', () => {
+      const selections: Selection[] = [{ kind: 'Field', name: 'name', type: 'String' }];
+      const storage: Storage = { [RootFieldKey]: { 'name@{}': 'Alice' } };
+
+      const calls = denormalizeWithPaths(selections, storage);
+
+      expect(calls[0]![3]).toBeUndefined();
+    });
+
+    it('object field with sub-selections gets Selection[]', () => {
+      const subSelections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        { kind: 'Field', name: 'email', type: 'String' },
+      ];
+      const selections: Selection[] = [{ kind: 'Field', name: 'user', type: 'User', selections: subSelections }];
+      const storage: Storage = {
+        [RootFieldKey]: {
+          'user@{}': { 'name@{}': 'Alice', 'email@{}': 'a@b.com' },
+        },
+      };
+
+      const calls = denormalizeWithPaths(selections, storage);
+
+      const userCall = calls.find((c) => c[1] === 'user@{}');
+      expect(userCall).toBeDefined();
+      expect(userCall![3]).toBe(subSelections);
+    });
+
+    it('entity link field gets selections used for entity fields', () => {
+      const userSelections: Selection[] = [{ kind: 'Field', name: 'name', type: 'String' }];
+      const selections: Selection[] = [{ kind: 'Field', name: 'user', type: 'User', selections: userSelections }];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: { 'name@{}': 'Alice' },
+      };
+
+      const calls = denormalizeWithPaths(selections, storage);
+
+      const userCall = calls.find((c) => c[1] === 'user@{}');
+      expect(userCall).toBeDefined();
+      expect(userCall![3]).toBe(userSelections);
+    });
+  });
+
+  describe('trackFragmentDeps', () => {
+    const denormalizeWithPaths = (
+      selections: readonly Selection[],
+      storage: Storage,
+      variables?: Record<string, unknown>,
+      options?: { trackFragmentDeps?: boolean },
+    ) => {
+      variables ??= {};
+      const value = storage[RootFieldKey];
+      const calls: [StorageKey, FieldKey, PropertyPath, readonly Selection[] | undefined][] = [];
+
+      const result = denormalize(
+        selections,
+        storage,
+        value,
+        variables,
+        (storageKey, fieldKey, path, sels) => {
+          calls.push([storageKey, fieldKey, [...path], sels]);
+        },
+        options,
+      );
+
+      return { ...result, calls };
+    };
+
+    it('default: entity-backed fragment spread recursively calls accessor', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage);
+
+      const fragmentNameCall = calls.filter((c) => c[1] === 'name@{}');
+      expect(fragmentNameCall.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('trackFragmentDeps: true explicitly includes fragment accessor calls', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: true });
+
+      const fragmentNameCall = calls.filter((c) => c[1] === 'name@{}');
+      expect(fragmentNameCall.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('trackFragmentDeps: false skips accessor for entity-backed fragment fields', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      const queryFieldKeys = calls.map((c) => c[1]);
+      expect(queryFieldKeys).toContain('user@{}');
+      expect(queryFieldKeys).toContain('__typename@{}');
+      expect(queryFieldKeys).toContain('id@{}');
+      expect(queryFieldKeys).not.toContain('name@{}');
+    });
+
+    it('trackFragmentDeps: false still injects FragmentRefKey', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserFields',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { data } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+      expect(user[FragmentRefKey]).toBe('User:1');
+    });
+
+    it('trackFragmentDeps: false still injects FragmentVarsKey for fragment with args', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'Avatar',
+              args: { size: { kind: 'literal' as const, value: 100 } },
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'profilePic',
+                  type: 'String',
+                  args: { size: { kind: 'variable' as const, name: 'size' } },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'profilePic@{"size":100}': 'pic-100.jpg',
+        },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      const user = (data as Record<string, Record<string, unknown>>).user!;
+      expect(user[FragmentRefKey]).toBe('User:1');
+      expect(user[FragmentVarsKey]).toEqual({ Avatar: { size: 100 } });
+
+      const profilePicCalls = calls.filter((c) => c[1] === 'profilePic@{"size":100}');
+      expect(profilePicCalls).toHaveLength(0);
+    });
+
+    it('trackFragmentDeps: false still processes non-entity fragment spreads normally', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'FragmentSpread',
+          name: 'RootFields',
+          selections: [
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@example.com' },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({ name: 'Alice', email: 'alice@example.com' });
+      expect(calls).toContainEqual([RootFieldKey, 'name@{}', ['name'], undefined]);
+      expect(calls).toContainEqual([RootFieldKey, 'email@{}', ['email'], undefined]);
+    });
+  });
+
+  describe('path tracking — missing coverage', () => {
+    const denormalizeWithPaths = (
+      selections: readonly Selection[],
+      storage: Storage,
+      variables?: Record<string, unknown>,
+      options?: { trackFragmentDeps?: boolean },
+    ) => {
+      variables ??= {};
+      const value = storage[RootFieldKey];
+      const calls: [StorageKey, FieldKey, PropertyPath, readonly Selection[] | undefined][] = [];
+
+      const result = denormalize(
+        selections,
+        storage,
+        value,
+        variables,
+        (storageKey, fieldKey, path, sels) => {
+          calls.push([storageKey, fieldKey, [...path], sels]);
+        },
+        options,
+      );
+
+      return { ...result, calls };
+    };
+
+    it('inline fragment: correct typename match with path propagation', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'node',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'InlineFragment',
+              on: 'User',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'node@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({
+        node: { __typename: 'User', id: '1', name: 'Alice' },
+      });
+      expect(calls).toContainEqual(['User:1', 'name@{}', ['node', 'name'], undefined]);
+    });
+
+    it('inline fragment: typename mismatch skipped, no accessor call', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'node',
+          type: 'Post',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'InlineFragment',
+              on: 'User',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'node@{}': { [EntityLinkKey]: 'Post:1' } },
+        ['Post:1' as StorageKey]: {
+          '__typename@{}': 'Post',
+          'id@{}': '1',
+        },
+      };
+
+      const { calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      const nameCall = calls.find((c) => c[1] === 'name@{}');
+      expect(nameCall).toBeUndefined();
+    });
+
+    it('inline fragment: union type, only matching fragment processed', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'result',
+          type: 'SearchResult',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'InlineFragment',
+              on: 'User',
+              selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+            },
+            {
+              kind: 'InlineFragment',
+              on: 'Post',
+              selections: [{ kind: 'Field', name: 'title', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'result@{}': { [EntityLinkKey]: 'Post:5' } },
+        ['Post:5' as StorageKey]: {
+          '__typename@{}': 'Post',
+          'id@{}': '5',
+          'title@{}': 'Hello World',
+        },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({
+        result: { __typename: 'Post', id: '5', title: 'Hello World' },
+      });
+      expect(calls).toContainEqual(['Post:5', 'title@{}', ['result', 'title'], undefined]);
+      const nameCall = calls.find((c) => c[1] === 'name@{}');
+      expect(nameCall).toBeUndefined();
+    });
+
+    it('deep nesting (3+ levels): post.author.company.name produces 4-level path', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'post',
+          type: 'Post',
+          selections: [
+            {
+              kind: 'Field',
+              name: 'author',
+              type: 'User',
+              selections: [
+                {
+                  kind: 'Field',
+                  name: 'company',
+                  type: 'Company',
+                  selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'post@{}': { [EntityLinkKey]: 'Post:1' } },
+        ['Post:1' as StorageKey]: { 'author@{}': { [EntityLinkKey]: 'User:2' } },
+        ['User:2' as StorageKey]: { 'company@{}': { [EntityLinkKey]: 'Company:3' } },
+        ['Company:3' as StorageKey]: { 'name@{}': 'Acme' },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({
+        post: { author: { company: { name: 'Acme' } } },
+      });
+      expect(calls).toContainEqual([RootFieldKey, 'post@{}', ['post'], expect.anything()]);
+      expect(calls).toContainEqual(['Post:1', 'author@{}', ['post', 'author'], expect.anything()]);
+      expect(calls).toContainEqual(['User:2', 'company@{}', ['post', 'author', 'company'], expect.anything()]);
+      expect(calls).toContainEqual(['Company:3', 'name@{}', ['post', 'author', 'company', 'name'], undefined]);
+    });
+
+    it('entity link array with null items: no accessor call for null', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          selections: [{ kind: 'Field', name: 'title', type: 'String' }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: {
+          'posts@{}': [{ [EntityLinkKey]: 'Post:1' }, null, { [EntityLinkKey]: 'Post:2' }],
+        },
+        ['Post:1' as StorageKey]: { 'title@{}': 'First' },
+        ['Post:2' as StorageKey]: { 'title@{}': 'Second' },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({
+        posts: [{ title: 'First' }, null, { title: 'Second' }],
+      });
+      expect(calls).toContainEqual([RootFieldKey, 'posts@{}', ['posts'], expect.anything()]);
+      expect(calls).toContainEqual(['Post:1', 'title@{}', ['posts', 0, 'title'], undefined]);
+      expect(calls).toContainEqual(['Post:2', 'title@{}', ['posts', 2, 'title'], undefined]);
+      const nullAccessorCall = calls.find((c) => c[0] !== RootFieldKey && c[0] !== 'Post:1' && c[0] !== 'Post:2');
+      expect(nullAccessorCall).toBeUndefined();
+    });
+
+    it('empty selections produce zero accessor calls', () => {
+      const selections: Selection[] = [];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const { data, calls } = denormalizeWithPaths(selections, storage, {}, { trackFragmentDeps: false });
+
+      expect(data).toEqual({});
+      expect(calls).toHaveLength(0);
+    });
+  });
+
+  describe('backward compatibility', () => {
+    it('2-param accessor still works', () => {
+      const selections: Selection[] = [{ kind: 'Field', name: 'name', type: 'String' }];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const calls: [StorageKey, FieldKey][] = [];
+
+      const result = denormalize(selections, storage, storage[RootFieldKey], {}, (storageKey, fieldKey) => {
+        calls.push([storageKey, fieldKey]);
+      });
+
+      expect(result.data).toEqual({ name: 'Alice' });
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual([RootFieldKey, 'name@{}']);
+    });
+
+    it('accessor-free call works identically', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        { kind: 'Field', name: 'age', type: 'String' },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'age@{}': 30 },
+      };
+
+      const result = denormalize(selections, storage, storage[RootFieldKey], {});
+
+      expect(result.data).toEqual({ name: 'Alice', age: 30 });
+      expect(result.partial).toBe(false);
     });
   });
 });

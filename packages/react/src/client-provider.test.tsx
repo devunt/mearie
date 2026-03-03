@@ -25,7 +25,7 @@ describe('ClientProvider', () => {
     act(() => root.unmount());
   });
 
-  it('should throw when useClient is used without ClientProvider', () => {
+  it('should throw when used without provider', () => {
     const TestChild = (): null => {
       useClient();
       return null;

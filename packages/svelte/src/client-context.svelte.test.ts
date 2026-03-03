@@ -6,7 +6,7 @@ import { createMockClient } from './test-utils.svelte.ts';
 import TestRunner from './TestRunner.svelte';
 
 describe('client-context', () => {
-  it('should set and get client in context', () => {
+  it('should provide client to children', () => {
     const { client } = createMockClient();
     let retrieved: unknown;
     const target = document.createElement('div');
@@ -26,13 +26,13 @@ describe('client-context', () => {
     void unmount(component);
   });
 
-  it('should throw when getClient is used outside component context', () => {
+  it('should throw when used without provider', () => {
     expect(() => {
       getClient();
     }).toThrow();
   });
 
-  it('should throw when getClient is used with null client', () => {
+  it('should throw when client is null', () => {
     let caughtError: unknown;
     const target = document.createElement('div');
 

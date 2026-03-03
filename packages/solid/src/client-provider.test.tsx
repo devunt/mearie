@@ -25,7 +25,7 @@ describe('ClientProvider', () => {
     dispose();
   });
 
-  it('should throw when useClient is used without ClientProvider', () => {
+  it('should throw when used without provider', () => {
     const container = document.createElement('div');
 
     expect(() => {

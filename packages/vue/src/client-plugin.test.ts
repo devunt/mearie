@@ -5,7 +5,7 @@ import { ClientPlugin, useClient } from './client-plugin.ts';
 import { createMockClient, withSetup } from './test-utils.ts';
 
 describe('ClientPlugin', () => {
-  it('should provide client to children via plugin', () => {
+  it('should provide client to children', () => {
     const { client } = createMockClient();
     const { result, unmount } = withSetup(() => useClient(), client);
 
@@ -13,7 +13,7 @@ describe('ClientPlugin', () => {
     unmount();
   });
 
-  it('should throw when useClient is used without ClientPlugin', () => {
+  it('should throw when used without provider', () => {
     expect(() => {
       let error: Error | undefined;
       const app = createApp({

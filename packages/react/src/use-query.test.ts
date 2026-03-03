@@ -57,7 +57,7 @@ describe('useQuery', () => {
     unmount();
   });
 
-  it('should show loading true with initialData when fetching', () => {
+  it('should update data after initialData when fetch completes', () => {
     const { client, subjects } = createMockClient();
     const initialData = { id: '1', name: 'Prefetched' };
     const { result, unmount } = renderHook(() => useQuery(mockQuery, undefined, { initialData }), client);

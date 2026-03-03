@@ -84,6 +84,24 @@ describe('createQuery', () => {
     destroy();
   });
 
+  it('should update data after initialData when fetch completes', () => {
+    const { client, subjects } = createMockClient();
+    const initialData = { id: '1', name: 'Prefetched' };
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as Artifact<'query'>, undefined, () => ({ initialData })),
+    );
+
+    expect(result.current.data).toEqual(initialData);
+    expect(result.current.loading).toBe(false);
+
+    subjects.query.next(makeResult({ id: '1', name: 'Updated' }));
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: '1', name: 'Updated' });
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+
   it('should re-execute on refetch', () => {
     const { client, subjects } = createMockClient();
     const { result, destroy } = renderQuery(client, () => createQuery(mockQuery as Artifact<'query'>));

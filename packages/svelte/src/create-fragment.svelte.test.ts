@@ -91,6 +91,18 @@ describe('createFragment', () => {
     destroy();
   });
 
+  it('should throw when fragment data is not found', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined
+    const initialResult = makeResult(undefined);
+    const { client } = createSyncFragmentClient(initialResult);
+
+    expect(() => {
+      renderFragment(client, () =>
+        createFragment(mockFragment as Artifact<'fragment'>, () => createFragmentRef() as FragmentRefs<string>),
+      );
+    }).toThrow('Fragment data not found');
+  });
+
   it('should update on patch-based changes', () => {
     const initialResult = makeResult({ id: '1', name: 'Alice' });
     const { client, subject } = createSyncFragmentClient(initialResult);

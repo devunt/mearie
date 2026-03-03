@@ -52,6 +52,21 @@ describe('createQuery', () => {
     dispose();
   });
 
+  it('should update data after initialData when fetch completes', () => {
+    const { client, subjects } = createMockClient();
+    const initialData = { id: '1', name: 'Prefetched' };
+    const { result, dispose } = renderHook(() => createQuery(mockQuery, undefined, () => ({ initialData })), client);
+
+    expect(result.current.data).toEqual(initialData);
+    expect(result.current.loading).toBe(false);
+
+    subjects.query.next(makeResult({ id: '1', name: 'Updated' }));
+
+    expect(result.current.data).toEqual({ id: '1', name: 'Updated' });
+    expect(result.current.loading).toBe(false);
+    dispose();
+  });
+
   it('should re-execute on refetch', () => {
     const { client, subjects } = createMockClient();
     const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
@@ -70,7 +85,7 @@ describe('createQuery', () => {
     dispose();
   });
 
-  it('should unsubscribe on dispose', () => {
+  it('should unsubscribe on unmount', () => {
     const { client, subjects } = createMockClient();
     const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
 

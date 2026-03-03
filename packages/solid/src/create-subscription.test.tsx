@@ -80,7 +80,7 @@ describe('createSubscription', () => {
     dispose();
   });
 
-  it('should unsubscribe on dispose', () => {
+  it('should unsubscribe on unmount', () => {
     const { client, subjects } = createMockClient();
     const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
 

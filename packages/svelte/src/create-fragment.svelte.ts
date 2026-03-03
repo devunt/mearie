@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
 import { applyPatchesMutable } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
@@ -72,7 +73,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
     }
 
     const unsubscribe = pipe(
-      client.executeFragment(fragment, $state.snapshot(currentRef) as typeof currentRef, options?.()),
+      client.executeFragment(fragment, untrack(() => $state.snapshot(currentRef)) as typeof currentRef, options?.()),
       subscribe({
         next: (result: OperationResult) => {
           metadata = result.metadata;

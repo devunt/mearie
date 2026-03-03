@@ -13,8 +13,10 @@ import { filter } from '../stream/operators/filter.ts';
 import { share } from '../stream/operators/share.ts';
 import { initialize } from '../stream/operators/initialize.ts';
 import { finalize } from '../stream/operators/finalize.ts';
-import { mergeMap as mergeMapOp } from '../stream/operators/merge-map.ts';
+import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromPromise } from '../stream/sources/from-promise.ts';
+import type { Source } from '../stream/types.ts';
+import { fromValue } from '../stream/index.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -1135,7 +1137,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
 
             return fromPromise(
@@ -1239,7 +1241,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1467,7 +1469,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1567,7 +1569,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op): op is Operation & { variant: 'request' } => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             callCount++;
             return fromPromise(
               (async () => {
@@ -1681,7 +1683,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -1761,7 +1763,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -1851,7 +1853,7 @@ describe('cacheExchange', () => {
         pipe(
           ops$,
           filter((op) => op.variant === 'request'),
-          mergeMapOp((op) => {
+          mergeMap((op) => {
             return fromPromise(
               new Promise<OperationResult>((resolve) => {
                 networkResults.push({ resolve: (r) => resolve({ ...r, operation: op }) });
@@ -2521,6 +2523,177 @@ describe('cacheExchange', () => {
         id: '1',
         title: 'Hello',
       });
+
+      queryUnsub();
+    });
+
+    it('should detect partial and refetch when __root is partially populated by a different query with root fragment spread', async () => {
+      const entitySchema: SchemaMeta = {
+        entities: { Widget: { keyFields: ['id'] }, User: { keyFields: ['id'] } },
+        inputs: {},
+        scalars: {},
+      };
+
+      const entityClient = makeTestClient({ schema: entitySchema });
+      const exchange = cacheExchange();
+
+      const dashboardResponse$ = makeSubject<OperationResult>();
+
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          mergeMap((op): Source<OperationResult> => {
+            if (op.variant !== 'request') return fromValue({ operation: op });
+            const reqOp = op as RequestOperation;
+            if (reqOp.artifact?.kind === 'query' && reqOp.artifact.name === 'Layout_Query') {
+              return fromValue({
+                operation: op,
+                data: {
+                  me: { __typename: 'User', id: '1' },
+                  impersonation: null,
+                  notes: [{ __typename: 'Note', id: 'n1' }],
+                },
+              });
+            }
+            if (reqOp.artifact?.kind === 'query' && reqOp.artifact.name === 'DashboardSlugPage_Query') {
+              return dashboardResponse$.source;
+            }
+            return fromValue({ operation: op });
+          }),
+        );
+
+      const operations$ = makeSubject<Operation>();
+      const exchangeResult = exchange({ forward, client: entityClient as never });
+      const results$ = pipe(operations$.source, share(), exchangeResult.io, share());
+
+      // Step 1: Execute layout query (populates __root with me, impersonation, notes)
+      const layoutOp = makeTestOperation({
+        kind: 'query',
+        name: 'Layout_Query',
+        key: 'layout-q1',
+        selections: [
+          {
+            kind: 'Field' as const,
+            name: 'me',
+            type: 'User',
+            nullable: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+          { kind: 'Field' as const, name: 'impersonation', type: 'Impersonation', nullable: true as const },
+          {
+            kind: 'Field' as const,
+            name: 'notes',
+            type: 'Note',
+            array: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+        ],
+      });
+
+      const layoutResults: OperationResult[] = [];
+      pipe(
+        results$,
+        initialize(() => operations$.next(layoutOp)),
+        filter((r: OperationResult) => r.operation.key === 'layout-q1'),
+        subscribe({ next: (result: OperationResult) => layoutResults.push(result) }),
+      );
+      await Promise.resolve();
+      expect(layoutResults.length).toBeGreaterThan(0);
+
+      // Step 2: Execute dashboard query (has root-level fragment spread for widgets)
+      // The cache has `me` from layout but NOT `widgets` from the fragment spread.
+      const fragmentSelections = [
+        {
+          kind: 'Field' as const,
+          name: 'widgets',
+          type: 'Widget',
+          array: true as const,
+          selections: [
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            { kind: 'Field' as const, name: 'data', type: 'JSON' },
+            { kind: 'Field' as const, name: 'order', type: 'String' },
+          ],
+        },
+      ];
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'DashboardSlugPage_Query',
+        key: 'root-mixed-q1',
+        selections: [
+          {
+            kind: 'Field' as const,
+            name: 'me',
+            type: 'User',
+            nullable: true as const,
+            selections: [{ kind: 'Field' as const, name: 'id', type: 'ID' }],
+          },
+          {
+            kind: 'FragmentSpread' as const,
+            name: 'WidgetGroup_query',
+            selections: fragmentSelections as never,
+          },
+        ],
+      });
+
+      const queryResults: OperationResult[] = [];
+      const queryUnsub = pipe(
+        results$,
+        initialize(() => operations$.next(queryOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-mixed-q1'),
+        subscribe({ next: (result: OperationResult) => queryResults.push(result) }),
+      );
+      await Promise.resolve();
+
+      // Step 3: Cache correctly detects partial (fragment's `widgets` missing from __root)
+      // so no synchronous cache emission occurs — the query is forwarded to network.
+      expect(queryResults.length).toBe(0);
+
+      // Step 4: Network response arrives with full data
+      dashboardResponse$.next({
+        operation: queryOp,
+        data: {
+          me: { __typename: 'User', id: '1' },
+          widgets: [
+            { __typename: 'Widget', id: 'w1', name: 'Widget 1', data: '{}', order: 'a0' },
+            { __typename: 'Widget', id: 'w2', name: 'Widget 2', data: '{}', order: 'a1' },
+          ],
+        },
+      });
+      await Promise.resolve();
+
+      // Step 5: Cache writes the response and emits data with fragment masking
+      expect(queryResults.length).toBeGreaterThan(0);
+
+      const queryData = queryResults[0]!.data as Record<string, unknown>;
+      expect(queryData.__fragmentRef).toBe('__root');
+
+      // Step 6: Fragment read via peek now finds widgets in __root
+      const fragmentOp = makeTestOperation({
+        kind: 'fragment',
+        name: 'WidgetGroup_query',
+        key: 'root-mixed-f1',
+        metadata: { fragment: { ref: queryData } },
+        selections: fragmentSelections as never,
+      });
+
+      const fragmentSource = pipe(
+        results$,
+        initialize(() => operations$.next(fragmentOp)),
+        filter((r: OperationResult) => r.operation.key === 'root-mixed-f1'),
+        finalize(() => operations$.next({ variant: 'teardown', key: 'root-mixed-f1', metadata: {} })),
+        share(),
+      );
+
+      const result = pipe(fragmentSource, peek);
+
+      expect(result).toBeDefined();
+      expect(result.data).toBeDefined();
+      expect((result.data as Record<string, unknown>).widgets).toEqual([
+        { id: 'w1', name: 'Widget 1', data: '{}', order: 'a0' },
+        { id: 'w2', name: 'Widget 2', data: '{}', order: 'a1' },
+      ]);
 
       queryUnsub();
     });

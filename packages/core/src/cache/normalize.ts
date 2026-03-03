@@ -22,12 +22,15 @@ export const normalize = (
 ): void => {
   const resolveEntityKey = (typename: string | undefined, data: Record<string, unknown>): StorageKey | null => {
     if (!typename) return null;
+
     const entityMeta = schemaMeta.entities[typename];
     if (!entityMeta) return null;
+
     const keys = entityMeta.keyFields.map((field) => data[field]);
     if (keys.every((k) => k !== undefined && k !== null)) {
       return makeEntityKey(typename, keys);
     }
+
     return null;
   };
 

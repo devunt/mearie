@@ -80,31 +80,45 @@ export const denormalize = (
       } else if (selection.kind === 'FragmentSpread') {
         if (storageKey !== null && storageKey !== RootFieldKey) {
           fields[FragmentRefKey] = storageKey;
-          const entityMergedVars = selection.args
+          const merged = selection.args
             ? { ...variables, ...resolveArguments(selection.args, variables) }
             : { ...variables };
-          const entityExisting = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
-          fields[FragmentVarsKey] = { ...entityExisting, [selection.name]: entityMergedVars };
-          if (accessor && options?.trackFragmentDeps !== false) {
-            denormalize(selection.selections, storage, { [EntityLinkKey]: storageKey }, variables, accessor, options);
+          const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+          fields[FragmentVarsKey] = { ...existing, [selection.name]: merged };
+
+          if (accessor) {
+            const inner = denormalize(
+              selection.selections,
+              storage,
+              { [EntityLinkKey]: storageKey },
+              variables,
+              options?.trackFragmentDeps === false ? undefined : accessor,
+              options,
+            );
+
+            if (inner.partial) {
+              partial = true;
+            }
           }
         } else if (storageKey === RootFieldKey) {
           fields[FragmentRefKey] = RootFieldKey;
-          const rootMergedVars = selection.args
+          const merged = selection.args
             ? { ...variables, ...resolveArguments(selection.args, variables) }
             : { ...variables };
-          const rootExisting = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
-          fields[FragmentVarsKey] = { ...rootExisting, [selection.name]: rootMergedVars };
-          if (accessor && options?.trackFragmentDeps !== false) {
-            const innerResult = denormalize(
+          const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+          fields[FragmentVarsKey] = { ...existing, [selection.name]: merged };
+
+          if (accessor) {
+            const inner = denormalize(
               selection.selections,
               storage,
               storage[RootFieldKey],
               variables,
-              accessor,
+              options?.trackFragmentDeps === false ? undefined : accessor,
               options,
             );
-            if (innerResult.partial) {
+
+            if (inner.partial) {
               partial = true;
             }
           }

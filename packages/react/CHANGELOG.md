@@ -1,5 +1,12 @@
 # @mearie/react
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [c5cbd35]
+  - @mearie/core@0.6.1
+
 ## 0.4.0
 
 ### Minor Changes

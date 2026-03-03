@@ -1,6 +1,5 @@
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import {
-  AggregatedError,
   applyPatchesImmutable,
   type Artifact,
   type DataOf,
@@ -67,10 +66,6 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
         client.executeFragment(fragment, fragmentRef, options),
         subscribe({
           next: (result) => {
-            if (result.errors && result.errors.length > 0) {
-              throw new AggregatedError(result.errors);
-            }
-
             const patches = result.metadata?.cache?.patches;
             if (patches) {
               const prevData = storeRef.current?.data;
@@ -78,7 +73,7 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
                 data: applyPatchesImmutable(prevData, patches),
                 metadata: result.metadata,
               };
-            } else {
+            } else if (result.data !== undefined) {
               storeRef.current = { data: result.data, metadata: result.metadata };
             }
             onChange();
@@ -97,8 +92,8 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
     if (storeRef.current === undefined) {
       const result = pipe(client.executeFragment(fragment, fragmentRef, options), peek);
 
-      if (result.errors && result.errors.length > 0) {
-        throw new AggregatedError(result.errors);
+      if (result.data === undefined) {
+        throw new Error('Fragment data not found');
       }
 
       storeRef.current = { data: result.data, metadata: result.metadata };

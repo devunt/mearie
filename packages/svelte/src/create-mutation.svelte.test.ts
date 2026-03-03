@@ -5,7 +5,7 @@ import { AggregatedError } from '@mearie/core';
 import { makeSubject } from '@mearie/core/stream';
 import { createMutation } from './create-mutation.svelte.ts';
 import { createMockClient, mockMutation, makeResult } from './test-utils.svelte.ts';
-import HookRunner from './HookRunner.svelte';
+import TestRunner from './TestRunner.svelte';
 import type { Mutation } from './create-mutation.svelte.ts';
 
 const mockMutationWithVars: Artifact<'mutation', string, unknown, { name: string }> = {
@@ -25,11 +25,11 @@ const renderMutation = <T extends Artifact<'mutation'>>(
   const result = { current: undefined as unknown as Mutation<T> };
   const target = document.createElement('div');
 
-  const component = mount(HookRunner, {
+  const component = mount(TestRunner, {
     target,
     props: {
       client,
-      hookFn: () => createMutation(artifact),
+      setupFn: () => createMutation(artifact),
       onResult: (r: unknown) => {
         result.current = r as Mutation<T>;
       },

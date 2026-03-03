@@ -4,21 +4,21 @@ import type { Artifact, Client } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { createQuery } from './create-query.svelte.ts';
 import { createMockClient, mockQuery, makeResult } from './test-utils.svelte.ts';
-import HookRunner from './HookRunner.svelte';
+import TestRunner from './TestRunner.svelte';
 import type { Query } from './create-query.svelte.ts';
 
 const renderQuery = (
   client: Client,
-  hookFn: () => unknown,
+  setupFn: () => unknown,
 ): { result: { current: Query<Artifact<'query'>> }; destroy: () => void } => {
   const result = { current: undefined as unknown as Query<Artifact<'query'>> };
   const target = document.createElement('div');
 
-  const component = mount(HookRunner, {
+  const component = mount(TestRunner, {
     target,
     props: {
       client,
-      hookFn,
+      setupFn,
       onResult: (r: unknown) => {
         result.current = r as Query<Artifact<'query'>>;
       },

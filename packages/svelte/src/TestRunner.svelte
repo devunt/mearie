@@ -3,12 +3,12 @@
   import { setClient } from './client-context.svelte.ts';
   import { untrack } from 'svelte';
 
-  let { client, hookFn, onResult }: { client: Client; hookFn: () => unknown; onResult: (result: unknown) => void } =
+  let { client, setupFn, onResult }: { client: Client; setupFn: () => unknown; onResult: (result: unknown) => void } =
     $props();
 
   untrack(() => {
     setClient(client);
-    const result = hookFn();
+    const result = setupFn();
     onResult(result);
   });
 </script>

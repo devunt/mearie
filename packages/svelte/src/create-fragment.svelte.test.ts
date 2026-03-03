@@ -5,7 +5,7 @@ import type { Sink, Subscription as StreamSubscription } from '@mearie/core/stre
 import { makeSubject } from '@mearie/core/stream';
 import { createFragment } from './create-fragment.svelte.ts';
 import { createMockClient, mockFragment, makeResult } from './test-utils.svelte.ts';
-import HookRunner from './HookRunner.svelte';
+import TestRunner from './TestRunner.svelte';
 import type { Fragment } from './create-fragment.svelte.ts';
 
 const createFragmentRef = (name = 'TestFragment') => ({
@@ -27,16 +27,16 @@ const createSyncFragmentClient = (initialResult: OperationResult) => {
 
 const renderFragment = (
   client: Client,
-  hookFn: () => unknown,
+  setupFn: () => unknown,
 ): { result: { current: Fragment<Artifact<'fragment'>> }; destroy: () => void } => {
   const result = { current: undefined as unknown as Fragment<Artifact<'fragment'>> };
   const target = document.createElement('div');
 
-  const component = mount(HookRunner, {
+  const component = mount(TestRunner, {
     target,
     props: {
       client,
-      hookFn,
+      setupFn,
       onResult: (r: unknown) => {
         result.current = r as Fragment<Artifact<'fragment'>>;
       },

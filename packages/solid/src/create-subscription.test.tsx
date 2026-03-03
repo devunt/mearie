@@ -1,12 +1,12 @@
 import { describe, it, expect, vi as vitest } from 'vitest';
 import { AggregatedError } from '@mearie/core';
 import { createSubscription } from './create-subscription.ts';
-import { createMockClient, renderHook, mockSubscription, makeResult } from './test-utils.tsx';
+import { createMockClient, renderPrimitive, mockSubscription, makeResult } from './test-utils.tsx';
 
 describe('createSubscription', () => {
   it('should transition from loading to data', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
 
     expect(result.current.loading).toBe(true);
     expect(result.current.data).toBeUndefined();
@@ -20,7 +20,7 @@ describe('createSubscription', () => {
 
   it('should handle multiple emissions', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
 
     subjects.subscription.next(makeResult({ count: 1 }));
     expect(result.current.data).toEqual({ count: 1 });
@@ -35,7 +35,7 @@ describe('createSubscription', () => {
 
   it('should handle errors', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
 
     subjects.subscription.next(makeResult(undefined, { errors: [{ message: 'Sub failed' }] }));
 
@@ -47,7 +47,10 @@ describe('createSubscription', () => {
   it('should call onData callback', () => {
     const onData = vitest.fn();
     const { client, subjects } = createMockClient();
-    const { dispose } = renderHook(() => createSubscription(mockSubscription, undefined, () => ({ onData })), client);
+    const { dispose } = renderPrimitive(
+      () => createSubscription(mockSubscription, undefined, () => ({ onData })),
+      client,
+    );
 
     subjects.subscription.next(makeResult({ id: '1' }));
 
@@ -58,7 +61,10 @@ describe('createSubscription', () => {
   it('should call onError callback', () => {
     const onError = vitest.fn();
     const { client, subjects } = createMockClient();
-    const { dispose } = renderHook(() => createSubscription(mockSubscription, undefined, () => ({ onError })), client);
+    const { dispose } = renderPrimitive(
+      () => createSubscription(mockSubscription, undefined, () => ({ onError })),
+      client,
+    );
 
     subjects.subscription.next(makeResult(undefined, { errors: [{ message: 'Error' }] }));
 
@@ -69,7 +75,7 @@ describe('createSubscription', () => {
 
   it('should not execute when skip is true', () => {
     const { client } = createMockClient();
-    const { result, dispose } = renderHook(
+    const { result, dispose } = renderPrimitive(
       () => createSubscription(mockSubscription, undefined, () => ({ skip: true })),
       client,
     );
@@ -82,7 +88,7 @@ describe('createSubscription', () => {
 
   it('should unsubscribe on unmount', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
 
     subjects.subscription.next(makeResult({ id: '1' }));
 
@@ -95,7 +101,7 @@ describe('createSubscription', () => {
 
   it('should expose metadata', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createSubscription(mockSubscription), client);
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
 
     const testMetadata = { source: 'ws' };
     subjects.subscription.next(makeResult({ id: '1' }, { metadata: testMetadata }));

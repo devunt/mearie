@@ -4,21 +4,21 @@ import type { Artifact, Client } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { createSubscription } from './create-subscription.svelte.ts';
 import { createMockClient, mockSubscription, makeResult } from './test-utils.svelte.ts';
-import HookRunner from './HookRunner.svelte';
+import TestRunner from './TestRunner.svelte';
 import type { Subscription, CreateSubscriptionOptions } from './create-subscription.svelte.ts';
 
 const renderSubscription = (
   client: Client,
-  hookFn: () => unknown,
+  setupFn: () => unknown,
 ): { result: { current: Subscription<Artifact<'subscription'>> }; destroy: () => void } => {
   const result = { current: undefined as unknown as Subscription<Artifact<'subscription'>> };
   const target = document.createElement('div');
 
-  const component = mount(HookRunner, {
+  const component = mount(TestRunner, {
     target,
     props: {
       client,
-      hookFn,
+      setupFn,
       onResult: (r: unknown) => {
         result.current = r as Subscription<Artifact<'subscription'>>;
       },

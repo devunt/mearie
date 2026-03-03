@@ -3,12 +3,12 @@ import type { Artifact, OperationResult } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { makeSubject } from '@mearie/core/stream';
 import { createMutation } from './create-mutation.ts';
-import { createMockClient, renderHook, mockMutation, makeResult } from './test-utils.tsx';
+import { createMockClient, renderPrimitive, mockMutation, makeResult } from './test-utils.tsx';
 
 describe('createMutation', () => {
   it('should have correct initial state', () => {
     const { client } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [, state] = result.current;
     expect(state.loading).toBe(false);
@@ -19,7 +19,7 @@ describe('createMutation', () => {
 
   it('should execute and return data on success', async () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [execute, state] = result.current;
 
@@ -40,7 +40,7 @@ describe('createMutation', () => {
 
   it('should throw AggregatedError on GraphQL errors', async () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [execute, state] = result.current;
 
@@ -61,7 +61,7 @@ describe('createMutation', () => {
       throw new Error('Network error');
     });
 
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [execute, state] = result.current;
 
@@ -72,7 +72,7 @@ describe('createMutation', () => {
 
   it('should reset state on sequential executions', async () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [execute, state] = result.current;
 
@@ -107,7 +107,7 @@ describe('createMutation', () => {
       selections: [],
     };
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutationWithVars), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutationWithVars), client);
 
     const [execute] = result.current;
 
@@ -124,7 +124,7 @@ describe('createMutation', () => {
 
   it('should expose metadata', async () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createMutation(mockMutation), client);
+    const { result, dispose } = renderPrimitive(() => createMutation(mockMutation), client);
 
     const [execute, state] = result.current;
 

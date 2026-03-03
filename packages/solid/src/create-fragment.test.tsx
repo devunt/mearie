@@ -2,7 +2,7 @@ import { describe, it, expect, type Mock } from 'vitest';
 import { makeSubject, type Sink, type Subscription } from '@mearie/core/stream';
 import type { OperationResult } from '@mearie/core';
 import { createFragment } from './create-fragment.ts';
-import { createMockClient, renderHook, mockFragment, makeResult } from './test-utils.tsx';
+import { createMockClient, renderPrimitive, mockFragment, makeResult } from './test-utils.tsx';
 
 const createFragmentRef = <T extends string = 'TestFragment'>(name: T = 'TestFragment' as T) => ({
   ' $fragmentRefs': { [name]: true as const } as Record<T, true>,
@@ -27,7 +27,7 @@ describe('createFragment', () => {
     const initialResult = makeResult({ id: '1', name: 'Alice' });
     const { client } = createSyncFragmentClient(initialResult);
 
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => ref), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => ref), client);
 
     expect(result.current.data).toEqual({ id: '1', name: 'Alice' });
     dispose();
@@ -41,7 +41,7 @@ describe('createFragment', () => {
     ]);
     const { client } = createSyncFragmentClient(initialResult);
 
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => refs), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => refs), client);
 
     expect(result.current.data).toEqual([
       { id: '1', name: 'Alice' },
@@ -52,7 +52,7 @@ describe('createFragment', () => {
 
   it('should return null for null/undefined ref', () => {
     const { client } = createMockClient();
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => null), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => null), client);
 
     expect(result.current.data).toBeNull();
     dispose();
@@ -64,7 +64,7 @@ describe('createFragment', () => {
     const { client } = createSyncFragmentClient(initialResult);
 
     expect(() => {
-      renderHook(() => createFragment(mockFragment, () => createFragmentRef()), client);
+      renderPrimitive(() => createFragment(mockFragment, () => createFragmentRef()), client);
     }).toThrow('Fragment data not found');
   });
 
@@ -73,7 +73,7 @@ describe('createFragment', () => {
     const { client, subject } = createSyncFragmentClient(initialResult);
     const ref = createFragmentRef();
 
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => ref), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => ref), client);
 
     expect(result.current.data).toEqual({ id: '1', name: 'Alice' });
 
@@ -96,7 +96,7 @@ describe('createFragment', () => {
     const initialResult = makeResult({ id: '1', name: 'Sync' });
     const { client } = createSyncFragmentClient(initialResult);
 
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => ref), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => ref), client);
 
     expect(result.current.data).toEqual({ id: '1', name: 'Sync' });
     dispose();
@@ -108,7 +108,7 @@ describe('createFragment', () => {
     const initialResult = makeResult({ id: '1' }, { metadata: testMetadata });
     const { client } = createSyncFragmentClient(initialResult);
 
-    const { result, dispose } = renderHook(() => createFragment(mockFragment, () => ref), client);
+    const { result, dispose } = renderPrimitive(() => createFragment(mockFragment, () => ref), client);
 
     expect(result.current.metadata).toEqual(testMetadata);
     dispose();

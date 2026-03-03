@@ -3,7 +3,7 @@ import { mount, unmount } from 'svelte';
 import type { Client } from '@mearie/core';
 import { getClient } from './client-context.svelte.ts';
 import { createMockClient } from './test-utils.svelte.ts';
-import HookRunner from './HookRunner.svelte';
+import TestRunner from './TestRunner.svelte';
 
 describe('client-context', () => {
   it('should set and get client in context', () => {
@@ -11,11 +11,11 @@ describe('client-context', () => {
     let retrieved: unknown;
     const target = document.createElement('div');
 
-    const component = mount(HookRunner, {
+    const component = mount(TestRunner, {
       target,
       props: {
         client,
-        hookFn: () => getClient(),
+        setupFn: () => getClient(),
         onResult: (r: unknown) => {
           retrieved = r;
         },
@@ -36,11 +36,11 @@ describe('client-context', () => {
     let caughtError: unknown;
     const target = document.createElement('div');
 
-    const component = mount(HookRunner, {
+    const component = mount(TestRunner, {
       target,
       props: {
         client: null as unknown as Client,
-        hookFn: () => {
+        setupFn: () => {
           try {
             getClient();
           } catch (e) {

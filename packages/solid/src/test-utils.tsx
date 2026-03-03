@@ -23,7 +23,10 @@ export const createMockClient = () => {
   return { client, subjects };
 };
 
-export const renderHook = <T,>(hook: () => T, client: Client): { result: { current: T }; dispose: () => void } => {
+export const renderPrimitive = <T,>(
+  primitive: () => T,
+  client: Client,
+): { result: { current: T }; dispose: () => void } => {
   const result = { current: undefined as T };
   const container = document.createElement('div');
 
@@ -31,7 +34,7 @@ export const renderHook = <T,>(hook: () => T, client: Client): { result: { curre
     return (
       <ClientProvider client={client}>
         {(() => {
-          result.current = hook();
+          result.current = primitive();
           return null;
         })()}
       </ClientProvider>

@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { AggregatedError } from '@mearie/core';
 import { createQuery } from './create-query.ts';
-import { createMockClient, renderHook, mockQuery, makeResult } from './test-utils.tsx';
+import { createMockClient, renderPrimitive, mockQuery, makeResult } from './test-utils.tsx';
 
 describe('createQuery', () => {
   it('should transition from loading to data', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     expect(result.current.loading).toBe(true);
     expect(result.current.data).toBeUndefined();
@@ -21,7 +21,7 @@ describe('createQuery', () => {
 
   it('should handle errors', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     subjects.query.next(makeResult(undefined, { errors: [{ message: 'Not found' }] }));
 
@@ -33,7 +33,10 @@ describe('createQuery', () => {
 
   it('should not execute when skip is true', () => {
     const { client } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery, undefined, () => ({ skip: true })), client);
+    const { result, dispose } = renderPrimitive(
+      () => createQuery(mockQuery, undefined, () => ({ skip: true })),
+      client,
+    );
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -45,7 +48,10 @@ describe('createQuery', () => {
   it('should use initialData immediately', () => {
     const { client } = createMockClient();
     const initialData = { id: '1', name: 'Prefetched' };
-    const { result, dispose } = renderHook(() => createQuery(mockQuery, undefined, () => ({ initialData })), client);
+    const { result, dispose } = renderPrimitive(
+      () => createQuery(mockQuery, undefined, () => ({ initialData })),
+      client,
+    );
 
     expect(result.current.data).toEqual(initialData);
     expect(result.current.loading).toBe(false);
@@ -55,7 +61,10 @@ describe('createQuery', () => {
   it('should update data after initialData when fetch completes', () => {
     const { client, subjects } = createMockClient();
     const initialData = { id: '1', name: 'Prefetched' };
-    const { result, dispose } = renderHook(() => createQuery(mockQuery, undefined, () => ({ initialData })), client);
+    const { result, dispose } = renderPrimitive(
+      () => createQuery(mockQuery, undefined, () => ({ initialData })),
+      client,
+    );
 
     expect(result.current.data).toEqual(initialData);
     expect(result.current.loading).toBe(false);
@@ -69,7 +78,7 @@ describe('createQuery', () => {
 
   it('should re-execute on refetch', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     subjects.query.next(makeResult({ id: '1' }));
 
@@ -87,7 +96,7 @@ describe('createQuery', () => {
 
   it('should unsubscribe on unmount', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     subjects.query.next(makeResult({ id: '1' }));
 
@@ -100,7 +109,7 @@ describe('createQuery', () => {
 
   it('should update data on multiple results', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     subjects.query.next(makeResult({ id: '1', name: 'First' }));
 
@@ -114,7 +123,7 @@ describe('createQuery', () => {
 
   it('should apply patch-based updates', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     subjects.query.next(makeResult({ id: '1', name: 'Alice' }));
 
@@ -136,7 +145,7 @@ describe('createQuery', () => {
 
   it('should expose metadata', () => {
     const { client, subjects } = createMockClient();
-    const { result, dispose } = renderHook(() => createQuery(mockQuery), client);
+    const { result, dispose } = renderPrimitive(() => createQuery(mockQuery), client);
 
     const testMetadata = { cache: { stale: true } };
     subjects.query.next(makeResult({ id: '1' }, { metadata: testMetadata }));

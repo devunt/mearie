@@ -34,7 +34,7 @@ export default defineConfig(
   unicornPlugin.configs.recommended,
 
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.tsx'],
     extends: [
       tseslint.configs.recommendedTypeChecked,
       tseslint.configs.stylisticTypeChecked,

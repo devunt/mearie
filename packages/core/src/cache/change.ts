@@ -7,7 +7,14 @@ import type {
   StorageKey,
   SubscriptionEntry,
 } from './types.ts';
-import { isEntityLink, isEntityLinkArray, isEntityLinkArrayEqual, isEqual, isNullish } from './utils.ts';
+import {
+  isEntityLink,
+  isEntityLinkArray,
+  isEntityLinkArrayEqual,
+  isEqual,
+  isNullish,
+  isNormalizedRecord,
+} from './utils.ts';
 import { EntityLinkKey } from './constants.ts';
 import { findCommonBounds, computeSwaps } from './diff.ts';
 import {
@@ -17,6 +24,7 @@ import {
   partialDenormalize,
   rebuildArrayIndices,
 } from './tree.ts';
+import { denormalize } from './denormalize.ts';
 
 /**
  * @internal
@@ -295,8 +303,14 @@ export const generatePatches = (
     const entries = subscriptions.get(depKey);
     if (!entries) continue;
     for (const entry of entries) {
+      let patchValue = newValue;
+      const node = findEntryTreeNode(entry.subscription.entryTree, entry.path);
+      if (node?.selections && isNormalizedRecord(newValue)) {
+        const { data } = denormalize(node.selections, storage, newValue, entry.subscription.variables);
+        patchValue = data;
+      }
       const existing = patchesBySubscription.get(entry.subscription) ?? [];
-      existing.push({ type: 'set', path: entry.path, value: newValue });
+      existing.push({ type: 'set', path: entry.path, value: patchValue });
       patchesBySubscription.set(entry.subscription, existing);
     }
   }

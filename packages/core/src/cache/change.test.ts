@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { classifyChanges, generatePatches } from './change.ts';
 import { buildEntryTree } from './tree.ts';
 import type { EntryTuple } from './tree.ts';
-import { makeDependencyKey } from './utils.ts';
+import { makeDependencyKey, markNormalized } from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type {
   DependencyKey,
@@ -1008,6 +1008,56 @@ describe('generatePatches - embedded objects and non-entity arrays', () => {
     const patches = result.get(subscription)!;
     expect(patches).toHaveLength(1);
     expect(patches[0]).toEqual({ type: 'set', path: ['config'], value: newConfig });
+  });
+
+  it('embedded type with sub-selections denormalizes fieldKey format to user-facing names in patch value', () => {
+    const statsSelections: Selection[] = [
+      { kind: 'Field', name: 'additions', type: 'Int' },
+      { kind: 'Field', name: 'deletions', type: 'Int' },
+    ];
+
+    const tuples: EntryTuple[] = [
+      {
+        storageKey: 'Document:1' as StorageKey,
+        fieldKey: fk('characterCountChange'),
+        path: ['document', 'characterCountChange'],
+        selections: statsSelections,
+      },
+    ];
+
+    const entryTree = buildEntryTree(tuples);
+    const subscription = makeSubscription(statsSelections, {}, entryTree);
+    const subscriptions = new Map<DependencyKey, Set<SubscriptionEntry>>();
+    registerEntries(entryTree, subscription, tuples, subscriptions);
+
+    const storage: Storage = {
+      [RootFieldKey]: {},
+      ['Document:1' as StorageKey]: {
+        [fk('characterCountChange')]: {
+          [fk('additions')]: 19,
+          [fk('deletions')]: 2,
+        },
+      },
+    };
+
+    const oldEmbedded = { [fk('additions')]: 18, [fk('deletions')]: 2 };
+    const newEmbedded = { [fk('additions')]: 19, [fk('deletions')]: 2 };
+    markNormalized(oldEmbedded);
+    markNormalized(newEmbedded);
+
+    const changedKeys = new Map<DependencyKey, { oldValue: unknown; newValue: unknown }>([
+      [dk('Document:1', 'characterCountChange'), { oldValue: oldEmbedded, newValue: newEmbedded }],
+    ]);
+
+    const result = generatePatches(changedKeys, subscriptions, storage);
+
+    const patches = result.get(subscription)!;
+    expect(patches).toHaveLength(1);
+    expect(patches[0]).toEqual({
+      type: 'set',
+      path: ['document', 'characterCountChange'],
+      value: { additions: 19, deletions: 2 },
+    });
   });
 
   it('non-entity array change produces single set patch', () => {

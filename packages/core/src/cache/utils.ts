@@ -166,7 +166,7 @@ export const markNormalized = (obj: object): void => {
   Object.defineProperty(obj, NormalizedKey, { value: true });
 };
 
-const isNormalizedRecord = (value: unknown): boolean => {
+export const isNormalizedRecord = (value: unknown): boolean => {
   return typeof value === 'object' && value !== null && NormalizedKey in value;
 };
 

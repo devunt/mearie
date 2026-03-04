@@ -90,7 +90,7 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
             let unsubscribe: (() => void) | undefined;
             let completed = false;
 
-            void Promise.resolve().then(() => {
+            const doSubscribe = () => {
               if (completed) return;
 
               unsubscribe = client.subscribe(
@@ -103,19 +103,38 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
                   next: (result) => {
                     const response = result as GraphQLResponse;
 
-                    observer.next({
-                      operation: op,
-                      data: response.data,
-                      errors: response.errors?.map(
-                        (err) =>
-                          new GraphQLError(err.message, {
-                            path: err.path,
-                            locations: err.locations,
-                            extensions: err.extensions,
-                          }),
-                      ),
-                      extensions: response.extensions,
-                    });
+                    try {
+                      observer.next({
+                        operation: op,
+                        data: response.data,
+                        errors: response.errors?.map(
+                          (err) =>
+                            new GraphQLError(err.message, {
+                              path: err.path,
+                              locations: err.locations,
+                              extensions: err.extensions,
+                            }),
+                        ),
+                        extensions: response.extensions,
+                      });
+                    } catch (error) {
+                      // Prevent downstream exceptions from propagating back
+                      // into the transport client, which would kill the connection.
+                      // Re-emit as an error result so onError callbacks are called.
+                      try {
+                        observer.next({
+                          operation: op,
+                          errors: [
+                            new ExchangeError(error instanceof Error ? error.message : String(error), {
+                              exchangeName: 'subscription',
+                              cause: error,
+                            }),
+                          ],
+                        });
+                      } catch {
+                        // noop
+                      }
+                    }
                   },
                   error: (error) => {
                     observer.next({
@@ -128,12 +147,15 @@ export const subscriptionExchange = (options: SubscriptionExchangeOptions): Exch
                       ],
                     });
 
-                    observer.complete();
+                    unsubscribe = undefined;
+                    void Promise.resolve().then(doSubscribe);
                   },
                   complete: observer.complete,
                 },
               );
-            });
+            };
+
+            void Promise.resolve().then(doSubscribe);
 
             return () => {
               completed = true;

@@ -1,6 +1,6 @@
 {
   "name": "@mearie/react",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "sideEffects": false,
   "type": "module",
   "exports": {

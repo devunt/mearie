@@ -92,6 +92,34 @@ export const traceSelections = (
   const missingDeps = new Set<DependencyKey>();
   let complete = true;
 
+  const traceFragmentSpread = (
+    selection: Selection & { kind: 'FragmentSpread' },
+    refKey: StorageKey,
+    value: Record<string, unknown>,
+    traceKey: StorageKey,
+    fields: Record<string, unknown>,
+    path: PropertyPath,
+  ): void => {
+    fields[FragmentRefKey] = refKey;
+    const merged = selection.args ? { ...variables, ...resolveArguments(selection.args, variables) } : { ...variables };
+    const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
+    fields[FragmentVarsKey] = { ...existing, [selection.name]: merged };
+
+    const inner = traceSelections(selection.selections, storage, value, variables, traceKey, path, subscriptionId);
+    for (const cursor of inner.cursors) {
+      cursors.push({
+        depKey: cursor.depKey,
+        entry: cursor.entry.dependency === 'transitive' ? cursor.entry : { ...cursor.entry, dependency: 'transitive' },
+      });
+    }
+    if (!inner.complete) {
+      complete = false;
+      for (const dep of inner.missingDeps) {
+        missingDeps.add(dep);
+      }
+    }
+  };
+
   const traceField = (
     sk: StorageKey | null,
     sels: readonly Selection[],
@@ -138,6 +166,7 @@ export const traceSelections = (
           const entry: CursorEntry = {
             subscriptionId,
             path: fieldPath,
+            dependency: 'direct',
             ...(selection.selections && { selections: selection.selections }),
           };
           cursors.push({ depKey, entry });
@@ -164,51 +193,9 @@ export const traceSelections = (
         }
       } else if (selection.kind === 'FragmentSpread') {
         if (sk !== null && sk !== RootFieldKey) {
-          fields[FragmentRefKey] = sk;
-          const merged = selection.args
-            ? { ...variables, ...resolveArguments(selection.args, variables) }
-            : { ...variables };
-          const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
-          fields[FragmentVarsKey] = { ...existing, [selection.name]: merged };
-
-          const inner = traceSelections(
-            selection.selections,
-            storage,
-            storage[sk] as Record<string, unknown>,
-            variables,
-            sk,
-            path,
-            subscriptionId,
-          );
-          if (!inner.complete) {
-            complete = false;
-            for (const dep of inner.missingDeps) {
-              missingDeps.add(dep);
-            }
-          }
+          traceFragmentSpread(selection, sk, storage[sk] as Record<string, unknown>, sk, fields, path);
         } else if (sk === RootFieldKey) {
-          fields[FragmentRefKey] = RootFieldKey;
-          const merged = selection.args
-            ? { ...variables, ...resolveArguments(selection.args, variables) }
-            : { ...variables };
-          const existing = fields[FragmentVarsKey] as Record<string, Record<string, unknown>> | undefined;
-          fields[FragmentVarsKey] = { ...existing, [selection.name]: merged };
-
-          const inner = traceSelections(
-            selection.selections,
-            storage,
-            storage[RootFieldKey],
-            variables,
-            RootFieldKey,
-            path,
-            subscriptionId,
-          );
-          if (!inner.complete) {
-            complete = false;
-            for (const dep of inner.missingDeps) {
-              missingDeps.add(dep);
-            }
-          }
+          traceFragmentSpread(selection, RootFieldKey, storage[RootFieldKey], RootFieldKey, fields, path);
         } else {
           mergeFields(fields, traceField(sk, selection.selections, val, path, trackCursors), true);
         }

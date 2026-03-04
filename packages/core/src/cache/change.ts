@@ -63,6 +63,8 @@ export const processScalarChanges = (
     if (!entries) continue;
 
     for (const entry of entries) {
+      if (entry.dependency === 'transitive') continue;
+
       const sub = subscriptions.get(entry.subscriptionId);
       if (!sub) continue;
 

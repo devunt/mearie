@@ -7,7 +7,7 @@ import type { Selection } from '@mearie/shared';
 describe('CursorRegistry', () => {
   it('registers a cursor entry and retrieves it by depKey', () => {
     const registry = new CursorRegistry();
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
     const depKey = 'User:1.name@{}' as DependencyKey;
 
     registry.add(depKey, entry);
@@ -26,7 +26,7 @@ describe('CursorRegistry', () => {
 
   it('removes a cursor entry', () => {
     const registry = new CursorRegistry();
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
     const depKey = 'User:1.name@{}' as DependencyKey;
 
     registry.add(depKey, entry);
@@ -39,8 +39,8 @@ describe('CursorRegistry', () => {
   it('supports multiple entries for the same depKey', () => {
     const registry = new CursorRegistry();
     const depKey = 'User:1.name@{}' as DependencyKey;
-    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'] };
+    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'], dependency: 'direct' };
 
     registry.add(depKey, entry1);
     registry.add(depKey, entry2);
@@ -53,8 +53,8 @@ describe('CursorRegistry', () => {
     const registry = new CursorRegistry();
     const depKey1 = 'User:1.name@{}' as DependencyKey;
     const depKey2 = 'User:1.email@{}' as DependencyKey;
-    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-    const entry2: CursorEntry = { subscriptionId: 1, path: ['user', 'email'] };
+    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+    const entry2: CursorEntry = { subscriptionId: 1, path: ['user', 'email'], dependency: 'direct' };
     const cursors = new Set([entry1, entry2]);
 
     registry.add(depKey1, entry1);
@@ -69,8 +69,8 @@ describe('CursorRegistry', () => {
   it('removeAll preserves entries from other subscriptions', () => {
     const registry = new CursorRegistry();
     const depKey = 'User:1.name@{}' as DependencyKey;
-    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'] };
+    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'], dependency: 'direct' };
 
     registry.add(depKey, entry1);
     registry.add(depKey, entry2);
@@ -86,7 +86,7 @@ describe('CursorRegistry', () => {
   it('clear removes all entries', () => {
     const registry = new CursorRegistry();
     const depKey = 'User:1.name@{}' as DependencyKey;
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
 
     registry.add(depKey, entry);
     registry.clear();
@@ -96,7 +96,7 @@ describe('CursorRegistry', () => {
 
   it('remove on a non-existent depKey does not throw', () => {
     const registry = new CursorRegistry();
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
 
     expect(() => registry.remove('User:1.name@{}' as DependencyKey, entry)).not.toThrow();
   });
@@ -104,7 +104,7 @@ describe('CursorRegistry', () => {
   it('removeAll with empty Set is a no-op', () => {
     const registry = new CursorRegistry();
     const depKey = 'User:1.name@{}' as DependencyKey;
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
 
     registry.add(depKey, entry);
     registry.removeAll(new Set());
@@ -118,7 +118,7 @@ describe('CursorRegistry', () => {
   it('adding same CursorEntry object to same depKey twice deduplicates', () => {
     const registry = new CursorRegistry();
     const depKey = 'User:1.name@{}' as DependencyKey;
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
 
     registry.add(depKey, entry);
     registry.add(depKey, entry);
@@ -133,9 +133,9 @@ describe('CursorRegistry', () => {
       const depKey1 = 'User:1.name@{}' as DependencyKey;
       const depKey2 = 'User:1.id@{}' as DependencyKey;
       const depKey3 = 'User:2.name@{}' as DependencyKey;
-      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-      const entry2: CursorEntry = { subscriptionId: 1, path: ['user', 'id'] };
-      const entry3: CursorEntry = { subscriptionId: 2, path: ['author', 'name'] };
+      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+      const entry2: CursorEntry = { subscriptionId: 1, path: ['user', 'id'], dependency: 'direct' };
+      const entry3: CursorEntry = { subscriptionId: 2, path: ['author', 'name'], dependency: 'direct' };
 
       registry.add(depKey1, entry1);
       registry.add(depKey2, entry2);
@@ -161,7 +161,7 @@ describe('CursorRegistry', () => {
     it('does not call callback when prefix matches no keys', () => {
       const registry = new CursorRegistry();
       const depKey = 'User:1.name@{}' as DependencyKey;
-      const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+      const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
 
       registry.add(depKey, entry);
 
@@ -175,8 +175,8 @@ describe('CursorRegistry', () => {
       const registry = new CursorRegistry();
       const depKey1 = 'User:1.name@{}' as DependencyKey;
       const depKey10 = 'User:10.name@{}' as DependencyKey;
-      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-      const entry10: CursorEntry = { subscriptionId: 2, path: ['user10', 'name'] };
+      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+      const entry10: CursorEntry = { subscriptionId: 2, path: ['user10', 'name'], dependency: 'direct' };
 
       registry.add(depKey1, entry1);
       registry.add(depKey10, entry10);
@@ -192,8 +192,8 @@ describe('CursorRegistry', () => {
     it('calls callback once per entry when multiple entries share a depKey', () => {
       const registry = new CursorRegistry();
       const depKey = 'User:1.name@{}' as DependencyKey;
-      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-      const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'] };
+      const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+      const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'], dependency: 'direct' };
 
       registry.add(depKey, entry1);
       registry.add(depKey, entry2);

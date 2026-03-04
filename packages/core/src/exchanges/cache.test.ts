@@ -1229,6 +1229,211 @@ describe('cacheExchange', () => {
       sub();
       vi.useRealTimers();
     });
+
+    it('should refetch query after $field invalidation', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      // cache-and-network: 1 cache hit + 1 network = callCount 1
+      expect(callCount).toBe(1);
+      expect(results[0]!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      result.extension.invalidate({ __typename: 'User', id: '1', $field: 'name' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      // $field invalidation should trigger a refetch
+      expect(callCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should refetch query after $field invalidation on a nested list field', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: {
+                user: {
+                  __typename: 'User',
+                  id: '1',
+                  name: 'Alice',
+                  posts:
+                    callCount === 1
+                      ? [{ __typename: 'Post', id: '10', title: 'Old' }]
+                      : [{ __typename: 'Post', id: '10', title: 'New' }],
+                },
+              },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserPosts',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+              {
+                kind: 'Field',
+                name: 'posts',
+                type: 'Post',
+                array: true,
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'title', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+
+      result.extension.invalidate({ __typename: 'User', id: '1', $field: 'posts' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should refetch query after $field invalidation when field is inside a fragment spread', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUser',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'FragmentSpread',
+                name: 'UserFields',
+                selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+              },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+
+      result.extension.invalidate({ __typename: 'User', id: '1', $field: 'name' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
+    });
   });
 
   describe('stale flag handling', () => {

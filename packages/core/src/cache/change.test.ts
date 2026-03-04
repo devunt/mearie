@@ -163,7 +163,7 @@ describe('processScalarChanges', () => {
   it('generates set patches for scalar changes via cursor lookup', () => {
     const registry = new CursorRegistry();
     const depKey = dk('User:1', 'name');
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
     registry.add(depKey, entry);
 
     const subscriptions = new Map<number, Subscription>([[1, makeSub(1, [])]]);
@@ -178,8 +178,8 @@ describe('processScalarChanges', () => {
   it('generates patches for multiple subscriptions on the same depKey', () => {
     const registry = new CursorRegistry();
     const depKey = dk('User:1', 'name');
-    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
-    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'] };
+    const entry1: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+    const entry2: CursorEntry = { subscriptionId: 2, path: ['author', 'name'], dependency: 'direct' };
     registry.add(depKey, entry1);
     registry.add(depKey, entry2);
 
@@ -194,6 +194,31 @@ describe('processScalarChanges', () => {
 
     expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'name'], value: 'Bob' }]);
     expect(result.get(2)).toEqual([{ type: 'set', path: ['author', 'name'], value: 'Bob' }]);
+  });
+
+  it('skips transitive cursor entries', () => {
+    const registry = new CursorRegistry();
+    const depKey = dk('User:1', 'name');
+    const directEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
+    const transitiveEntry: CursorEntry = {
+      subscriptionId: 2,
+      path: ['me', 'posts', 0, 'author', 'name'],
+      dependency: 'transitive',
+    };
+    registry.add(depKey, directEntry);
+    registry.add(depKey, transitiveEntry);
+
+    const subscriptions = new Map<number, Subscription>([
+      [1, makeSub(1, [])],
+      [2, makeSub(2, [])],
+    ]);
+
+    const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
+
+    const result = processScalarChanges(changes, registry, subscriptions);
+
+    expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'name'], value: 'Bob' }]);
+    expect(result.has(2)).toBe(false);
   });
 
   it('returns empty map when no cursors match', () => {
@@ -215,7 +240,12 @@ describe('processScalarChanges', () => {
 
     const registry = new CursorRegistry();
     const depKey = dk('User:1', 'address');
-    const entry: CursorEntry = { subscriptionId: 1, path: ['user', 'address'], selections: addressSelections };
+    const entry: CursorEntry = {
+      subscriptionId: 1,
+      path: ['user', 'address'],
+      selections: addressSelections,
+      dependency: 'direct',
+    };
     registry.add(depKey, entry);
 
     const subscriptions = new Map<number, Subscription>([[1, makeSub(1, [])]]);
@@ -243,7 +273,7 @@ describe('buildEntityArrayContext', () => {
   it('returns undefined when no changes are entity link arrays', () => {
     const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
     const cursors: { depKey: DependencyKey; entry: CursorEntry }[] = [
-      { depKey: dk('User:1', 'name'), entry: { subscriptionId: 1, path: ['user', 'name'] } },
+      { depKey: dk('User:1', 'name'), entry: { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' } },
     ];
 
     const result = buildEntityArrayContext(changes, cursors);
@@ -261,7 +291,7 @@ describe('buildEntityArrayContext', () => {
       ),
     ];
     const cursors: { depKey: DependencyKey; entry: CursorEntry }[] = [
-      { depKey: dk(RootFieldKey, 'users'), entry: { subscriptionId: 1, path: ['users'] } },
+      { depKey: dk(RootFieldKey, 'users'), entry: { subscriptionId: 1, path: ['users'], dependency: 'direct' } },
     ];
 
     const result = buildEntityArrayContext(changes, cursors);
@@ -279,7 +309,7 @@ describe('buildEntityArrayContext', () => {
       ),
     ];
     const cursors: { depKey: DependencyKey; entry: CursorEntry }[] = [
-      { depKey: dk(RootFieldKey, 'posts'), entry: { subscriptionId: 1, path: ['posts'] } },
+      { depKey: dk(RootFieldKey, 'posts'), entry: { subscriptionId: 1, path: ['posts'], dependency: 'direct' } },
     ];
 
     const result = buildEntityArrayContext(changes, cursors);
@@ -298,7 +328,7 @@ describe('buildEntityArrayContext', () => {
       makeChange(RootFieldKey, 'posts', null, [{ [EntityLinkKey]: 'Post:1' }] as FieldValue),
     ];
     const cursors: { depKey: DependencyKey; entry: CursorEntry }[] = [
-      { depKey: dk(RootFieldKey, 'posts'), entry: { subscriptionId: 1, path: ['posts'] } },
+      { depKey: dk(RootFieldKey, 'posts'), entry: { subscriptionId: 1, path: ['posts'], dependency: 'direct' } },
     ];
 
     const result = buildEntityArrayContext(changes, cursors);
@@ -336,9 +366,9 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { user: { id: '1', name: 'Alice' } });
 
-    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'] };
-    const idEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'id'] };
-    const nameEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'] };
+    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'], dependency: 'direct' };
+    const idEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'id'], dependency: 'direct' };
+    const nameEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'name'], dependency: 'direct' };
     sub.cursors = new Set([rootEntry, idEntry, nameEntry]);
     registry.add(dk(RootFieldKey, 'user'), rootEntry);
     registry.add(dk('User:1', 'id'), idEntry);
@@ -387,7 +417,7 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { user: { id: '1', name: 'Alice', email: 'alice@test.com' } });
 
-    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'] };
+    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'], dependency: 'direct' };
     sub.cursors = new Set([rootEntry]);
     registry.add(dk(RootFieldKey, 'user'), rootEntry);
 
@@ -447,13 +477,18 @@ describe('processStructuralChanges', () => {
       },
     );
 
-    const postsEntry: CursorEntry = { subscriptionId: 1, path: ['posts'], selections: selections[0]!.selections };
-    const t1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, '__typename'] };
-    const id1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, 'id'] };
-    const title1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, 'title'] };
-    const t2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, '__typename'] };
-    const id2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, 'id'] };
-    const title2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, 'title'] };
+    const postsEntry: CursorEntry = {
+      subscriptionId: 1,
+      path: ['posts'],
+      selections: selections[0]!.selections,
+      dependency: 'direct',
+    };
+    const t1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, '__typename'], dependency: 'direct' };
+    const id1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, 'id'], dependency: 'direct' };
+    const title1Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 0, 'title'], dependency: 'direct' };
+    const t2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, '__typename'], dependency: 'direct' };
+    const id2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, 'id'], dependency: 'direct' };
+    const title2Entry: CursorEntry = { subscriptionId: 1, path: ['posts', 1, 'title'], dependency: 'direct' };
     sub.cursors = new Set([postsEntry, t1Entry, id1Entry, title1Entry, t2Entry, id2Entry, title2Entry]);
     registry.add(dk(RootFieldKey, 'posts'), postsEntry);
     registry.add(dk('Post:1', '__typename'), t1Entry);
@@ -520,7 +555,12 @@ describe('processStructuralChanges', () => {
       },
     );
 
-    const postsEntry: CursorEntry = { subscriptionId: 1, path: ['posts'], selections: selections[0]!.selections };
+    const postsEntry: CursorEntry = {
+      subscriptionId: 1,
+      path: ['posts'],
+      selections: selections[0]!.selections,
+      dependency: 'direct',
+    };
     sub.cursors = new Set([postsEntry]);
     registry.add(dk(RootFieldKey, 'posts'), postsEntry);
 
@@ -575,7 +615,12 @@ describe('processStructuralChanges', () => {
       },
     );
 
-    const postsEntry: CursorEntry = { subscriptionId: 1, path: ['posts'], selections: selections[0]!.selections };
+    const postsEntry: CursorEntry = {
+      subscriptionId: 1,
+      path: ['posts'],
+      selections: selections[0]!.selections,
+      dependency: 'direct',
+    };
     sub.cursors = new Set([postsEntry]);
     registry.add(dk(RootFieldKey, 'posts'), postsEntry);
 
@@ -661,16 +706,23 @@ describe('processStructuralChanges', () => {
       },
     );
 
-    const postsEntry: CursorEntry = { subscriptionId: 1, path: ['posts'], selections: selections[0]!.selections };
+    const postsEntry: CursorEntry = {
+      subscriptionId: 1,
+      path: ['posts'],
+      selections: selections[0]!.selections,
+      dependency: 'direct',
+    };
     const authorEntry1: CursorEntry = {
       subscriptionId: 1,
       path: ['posts', 0, 'author'],
       selections: selections[0]!.selections![3]!.selections,
+      dependency: 'direct',
     };
     const authorEntry2: CursorEntry = {
       subscriptionId: 1,
       path: ['posts', 1, 'author'],
       selections: selections[0]!.selections![3]!.selections,
+      dependency: 'direct',
     };
     sub.cursors = new Set([postsEntry, authorEntry1, authorEntry2]);
     registry.add(dk(RootFieldKey, 'posts'), postsEntry);
@@ -743,9 +795,9 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { id: '1', name: 'Alice', friend: { id: '2', name: 'Bob' } }, entityKey);
 
-    const friendEntry: CursorEntry = { subscriptionId: 1, path: ['friend'] };
-    const friendIdEntry: CursorEntry = { subscriptionId: 1, path: ['friend', 'id'] };
-    const friendNameEntry: CursorEntry = { subscriptionId: 1, path: ['friend', 'name'] };
+    const friendEntry: CursorEntry = { subscriptionId: 1, path: ['friend'], dependency: 'direct' };
+    const friendIdEntry: CursorEntry = { subscriptionId: 1, path: ['friend', 'id'], dependency: 'direct' };
+    const friendNameEntry: CursorEntry = { subscriptionId: 1, path: ['friend', 'name'], dependency: 'direct' };
     sub.cursors = new Set([friendEntry, friendIdEntry, friendNameEntry]);
     registry.add(dk('User:1', 'friend'), friendEntry);
     registry.add(dk('User:2', 'id'), friendIdEntry);
@@ -808,8 +860,8 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { user: { id: '1', name: 'Alice', friend: { id: '2', name: 'Bob' } } });
 
-    const userEntry: CursorEntry = { subscriptionId: 1, path: ['user'] };
-    const friendEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'friend'] };
+    const userEntry: CursorEntry = { subscriptionId: 1, path: ['user'], dependency: 'direct' };
+    const friendEntry: CursorEntry = { subscriptionId: 1, path: ['user', 'friend'], dependency: 'direct' };
     sub.cursors = new Set([userEntry, friendEntry]);
     registry.add(dk(RootFieldKey, 'user'), userEntry);
     registry.add(dk('User:1', 'friend'), friendEntry);
@@ -865,7 +917,7 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { user: { id: '1', name: 'Alice' } });
 
-    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'] };
+    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'], dependency: 'direct' };
     sub.cursors = new Set([rootEntry]);
     registry.add(dk(RootFieldKey, 'user'), rootEntry);
 
@@ -908,7 +960,7 @@ describe('processStructuralChanges', () => {
     const registry = new CursorRegistry();
     const sub = makeSub(1, selections, {}, { user: null });
 
-    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'] };
+    const rootEntry: CursorEntry = { subscriptionId: 1, path: ['user'], dependency: 'direct' };
     sub.cursors = new Set([rootEntry]);
     registry.add(dk(RootFieldKey, 'user'), rootEntry);
 

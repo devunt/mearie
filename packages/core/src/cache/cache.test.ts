@@ -3,6 +3,7 @@ import { Cache } from './cache.ts';
 import type { Artifact, FragmentRefs, SchemaMeta } from '@mearie/shared';
 import { FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { CacheNotification, Patch } from './types.ts';
+import { applyPatchesMutable } from './patch.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -5320,6 +5321,158 @@ describe('Cache', () => {
 
       expect(cache.readQuery(artifact1, {}).stale).toBe(true);
       expect(cache.readQuery(artifact2, {}).stale).toBe(true);
+    });
+  });
+
+  describe('scalar patch path through FragmentSpread boundary', () => {
+    it('should not produce scalar patches with paths crossing FragmentSpread boundaries', () => {
+      const cache = new Cache(schema);
+
+      // Query: { me { id, posts { id, ...PostFragment } } }
+      const queryArtifact = createArtifact('query', 'TestQuery', [
+        {
+          kind: 'Field',
+          name: 'me',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'String' },
+                {
+                  kind: 'FragmentSpread',
+                  name: 'PostFragment',
+                  selections: [
+                    { kind: 'Field', name: '__typename', type: 'String' },
+                    { kind: 'Field', name: 'id', type: 'String' },
+                    {
+                      kind: 'Field',
+                      name: 'comments',
+                      type: 'Comment',
+                      selections: [
+                        { kind: 'Field', name: '__typename', type: 'String' },
+                        { kind: 'Field', name: 'postId', type: 'String' },
+                        { kind: 'Field', name: 'id', type: 'String' },
+                        { kind: 'Field', name: 'text', type: 'String' },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      // Fragment: PostFragment on Post { id, comments { postId, id, body } }
+      const postFragmentArtifact = createArtifact('fragment', 'PostFragment', [
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'comments',
+          type: 'Comment',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'postId', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'String' },
+            { kind: 'Field', name: 'text', type: 'String' },
+          ],
+        },
+      ]);
+
+      // Write initial data
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          me: {
+            __typename: 'User',
+            id: 'u1',
+            posts: [
+              {
+                __typename: 'Post',
+                id: 'p1',
+                comments: [
+                  { __typename: 'Comment', postId: 'p1', id: 'c1', text: 'hello' },
+                  { __typename: 'Comment', postId: 'p1', id: 'c2', text: 'world' },
+                ],
+              },
+            ],
+          },
+        },
+      );
+
+      // Subscribe query
+      const queryPatches: Patch[] = [];
+      const { data: queryData, unsubscribe: unsubQuery } = cache.subscribeQuery(queryArtifact, {}, (notification) => {
+        if (notification.type === 'patch') {
+          queryPatches.push(...notification.patches);
+        }
+      });
+
+      // Subscribe fragment via FragmentRef from query data
+      const postRef = (queryData as unknown as { me: { posts: FragmentRefs<string>[] } }).me.posts[0]!;
+      const fragmentPatches: Patch[] = [];
+      const { unsubscribe: unsubFragment } = cache.subscribeFragment(postFragmentArtifact, postRef, (notification) => {
+        if (notification.type === 'patch') {
+          fragmentPatches.push(...notification.patches);
+        }
+      });
+
+      // Mutation changes comment body (scalar change only, no structural change)
+      cache.writeQuery(
+        createArtifact('mutation', 'UpdateComment', [
+          {
+            kind: 'Field',
+            name: 'updateComment',
+            type: 'Comment',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'postId', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'String' },
+              { kind: 'Field', name: 'text', type: 'String' },
+            ],
+          },
+        ]),
+        {},
+        { updateComment: { __typename: 'Comment', postId: 'p1', id: 'c1', text: 'updated' } },
+      );
+
+      // Query patches should NOT contain paths crossing FragmentSpread boundary
+      // The query's denormalized data has posts[0] as a FragmentRef,
+      // so path like ["me", "posts", 0, "comments", ...] is invalid
+      for (const patch of queryPatches) {
+        if (patch.type === 'set') {
+          let current: unknown = queryData;
+          for (let i = 0; i < patch.path.length - 1; i++) {
+            current = (current as Record<string | number, unknown>)?.[patch.path[i]!];
+            expect(current).toBeDefined();
+          }
+        }
+      }
+
+      // Fragment patches should work correctly
+      expect(fragmentPatches).toHaveLength(1);
+      expect(fragmentPatches[0]).toEqual({
+        type: 'set',
+        path: ['comments', 0, 'text'],
+        value: 'updated',
+      });
+
+      // Additionally verify applyPatchesMutable doesn't crash
+      if (queryPatches.length > 0) {
+        const cloned = structuredClone(queryData);
+        expect(() => applyPatchesMutable(cloned, queryPatches)).not.toThrow();
+      }
+
+      unsubFragment();
+      unsubQuery();
     });
   });
 });

@@ -90,6 +90,7 @@ export type CursorEntry = {
   subscriptionId: number;
   path: PropertyPath;
   selections?: readonly Selection[];
+  dependency: 'direct' | 'transitive';
 };
 
 /**

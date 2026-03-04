@@ -1,5 +1,17 @@
 # @mearie/core
 
+## 0.6.2
+
+### Patch Changes
+
+- deb8154: fix(core): prevent downstream exceptions from killing subscription transport
+
+  Wrap `observer.next()` in the subscription exchange's next handler with try-catch to prevent downstream exceptions (e.g., cache patch errors) from propagating back into the transport client and killing the WebSocket connection. Caught exceptions are re-emitted as `ExchangeError` results so `onError` callbacks are still invoked. Also adds automatic re-subscribe on transport errors with teardown support.
+
+- adfa1a5: refactor(cache): rewrite normalized cache with flat cursor map architecture
+
+  Replace tree-based dependency tracking with a flat CursorRegistry and separate trace/diff pipeline. Introduces `traceSelections` for cursor registration and denormalization, `diffSnapshots` for identity-aware patch generation, and a CoW OptimisticStack for layered optimistic updates.
+
 ## 0.6.1
 
 ### Patch Changes

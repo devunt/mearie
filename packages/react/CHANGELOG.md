@@ -1,5 +1,13 @@
 # @mearie/react
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [deb8154]
+- Updated dependencies [adfa1a5]
+  - @mearie/core@0.6.2
+
 ## 0.4.1
 
 ### Patch Changes

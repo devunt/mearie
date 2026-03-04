@@ -3,7 +3,10 @@ import { subscriptionExchange } from './subscription.ts';
 import type { SubscriptionClient } from './subscription.ts';
 import { makeTestOperation, makeTestForward, testExchange } from './test-utils.ts';
 import { isExchangeError } from '../errors.ts';
-import type { Operation } from '../exchange.ts';
+import type { Operation, OperationResult } from '../exchange.ts';
+import { pipe } from '../stream/pipe.ts';
+import { subscribe } from '../stream/sinks/subscribe.ts';
+import { makeSubject } from '../stream/sources/make-subject.ts';
 
 type SubscriptionClientHandler = (
   payload: unknown,
@@ -197,9 +200,15 @@ describe('subscriptionExchange', () => {
   });
 
   describe('error handling', () => {
-    it('should handle client errors', async () => {
+    it('should handle client errors and re-subscribe', async () => {
+      let subscribeCount = 0;
       const mockClient = makeSubscriptionClient((_payload, sink) => {
-        setTimeout(() => sink.error(new Error('Connection failed')), 0);
+        subscribeCount++;
+        if (subscribeCount === 1) {
+          setTimeout(() => sink.error(new Error('Connection failed')), 0);
+        } else {
+          setTimeout(() => sink.complete(), 0);
+        }
         return () => {};
       });
 
@@ -211,11 +220,18 @@ describe('subscriptionExchange', () => {
 
       expect(results[0]!.errors).toBeDefined();
       expect(results[0]!.errors![0]!.message).toBe('Connection failed');
+      expect(subscribeCount).toBe(2);
     });
 
     it('should create ExchangeError on error', async () => {
+      let subscribeCount = 0;
       const mockClient = makeSubscriptionClient((_payload, sink) => {
-        setTimeout(() => sink.error(new Error('Test error')), 0);
+        subscribeCount++;
+        if (subscribeCount === 1) {
+          setTimeout(() => sink.error(new Error('Test error')), 0);
+        } else {
+          setTimeout(() => sink.complete(), 0);
+        }
         return () => {};
       });
 
@@ -228,24 +244,98 @@ describe('subscriptionExchange', () => {
       expect(isExchangeError(results[0]!.errors![0]!, 'subscription')).toBe(true);
     });
 
-    it('should complete stream on error', async () => {
-      let completed = false;
+    it('should re-subscribe after error and receive data', async () => {
+      let subscribeCount = 0;
       const mockClient = makeSubscriptionClient((_payload, sink) => {
-        setTimeout(() => {
-          sink.error(new Error('Test error'));
-        }, 0);
-        return () => {
-          completed = true;
-        };
+        subscribeCount++;
+        if (subscribeCount === 1) {
+          setTimeout(() => sink.error(new Error('Connection lost')), 0);
+        } else {
+          setTimeout(() => {
+            sink.next({ data: { recovered: true } });
+            sink.complete();
+          }, 0);
+        }
+        return () => {};
       });
 
       const exchange = subscriptionExchange({ client: mockClient });
       const forward = makeTestForward();
       const operation = makeTestOperation({ kind: 'subscription' });
 
-      await testExchange(exchange, forward, [operation]);
+      const results = await testExchange(exchange, forward, [operation]);
 
-      expect(completed).toBe(true);
+      expect(subscribeCount).toBe(2);
+      expect(results).toHaveLength(2);
+      expect(results[0]!.errors![0]!.message).toBe('Connection lost');
+      expect(results[1]!.data).toEqual({ recovered: true });
+    });
+
+    it('should stop re-subscribing on teardown', async () => {
+      let subscribeCount = 0;
+      const unsubscribeFn = vi.fn();
+      const mockClient = makeSubscriptionClient((_payload, sink) => {
+        subscribeCount++;
+        setTimeout(() => sink.error(new Error('Error')), 0);
+        return unsubscribeFn;
+      });
+
+      const exchange = subscriptionExchange({ client: mockClient });
+      const forward = makeTestForward();
+      const operation = makeTestOperation({ kind: 'subscription', key: 'sub-retry' });
+      const teardown = makeTestOperation({ variant: 'teardown', key: 'sub-retry' });
+
+      await testExchange(exchange, forward, [operation, teardown]);
+
+      expect(subscribeCount).toBe(1);
+    });
+
+    it('should catch downstream exceptions in next handler', async () => {
+      let nextCallCount = 0;
+      const mockClient = makeSubscriptionClient((_payload, sink) => {
+        setTimeout(() => {
+          sink.next({ data: { count: 1 } });
+          sink.next({ data: { count: 2 } });
+          sink.complete();
+        }, 0);
+        return () => {};
+      });
+
+      const exchange = subscriptionExchange({ client: mockClient });
+      const forward = makeTestForward();
+      const operation = makeTestOperation({ kind: 'subscription' });
+
+      const results: OperationResult[] = [];
+      vi.useFakeTimers();
+
+      const subject = makeSubject<Operation>();
+
+      const unsubscribe = pipe(
+        subject.source,
+        exchange({ forward, client: null as never }).io,
+        subscribe({
+          next: (result) => {
+            nextCallCount++;
+            results.push(result);
+            if (nextCallCount === 1) {
+              throw new Error('downstream error');
+            }
+          },
+        }),
+      );
+
+      subject.next(operation);
+      await Promise.resolve();
+      subject.complete();
+      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      unsubscribe();
+
+      expect(nextCallCount).toBe(3);
+      expect(results[0]!.data).toEqual({ count: 1 });
+      expect(results[1]!.errors).toBeDefined();
+      expect(results[1]!.errors![0]!.message).toBe('downstream error');
+      expect(results[2]!.data).toEqual({ count: 2 });
     });
   });
 

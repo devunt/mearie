@@ -1,6 +1,6 @@
 import type { Artifact, DataOf, SchemaMeta } from '@mearie/shared';
 import type { Exchange, RequestOperation, OperationResult } from '../exchange.ts';
-import type { CacheOperations, CacheSnapshot, InvalidateTarget, Patch, QuerySubscription } from '../cache/types.ts';
+import type { CacheNotification, CacheOperations, CacheSnapshot, InvalidateTarget, Patch } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
 import { pipe } from '../stream/pipe.ts';
 import { mergeMap } from '../stream/operators/merge-map.ts';
@@ -49,7 +49,6 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
       },
       io: (ops$) => {
         const subscriptionHasData = new Map<string, boolean>();
-        const resubscribe$ = makeSubject<string>();
         const refetch$ = makeSubject<RequestOperation<'query'>>();
 
         const fragment$ = pipe(
@@ -75,34 +74,29 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             if (isFragmentRefArray(fragmentRef)) {
               const results = makeSubject<OperationResult>();
               const unsubscribes: (() => void)[] = [];
-              const fragmentSubscriptions: (QuerySubscription | null)[] = [];
 
               for (const [index, ref] of fragmentRef.entries()) {
-                const patchListener = (patches: Patch[] | null) => {
-                  if (patches) {
-                    const indexedPatches: Patch[] = patches.map(
+                const listener = (notification: CacheNotification) => {
+                  if (notification.type === 'patch') {
+                    const indexedPatches: Patch[] = notification.patches.map(
                       (patch) => ({ ...patch, path: [index, ...patch.path] }) as Patch,
                     );
                     results.next({ operation: op, metadata: { cache: { patches: indexedPatches } }, errors: [] });
                   } else {
-                    const sub = fragmentSubscriptions[index];
-                    if (sub && cache.isStale(sub)) {
-                      const { data, stale } = cache.readFragments(op.artifact, fragmentRef);
-                      if (data !== null) {
-                        results.next({
-                          operation: op,
-                          data,
-                          ...(stale && { metadata: { cache: { stale: true } } }),
-                          errors: [],
-                        });
-                      }
+                    const { data, stale } = cache.readFragments(op.artifact, fragmentRef);
+                    if (data !== null && stale) {
+                      results.next({
+                        operation: op,
+                        data,
+                        metadata: { cache: { stale: true } },
+                        errors: [],
+                      });
                     }
                   }
                 };
 
-                const { unsubscribe, subscription } = cache.subscribeFragment(op.artifact, ref, patchListener);
+                const { unsubscribe } = cache.subscribeFragment(op.artifact, ref, listener);
                 unsubscribes.push(unsubscribe);
-                fragmentSubscriptions.push(subscription);
               }
 
               const { data: initialData, stale: initialStale } = cache.readFragments(op.artifact, fragmentRef);
@@ -135,41 +129,30 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             }
 
             const results = makeSubject<OperationResult>();
-            let currentUnsubscribe: (() => void) | null = null;
-            let currentSubscription: QuerySubscription | null = null;
 
-            const patchListener = (patches: Patch[] | null) => {
-              if (patches) {
-                results.next({ operation: op, metadata: { cache: { patches } }, errors: [] });
-              } else if (currentSubscription) {
-                const stale = cache.isStale(currentSubscription);
-                if (stale) {
-                  const { data: staleData } = cache.readFragment(op.artifact, fragmentRef);
-                  if (staleData !== null) {
-                    results.next({
-                      operation: op,
-                      data: staleData,
-                      metadata: { cache: { stale: true } },
-                      errors: [],
-                    });
-                  }
+            const listener = (notification: CacheNotification) => {
+              if (notification.type === 'patch') {
+                results.next({ operation: op, metadata: { cache: { patches: notification.patches } }, errors: [] });
+              } else {
+                const { data: staleData, stale: isStale } = cache.readFragment(op.artifact, fragmentRef);
+                if (staleData !== null && isStale) {
+                  results.next({
+                    operation: op,
+                    data: staleData,
+                    metadata: { cache: { stale: true } },
+                    errors: [],
+                  });
                 }
               }
             };
 
-            const { data, stale, unsubscribe, subscription } = cache.subscribeFragment(
-              op.artifact,
-              fragmentRef,
-              patchListener,
-            );
-            currentUnsubscribe = unsubscribe;
-            currentSubscription = subscription;
+            const { data, stale, unsubscribe } = cache.subscribeFragment(op.artifact, fragmentRef, listener);
 
             const teardown$ = pipe(
               ops$,
               filter((operation) => operation.variant === 'teardown' && operation.key === op.key),
               tap(() => {
-                if (currentUnsubscribe) currentUnsubscribe();
+                unsubscribe();
                 results.complete();
               }),
             );
@@ -217,65 +200,42 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
           query$,
           mergeMap((op) => {
             const results = makeSubject<OperationResult>();
-            let currentUnsubscribe: (() => void) | null = null;
-            let currentSubscription: QuerySubscription | null = null;
 
-            let initialized = false;
-
-            const doSubscribe = () => {
-              if (currentUnsubscribe) currentUnsubscribe();
-
-              const patchListener = (patches: Patch[] | null) => {
-                if (patches) {
-                  if (!initialized) return;
-                  results.next({ operation: op, metadata: { cache: { patches } }, errors: [] });
-                } else if (currentSubscription) {
-                  const stale = cache.isStale(currentSubscription);
-                  if (stale) {
-                    const { data: staleData } = cache.readQuery(op.artifact, op.variables);
-                    if (staleData !== null) {
-                      results.next({
-                        operation: op,
-                        data: staleData,
-                        metadata: { cache: { stale: true } },
-                        errors: [],
-                      });
-                    }
-                    refetch$.next(op);
+            const listener = (notification: CacheNotification) => {
+              if (notification.type === 'patch') {
+                if (!subscriptionHasData.get(op.key)) return;
+                results.next({
+                  operation: op,
+                  metadata: { cache: { patches: notification.patches } },
+                  errors: [],
+                });
+              } else {
+                const { data: staleData, stale: isStale } = cache.readQuery(op.artifact, op.variables);
+                if (isStale) {
+                  if (staleData !== null) {
+                    results.next({
+                      operation: op,
+                      data: staleData,
+                      metadata: { cache: { stale: true } },
+                      errors: [],
+                    });
                   }
+                  refetch$.next(op);
                 }
-              };
-
-              const result = cache.subscribeQuery(op.artifact, op.variables, patchListener);
-              currentUnsubscribe = result.unsubscribe;
-              currentSubscription = result.subscription;
-              return result;
+              }
             };
 
-            const { data, stale } = doSubscribe();
+            const { data, stale, unsubscribe } = cache.subscribeQuery(op.artifact, op.variables, listener);
 
             subscriptionHasData.set(op.key, data !== null);
-            if (data !== null) {
-              initialized = true;
-            }
 
             const teardown$ = pipe(
               ops$,
               filter((o) => o.variant === 'teardown' && o.key === op.key),
               tap(() => {
-                if (currentUnsubscribe) currentUnsubscribe();
+                unsubscribe();
                 subscriptionHasData.delete(op.key);
                 results.complete();
-              }),
-            );
-
-            const resubStream$ = pipe(
-              resubscribe$.source,
-              filter((key) => key === op.key),
-              mergeMap(() => {
-                doSubscribe();
-                initialized = true;
-                return empty();
               }),
             );
 
@@ -291,7 +251,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                     errors: [],
                   });
 
-            const stream$ = pipe(merge(initial, results.source, resubStream$), takeUntil(teardown$));
+            const stream$ = pipe(merge(initial, results.source), takeUntil(teardown$));
 
             if (stale) {
               refetch$.next(op);
@@ -365,7 +325,6 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             }
 
             subscriptionHasData.set(result.operation.key, true);
-            resubscribe$.next(result.operation.key);
 
             const { data } = cache.readQuery(
               result.operation.artifact as Artifact<'query'>,

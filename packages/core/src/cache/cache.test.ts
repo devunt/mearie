@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Cache } from './cache.ts';
 import type { Artifact, FragmentRefs, SchemaMeta } from '@mearie/shared';
 import { FragmentRefKey, FragmentVarsKey } from './constants.ts';
-import type { Patch } from './types.ts';
+import type { CacheNotification, Patch } from './types.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -531,13 +531,12 @@ describe('Cache', () => {
       result.unsubscribe();
     });
 
-    it('should return unsubscribe function and subscription', () => {
+    it('should return unsubscribe function and subId', () => {
       const cache = new Cache(schema);
       const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
       const result = cache.subscribeQuery(artifact, {}, vi.fn());
       expect(typeof result.unsubscribe).toBe('function');
-      expect(result.subscription).toBeDefined();
-      expect(result.subscription.entryTree).toBeDefined();
+      expect(typeof result.subId).toBe('number');
       result.unsubscribe();
     });
   });
@@ -554,7 +553,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { name: 'Bob' });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toEqual([{ type: 'set', path: ['name'], value: 'Bob' }]);
 
       unsubscribe();
@@ -574,7 +573,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { name: 'Bob', age: 25 });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBe(2);
       expect(patches).toContainEqual({ type: 'set', path: ['name'], value: 'Bob' });
       expect(patches).toContainEqual({ type: 'set', path: ['age'], value: 25 });
@@ -604,7 +603,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Bob' });
 
       unsubscribe();
@@ -632,7 +631,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { user: null });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toContainEqual({ type: 'set', path: ['user'], value: null });
 
       unsubscribe();
@@ -660,7 +659,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBeGreaterThan(0);
       const setPatch = patches.find(
         (p): p is Extract<Patch, { type: 'set' }> =>
@@ -672,7 +671,7 @@ describe('Cache', () => {
       unsubscribe();
     });
 
-    it('should emit splice for list add', () => {
+    it('should emit splice patch for list add', () => {
       const cache = new Cache(schema);
       const artifact = createArtifact('query', 'GetUsers', [
         {
@@ -710,16 +709,19 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
-      const splicePatch = patches.find((p): p is Extract<Patch, { type: 'splice' }> => p.type === 'splice');
-      expect(splicePatch).toBeDefined();
-      expect(splicePatch!.deleteCount).toBe(0);
-      expect(splicePatch!.items.length).toBe(1);
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
+      expect(patches).toContainEqual({
+        type: 'splice',
+        path: ['users'],
+        index: 1,
+        deleteCount: 0,
+        items: [{ __typename: 'User', id: '2', name: 'Bob' }],
+      });
 
       unsubscribe();
     });
 
-    it('should emit splice for list delete', () => {
+    it('should emit splice patch for list delete', () => {
       const cache = new Cache(schema);
       const artifact = createArtifact('query', 'GetUsers', [
         {
@@ -757,16 +759,19 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
-      const splicePatch = patches.find((p): p is Extract<Patch, { type: 'splice' }> => p.type === 'splice');
-      expect(splicePatch).toBeDefined();
-      expect(splicePatch!.deleteCount).toBe(1);
-      expect(splicePatch!.items.length).toBe(0);
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
+      expect(patches).toContainEqual({
+        type: 'splice',
+        path: ['users'],
+        index: 1,
+        deleteCount: 1,
+        items: [],
+      });
 
       unsubscribe();
     });
 
-    it('should emit swap for list reorder', () => {
+    it('should emit swap patch for list reorder', () => {
       const cache = new Cache(schema);
       const artifact = createArtifact('query', 'GetUsers', [
         {
@@ -807,9 +812,91 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
-      const swapPatch = patches.find((p): p is Extract<Patch, { type: 'swap' }> => p.type === 'swap');
-      expect(swapPatch).toBeDefined();
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
+      expect(patches).toContainEqual({
+        type: 'swap',
+        path: ['users'],
+        i: 0,
+        j: 1,
+      });
+
+      unsubscribe();
+    });
+
+    it('should produce correct patches after consecutive array reorders', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+            { __typename: 'User', id: '3', name: 'Charlie' },
+          ],
+        },
+      );
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '3', name: 'Charlie' },
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const { data: data1 } = cache.readQuery(artifact, {});
+      expect(data1).toEqual({
+        users: [
+          { __typename: 'User', id: '3', name: 'Charlie' },
+          { __typename: 'User', id: '1', name: 'Alice' },
+          { __typename: 'User', id: '2', name: 'Bob' },
+        ],
+      });
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '2', name: 'Bob' },
+            { __typename: 'User', id: '3', name: 'Charlie' },
+            { __typename: 'User', id: '1', name: 'Alice' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(2);
+      const { data: data2 } = cache.readQuery(artifact, {});
+      expect(data2).toEqual({
+        users: [
+          { __typename: 'User', id: '2', name: 'Bob' },
+          { __typename: 'User', id: '3', name: 'Charlie' },
+          { __typename: 'User', id: '1', name: 'Alice' },
+        ],
+      });
 
       unsubscribe();
     });
@@ -861,12 +948,12 @@ describe('Cache', () => {
 
       cache.invalidate({ __typename: 'User', id: '1' });
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(null);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
       listener.mockClear();
 
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(null);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
 
       unsubscribe();
     });
@@ -905,7 +992,7 @@ describe('Cache', () => {
       cache.writeQuery(updateArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Bob' });
 
       unsubscribe();
@@ -1155,7 +1242,7 @@ describe('Cache', () => {
       cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toContainEqual({ type: 'set', path: ['name'], value: 'Bob' });
 
       unsubscribe();
@@ -1283,7 +1370,7 @@ describe('Cache', () => {
         },
       );
 
-      const patchCalls = listener.mock.calls.filter((call) => call[0] !== null);
+      const patchCalls = listener.mock.calls.filter((call) => (call[0] as CacheNotification).type === 'patch');
       expect(patchCalls).toHaveLength(0);
 
       unsubscribe();
@@ -1808,7 +1895,7 @@ describe('Cache', () => {
       cache.invalidate({ __typename: 'User', id: '1' });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(null);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
 
       unsubscribe();
     });
@@ -1840,7 +1927,7 @@ describe('Cache', () => {
       cache.invalidate({ __typename: 'User', id: '1', $field: 'email' });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(null);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
       expect(cache.readQuery(artifact, {}).stale).toBe(true);
 
       unsubscribe();
@@ -2189,10 +2276,10 @@ describe('Cache', () => {
         },
       ]);
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-      const { subscription, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
 
       cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
-      expect(cache.isStale(subscription)).toBe(true);
+      expect(cache.isStale(subId)).toBe(true);
 
       unsubscribe();
     });
@@ -2212,10 +2299,10 @@ describe('Cache', () => {
         },
       ]);
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-      const { subscription, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
 
       cache.invalidate({ __typename: 'User', id: '1' });
-      expect(cache.isStale(subscription)).toBe(true);
+      expect(cache.isStale(subId)).toBe(true);
 
       unsubscribe();
     });
@@ -2235,9 +2322,9 @@ describe('Cache', () => {
         },
       ]);
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-      const { subscription, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
 
-      expect(cache.isStale(subscription)).toBe(false);
+      expect(cache.isStale(subId)).toBe(false);
 
       unsubscribe();
     });
@@ -2257,13 +2344,13 @@ describe('Cache', () => {
         },
       ]);
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-      const { subscription, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
 
       cache.invalidate({ __typename: 'User', id: '1' });
-      expect(cache.isStale(subscription)).toBe(true);
+      expect(cache.isStale(subId)).toBe(true);
 
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
-      expect(cache.isStale(subscription)).toBe(false);
+      expect(cache.isStale(subId)).toBe(false);
 
       unsubscribe();
     });
@@ -2325,7 +2412,7 @@ describe('Cache', () => {
       cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBeGreaterThan(0);
 
       const result = cache.readQuery(userQueryArtifact, {});
@@ -2334,14 +2421,19 @@ describe('Cache', () => {
       unsubscribe();
     });
 
-    it('should not affect base storage', () => {
+    it('should show optimistic value in storage and restore on rollback', () => {
       const cache = new Cache(schema);
       cache.writeQuery(userQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
       cache.writeOptimistic('op-1', mutationArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
 
       const snapshot = cache.extract();
-      const baseStorage = (snapshot as unknown as { storage: Record<string, Record<string, unknown>> }).storage;
-      expect(baseStorage['User:1']?.['name@{}']).toBe('Alice');
+      const snapshotStorage = (snapshot as unknown as { storage: Record<string, Record<string, unknown>> }).storage;
+      expect(snapshotStorage['User:1']?.['name@{}']).toBe('Bob');
+
+      cache.removeOptimistic('op-1');
+      expect(cache.readQuery(userQueryArtifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice' },
+      });
     });
 
     it('should emit restoration patches on removeOptimistic', () => {
@@ -3166,7 +3258,7 @@ describe('Cache', () => {
 
       cache.invalidate({ __typename: 'User', id: '1' });
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(null);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
 
       unsubscribe();
     });
@@ -3709,7 +3801,7 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBeGreaterThan(0);
       const namePatch = patches.find(
         (p): p is Extract<Patch, { type: 'set' }> =>
@@ -3777,7 +3869,7 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       const setPatch = patches.find(
         (p): p is Extract<Patch, { type: 'set' }> =>
           p.type === 'set' && JSON.stringify(p.path) === JSON.stringify(['user', 'settings']),
@@ -3832,7 +3924,7 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       const setPatch = patches.find(
         (p): p is Extract<Patch, { type: 'set' }> =>
           p.type === 'set' && JSON.stringify(p.path) === JSON.stringify(['user', 'tags']),
@@ -3843,7 +3935,7 @@ describe('Cache', () => {
       unsubscribe();
     });
 
-    it('T30: hydrate then subscribeQuery builds entry tree correctly', () => {
+    it('T30: hydrate then subscribeQuery builds cursors correctly', () => {
       const serverCache = new Cache(schema);
       const artifact = createArtifact('query', 'GetUser', [
         {
@@ -3864,15 +3956,14 @@ describe('Cache', () => {
       clientCache.hydrate(snapshot);
 
       const listener = vi.fn();
-      const { data, subscription, unsubscribe } = clientCache.subscribeQuery(artifact, {}, listener);
+      const { data, subId, unsubscribe } = clientCache.subscribeQuery(artifact, {}, listener);
 
       expect(data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
-      expect(subscription.entryTree).toBeDefined();
-      expect(subscription.entryTree.children.size).toBeGreaterThan(0);
+      expect(typeof subId).toBe('number');
 
       clientCache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Bob' });
 
       unsubscribe();
@@ -3912,10 +4003,10 @@ describe('Cache', () => {
           },
         },
       );
-      const { subscription, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
 
       cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
-      expect(cache.isStale(subscription)).toBe(true);
+      expect(cache.isStale(subId)).toBe(true);
 
       cache.writeQuery(
         artifact,
@@ -3928,7 +4019,7 @@ describe('Cache', () => {
           },
         },
       );
-      expect(cache.isStale(subscription)).toBe(false);
+      expect(cache.isStale(subId)).toBe(false);
 
       unsubscribe();
     });
@@ -4033,7 +4124,7 @@ describe('Cache', () => {
       );
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBeGreaterThan(0);
 
       const updated = cache.readQuery(artifact, {});
@@ -4091,7 +4182,7 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { users: updatedUsers });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      const patches = listener.mock.calls[0]![0] as Patch[];
+      const patches = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches.length).toBeGreaterThan(0);
 
       const updatedResult = cache.readQuery(artifact, {});
@@ -4123,8 +4214,8 @@ describe('Cache', () => {
       cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Charlie' } });
 
       expect(listener).toHaveBeenCalledTimes(2);
-      const patches1 = listener.mock.calls[0]![0] as Patch[];
-      const patches2 = listener.mock.calls[1]![0] as Patch[];
+      const patches1 = (listener.mock.calls[0]![0] as CacheNotification & { patches: Patch[] }).patches;
+      const patches2 = (listener.mock.calls[1]![0] as CacheNotification & { patches: Patch[] }).patches;
       expect(patches1).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Bob' });
       expect(patches2).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Charlie' });
 
@@ -4161,6 +4252,1074 @@ describe('Cache', () => {
       expect(listener).not.toHaveBeenCalled();
 
       sub2.unsubscribe();
+    });
+  });
+
+  describe('completeness invariant', () => {
+    it('stalls subscription when new entity is missing fields', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: '[User]',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [{ __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' }],
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      const mutationArtifact = createArtifact('mutation', 'AddUser', [
+        {
+          kind: 'Field',
+          name: 'addUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          addUser: { __typename: 'User', id: '2', name: 'Bob' },
+        },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+
+      const { data } = cache.readQuery(artifact, {});
+      expect(data).toEqual({
+        users: [{ __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' }],
+      });
+    });
+
+    it('resolves stalled subscription when missing fields are filled', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: '[User]',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [{ __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' }],
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      const mutationArtifact = createArtifact('mutation', 'AddUser', [
+        {
+          kind: 'Field',
+          name: 'addUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          addUser: { __typename: 'User', id: '2', name: 'Bob' },
+        },
+      );
+      expect(listener).not.toHaveBeenCalled();
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+            { __typename: 'User', id: '2', name: 'Bob', email: 'bob@example.com' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('parent completeness includes fragment sub-selections', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUsersWithProfile', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: '[User]',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserProfile',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'name', type: 'String' },
+                { kind: 'Field', name: 'email', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [{ __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' }],
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      const mutationArtifact = createArtifact('mutation', 'AddUser', [
+        {
+          kind: 'Field',
+          name: 'addUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          addUser: { __typename: 'User', id: '2', name: 'Bob' },
+        },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('scalar changes still delivered while structural change is stalled', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: '[User]',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          users: [{ __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' }],
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      const mutationArtifact = createArtifact('mutation', 'AddUser', [
+        {
+          kind: 'Field',
+          name: 'addUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          addUser: { __typename: 'User', id: '2', name: 'Bob' },
+        },
+      );
+      expect(listener).not.toHaveBeenCalled();
+
+      const updateArtifact = createArtifact('mutation', 'UpdateUser', [
+        {
+          kind: 'Field',
+          name: 'updateUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        updateArtifact,
+        {},
+        {
+          updateUser: { __typename: 'User', id: '1', name: 'Alice Updated', email: 'alice@example.com' },
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({
+          type: 'set',
+          path: ['users', 0, 'name'],
+          value: 'Alice Updated',
+        });
+      }
+    });
+
+    it('readFragment is non-null after parent delivers data', () => {
+      const cache = new Cache(schema);
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'FragmentSpread',
+              name: 'UserInfo',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'name', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', name: 'Alice' },
+        },
+      );
+
+      const { data: queryData } = cache.readQuery(queryArtifact, {});
+      expect(queryData).not.toBeNull();
+
+      const user = (queryData as { user: Record<string, unknown> }).user;
+      const fragmentRef = { [FragmentRefKey]: user[FragmentRefKey] } as unknown as FragmentRefs<never>;
+
+      const fragmentArtifact = createArtifact('fragment', 'UserInfo', [
+        { kind: 'Field', name: '__typename', type: 'String' },
+        { kind: 'Field', name: 'id', type: 'ID' },
+        { kind: 'Field', name: 'name', type: 'String' },
+      ]);
+
+      const { data: fragmentData } = cache.readFragment(fragmentArtifact, fragmentRef);
+      expect(fragmentData).not.toBeNull();
+      expect(fragmentData).toEqual(expect.objectContaining({ __typename: 'User', id: '1', name: 'Alice' }));
+    });
+  });
+
+  describe('CoW optimistic', () => {
+    const userSelections: Artifact['selections'] = [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          { kind: 'Field', name: 'name', type: 'String' },
+        ],
+      },
+    ];
+
+    it('writeOptimistic delivers patches immediately', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', userSelections);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeOptimistic('mut-1', artifact, {}, { user: { __typename: 'User', id: '1', name: 'Optimistic' } });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({
+          type: 'set',
+          path: ['user', 'name'],
+          value: 'Optimistic',
+        });
+      }
+    });
+
+    it('removeOptimistic rolls back and delivers correct patches', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', userSelections);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeOptimistic('mut-1', artifact, {}, { user: { __typename: 'User', id: '1', name: 'Optimistic' } });
+      expect(listener).toHaveBeenCalledTimes(1);
+      listener.mockClear();
+
+      cache.removeOptimistic('mut-1');
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({
+          type: 'set',
+          path: ['user', 'name'],
+          value: 'Alice',
+        });
+      }
+    });
+
+    it('stacked optimistic: removing earlier entry skips fields overwritten by later', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', userSelections);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Original' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeOptimistic('mut-A', artifact, {}, { user: { __typename: 'User', id: '1', name: 'OptA' } });
+      expect(listener).toHaveBeenCalledTimes(1);
+      listener.mockClear();
+
+      cache.writeOptimistic('mut-B', artifact, {}, { user: { __typename: 'User', id: '1', name: 'OptB' } });
+      expect(listener).toHaveBeenCalledTimes(1);
+      listener.mockClear();
+
+      cache.removeOptimistic('mut-A');
+      expect(listener).not.toHaveBeenCalled();
+
+      const { data } = cache.readQuery(artifact, {});
+      expect(data).toEqual({ user: { __typename: 'User', id: '1', name: 'OptB' } });
+
+      cache.removeOptimistic('mut-B');
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({
+          type: 'set',
+          path: ['user', 'name'],
+          value: 'Original',
+        });
+      }
+    });
+
+    it('optimistic + real response transition', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', userSelections);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeOptimistic('mut-1', artifact, {}, { user: { __typename: 'User', id: '1', name: 'Optimistic' } });
+      expect(listener).toHaveBeenCalledTimes(1);
+      listener.mockClear();
+
+      cache.removeOptimistic('mut-1');
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Server Response' } });
+
+      const calls = listener.mock.calls.map((c) => c[0] as CacheNotification);
+      const patchCalls = calls.filter((n) => n.type === 'patch');
+      expect(patchCalls.length).toBeGreaterThanOrEqual(1);
+
+      const { data } = cache.readQuery(artifact, {});
+      expect(data).toEqual({ user: { __typename: 'User', id: '1', name: 'Server Response' } });
+    });
+  });
+
+  describe('entity pointer swap', () => {
+    it('should update storage when entity link pointer changes to different entity', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '2', name: 'Bob' } });
+
+      expect(cache.readQuery(artifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '2', name: 'Bob' },
+      });
+
+      unsubscribe();
+    });
+
+    it('should emit patch when entity pointer changes from null to entity', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: null });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '2', name: 'Bob' } });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        const setPatch = notification.patches.find(
+          (p): p is Extract<Patch, { type: 'set' }> =>
+            p.type === 'set' && JSON.stringify(p.path) === JSON.stringify(['user']),
+        );
+        expect(setPatch).toBeDefined();
+        expect(setPatch!.value).toEqual({ __typename: 'User', id: '2', name: 'Bob' });
+      }
+
+      expect(cache.readQuery(artifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '2', name: 'Bob' },
+      });
+
+      unsubscribe();
+    });
+  });
+
+  describe('subscribeFragment incomplete trace not stalled', () => {
+    it('should not be called when missing fields are filled because fragment does not use stalled tracking', () => {
+      const cache = new Cache(schema);
+      const basicQueryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(basicQueryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        { kind: 'Field' as const, name: 'email', type: 'String' },
+      ];
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+      const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+
+      const listener = vi.fn();
+      const { data, unsubscribe } = cache.subscribeFragment(fragmentArtifact, fragmentRef, listener);
+
+      expect(data).toBeNull();
+
+      const fullQueryArtifact = createArtifact('query', 'GetUserFull', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        fullQueryArtifact,
+        {},
+        { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+
+      const readResult = cache.readFragment(fragmentArtifact, fragmentRef);
+      expect(readResult.data).toEqual({
+        __typename: 'User',
+        id: '1',
+        name: 'Alice',
+        email: 'alice@example.com',
+      });
+
+      unsubscribe();
+    });
+  });
+
+  describe('stale clear + value change simultaneous', () => {
+    it('should produce exactly one patch notification when stale is cleared and value changes at the same time', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
+      expect(cache.isStale(subId)).toBe(true);
+      listener.mockClear();
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({ type: 'set', path: ['user', 'name'], value: 'Bob' });
+      }
+
+      expect(cache.readQuery(artifact, {}).stale).toBe(false);
+
+      unsubscribe();
+    });
+
+    it('should clear stale and notify when identical data is written to stale field', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
+      expect(cache.isStale(subId)).toBe(true);
+      listener.mockClear();
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
+      expect(cache.isStale(subId)).toBe(false);
+
+      unsubscribe();
+    });
+  });
+
+  describe('writeOptimistic two layers different fields', () => {
+    it('should independently manage optimistic layers affecting different fields', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@x.com' } });
+
+      const nameArtifact = createArtifact('mutation', 'UpdateName', [
+        {
+          kind: 'Field',
+          name: 'updateUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      const emailArtifact = createArtifact('mutation', 'UpdateEmail', [
+        {
+          kind: 'Field',
+          name: 'updateUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeOptimistic('op-1', nameArtifact, {}, { updateUser: { __typename: 'User', id: '1', name: 'Bob' } });
+      cache.writeOptimistic(
+        'op-2',
+        emailArtifact,
+        {},
+        { updateUser: { __typename: 'User', id: '1', email: 'bob@x.com' } },
+      );
+
+      expect(cache.readQuery(artifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Bob', email: 'bob@x.com' },
+      });
+
+      cache.removeOptimistic('op-1');
+      expect(cache.readQuery(artifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'bob@x.com' },
+      });
+
+      cache.removeOptimistic('op-2');
+      expect(cache.readQuery(artifact, {}).data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@x.com' },
+      });
+    });
+  });
+
+  describe('isStale edge cases', () => {
+    it('should return false for non-existent subId', () => {
+      const cache = new Cache(schema);
+      expect(cache.isStale(99_999)).toBe(false);
+    });
+
+    it('should return false after unsubscribe', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+      expect(cache.isStale(subId)).toBe(true);
+
+      unsubscribe();
+      expect(cache.isStale(subId)).toBe(false);
+    });
+  });
+
+  describe('hydrate merge behavior', () => {
+    it('should merge hydrated snapshot over existing data preserving fields not in snapshot', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+      );
+
+      const snapshotCache = new Cache(schema);
+      const nameOnlyArtifact = createArtifact('query', 'GetUserName', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      snapshotCache.writeQuery(nameOnlyArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Bob' } });
+      const snapshot = snapshotCache.extract();
+
+      cache.hydrate(snapshot);
+
+      const result = cache.readQuery(artifact, {});
+      expect(result.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Bob', email: 'alice@example.com' },
+      });
+    });
+  });
+
+  describe('extract captures optimistic state + stale not preserved', () => {
+    it('should capture optimistic value in extract and not preserve stale state on hydrate', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      const mutationArtifact = createArtifact('mutation', 'UpdateUser', [
+        {
+          kind: 'Field',
+          name: 'updateUser',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      cache.writeOptimistic(
+        'op-1',
+        mutationArtifact,
+        {},
+        { updateUser: { __typename: 'User', id: '1', name: 'Optimistic' } },
+      );
+
+      const snapshot1 = cache.extract();
+      const raw1 = snapshot1 as unknown as { storage: Record<string, Record<string, unknown>> };
+      expect(raw1.storage['User:1']?.['name@{}']).toBe('Optimistic');
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+      const snapshot2 = cache.extract();
+
+      const freshCache = new Cache(schema);
+      freshCache.hydrate(snapshot2);
+      const result = freshCache.readQuery(artifact, {});
+      expect(result.stale).toBe(false);
+    });
+  });
+
+  describe('subscribeFragments edge cases', () => {
+    it('should handle empty array and never call listener', () => {
+      const cache = new Cache(schema);
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+
+      const listener = vi.fn();
+      const unsubscribe = cache.subscribeFragments(fragmentArtifact, [], listener);
+
+      expect(typeof unsubscribe).toBe('function');
+
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      expect(listener).not.toHaveBeenCalled();
+
+      unsubscribe();
+    });
+
+    it('should call listener for each fragment when both update in same write', () => {
+      const cache = new Cache(schema);
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+      const queryArtifact = createArtifact('query', 'GetUsers', [
+        {
+          kind: 'Field',
+          name: 'users',
+          type: 'User',
+          array: true,
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice' },
+            { __typename: 'User', id: '2', name: 'Bob' },
+          ],
+        },
+      );
+
+      const queryResult = cache.readQuery(queryArtifact, {}).data as { users: FragmentRefs<string>[] };
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+      const listener = vi.fn();
+      const unsubscribe = cache.subscribeFragments(fragmentArtifact, queryResult.users, listener);
+
+      cache.writeQuery(
+        queryArtifact,
+        {},
+        {
+          users: [
+            { __typename: 'User', id: '1', name: 'Alice Updated' },
+            { __typename: 'User', id: '2', name: 'Bob Updated' },
+          ],
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      unsubscribe();
+    });
+  });
+
+  describe('subscribeFragment initial stale', () => {
+    it('should return stale: true when entity is already invalidated before subscribing', () => {
+      const cache = new Cache(schema);
+      const fragmentSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+      ];
+      const queryArtifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [{ kind: 'FragmentSpread', name: 'UserFragment', selections: fragmentSelections }],
+        },
+      ]);
+      cache.writeQuery(queryArtifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      cache.invalidate({ __typename: 'User', id: '1' });
+
+      const fragmentRef = { [FragmentRefKey]: 'User:1' } as unknown as FragmentRefs<string>;
+      const fragmentArtifact = createArtifact('fragment', 'UserFragment', fragmentSelections);
+      const { data, stale, unsubscribe } = cache.subscribeFragment(fragmentArtifact, fragmentRef, vi.fn());
+
+      expect(stale).toBe(true);
+      expect(data).toEqual({ __typename: 'User', id: '1', name: 'Alice' });
+
+      unsubscribe();
+    });
+  });
+
+  describe('readQuery variable isolation', () => {
+    it('should return null when reading with different variables than written', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetPosts', [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          args: { limit: { kind: 'variable', name: 'limit' } },
+          array: true,
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'title', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, { limit: 10 }, { posts: [{ __typename: 'Post', id: '1', title: 'Hello' }] });
+
+      const result = cache.readQuery(artifact, { limit: 5 });
+      expect(result.data).toBeNull();
+    });
+  });
+
+  describe('clear then old unsubscribe safety', () => {
+    it('should not throw when calling unsubscribe after clear and should not notify old listener', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+      cache.writeQuery(artifact, {}, { name: 'Alice' });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.clear();
+
+      expect(() => unsubscribe()).not.toThrow();
+
+      cache.writeQuery(artifact, {}, { name: 'Bob' });
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('invalidate edge cases', () => {
+    it('should invalidate specific field with $args on entity target', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'name',
+              type: 'String',
+              args: { format: { kind: 'literal', value: 'short' } },
+            },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' } },
+      );
+
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'name', $args: { format: 'short' } });
+
+      const result = cache.readQuery(artifact, {});
+      expect(result.stale).toBe(true);
+      expect(result.data).toEqual({
+        user: { __typename: 'User', id: '1', name: 'Alice', email: 'alice@example.com' },
+      });
+    });
+
+    it('should fall back to typename-wide prefix scan when keyFields missing in target', () => {
+      const cache = new Cache(schema);
+      const artifact1 = createArtifact('query', 'GetUser1', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      const artifact2 = createArtifact('query', 'GetUser2', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'literal', value: '2' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact1, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      cache.writeQuery(artifact2, {}, { user: { __typename: 'User', id: '2', name: 'Bob' } });
+
+      cache.invalidate({ __typename: 'User' });
+
+      expect(cache.readQuery(artifact1, {}).stale).toBe(true);
+      expect(cache.readQuery(artifact2, {}).stale).toBe(true);
     });
   });
 });

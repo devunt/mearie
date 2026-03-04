@@ -7,23 +7,29 @@ import {
   makeFieldKeyFromArgs,
   getFragmentVars,
   parseDependencyKey,
+  isEqual,
 } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
+  CacheNotification,
   CacheSnapshot,
   DependencyKey,
-  EntryTreeNode,
+  FieldChange,
   FieldKey,
+  FieldValue,
   InvalidateTarget,
   Patch,
-  QuerySubscription,
+  StalledInfo,
   Storage,
   StorageKey,
-  SubscriptionEntry,
+  Subscription,
   EntityKey,
 } from './types.ts';
-import { buildEntryTree, type EntryTuple } from './tree.ts';
-import { generatePatches } from './change.ts';
+import { CursorRegistry, traceSelections } from './cursor.ts';
+import { classifyChanges, processScalarChanges, processStructuralChanges, buildEntityArrayContext } from './change.ts';
+import { diffSnapshots } from './diff.ts';
+import { OptimisticStack } from './optimistic.ts';
+import { applyPatchesImmutable } from './patch.ts';
 
 /**
  * A normalized cache that stores and manages GraphQL query results and entities.
@@ -32,146 +38,25 @@ import { generatePatches } from './change.ts';
 export class Cache {
   #schemaMeta: SchemaMeta;
   #storage = { [RootFieldKey]: {} } as Storage;
-  #subscriptions = new Map<DependencyKey, Set<SubscriptionEntry>>();
+  #registry = new CursorRegistry();
+  #subscriptions = new Map<number, Subscription>();
+  #stalled = new Map<number, StalledInfo>();
+  #optimistic = new OptimisticStack();
+  #nextId = 1;
   #stale = new Set<string>();
-
-  #optimisticKeys: string[] = [];
-  #optimisticLayers = new Map<string, { storage: Storage; dependencies: Set<DependencyKey> }>();
-  #storageView: Storage | null = null;
 
   constructor(schemaMetadata: SchemaMeta) {
     this.#schemaMeta = schemaMetadata;
   }
 
-  #getStorageView(): Storage {
-    if (this.#optimisticKeys.length === 0) {
-      return this.#storage;
-    }
-
-    if (this.#storageView) {
-      return this.#storageView;
-    }
-
-    const merged = { ...this.#storage } as Storage;
-    for (const storageKey of Object.keys(this.#storage) as StorageKey[]) {
-      merged[storageKey] = { ...this.#storage[storageKey] };
-    }
-
-    for (const key of this.#optimisticKeys) {
-      const layer = this.#optimisticLayers.get(key);
-      if (!layer) continue;
-
-      for (const storageKey of Object.keys(layer.storage) as StorageKey[]) {
-        merged[storageKey] = merged[storageKey]
-          ? { ...merged[storageKey], ...layer.storage[storageKey] }
-          : { ...layer.storage[storageKey] };
-      }
-    }
-
-    this.#storageView = merged;
-    return merged;
-  }
-
-  /**
-   * Writes an optimistic response to a separate cache layer.
-   * The optimistic data is immediately visible in reads but does not affect the base storage.
-   * @internal
-   * @param key - Unique key identifying this optimistic mutation (typically the operation key).
-   * @param artifact - GraphQL document artifact.
-   * @param variables - Operation variables.
-   * @param data - The optimistic response data.
-   */
-  writeOptimistic<T extends Artifact>(key: string, artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
-    const layerStorage = { [RootFieldKey]: {} } as Storage;
-    const layerDependencies = new Set<DependencyKey>();
-
-    normalize(
-      this.#schemaMeta,
-      artifact.selections,
-      layerStorage,
-      data,
-      variables as Record<string, unknown>,
-      (storageKey, fieldKey) => {
-        layerDependencies.add(makeDependencyKey(storageKey, fieldKey));
-      },
-    );
-
-    const oldValues = new Map<DependencyKey, unknown>();
-    const currentView = this.#getStorageView();
-    for (const depKey of layerDependencies) {
-      const { storageKey: sk, fieldKey: fk } = this.#parseDepKey(depKey);
-      oldValues.set(depKey, currentView[sk]?.[fk]);
-    }
-
-    this.#optimisticKeys.push(key);
-    this.#optimisticLayers.set(key, { storage: layerStorage, dependencies: layerDependencies });
-    this.#storageView = null;
-
-    const newView = this.#getStorageView();
-    const changedKeys = new Map<DependencyKey, { oldValue: unknown; newValue: unknown }>();
-    for (const depKey of layerDependencies) {
-      const { storageKey: sk, fieldKey: fk } = this.#parseDepKey(depKey);
-      const newVal = newView[sk]?.[fk];
-      const oldVal = oldValues.get(depKey);
-      if (oldVal !== newVal) {
-        changedKeys.set(depKey, { oldValue: oldVal, newValue: newVal });
-      }
-    }
-
-    const patchesBySubscription = generatePatches(changedKeys, this.#subscriptions, newView);
-    for (const [subscription, patches] of patchesBySubscription) {
-      subscription.listener(patches);
-    }
-  }
-
-  /**
-   * Removes an optimistic layer and notifies affected subscribers.
-   * @internal
-   * @param key - The key of the optimistic layer to remove.
-   */
-  removeOptimistic(key: string): void {
-    const layer = this.#optimisticLayers.get(key);
-    if (!layer) return;
-
-    const currentView = this.#getStorageView();
-    const oldValues = new Map<DependencyKey, unknown>();
-    for (const depKey of layer.dependencies) {
-      const { storageKey: sk, fieldKey: fk } = this.#parseDepKey(depKey);
-      oldValues.set(depKey, currentView[sk]?.[fk]);
-    }
-
-    this.#optimisticLayers.delete(key);
-    this.#optimisticKeys = this.#optimisticKeys.filter((k) => k !== key);
-    this.#storageView = null;
-
-    const newView = this.#getStorageView();
-    const changedKeys = new Map<DependencyKey, { oldValue: unknown; newValue: unknown }>();
-    for (const depKey of layer.dependencies) {
-      const { storageKey: sk, fieldKey: fk } = this.#parseDepKey(depKey);
-      const newVal = newView[sk]?.[fk];
-      const oldVal = oldValues.get(depKey);
-      if (oldVal !== newVal) {
-        changedKeys.set(depKey, { oldValue: oldVal, newValue: newVal });
-      }
-    }
-
-    const patchesBySubscription = generatePatches(changedKeys, this.#subscriptions, newView);
-    for (const [subscription, patches] of patchesBySubscription) {
-      subscription.listener(patches);
-    }
-  }
-
   /**
    * Writes a query result to the cache, normalizing entities.
-   * In addition to field-level stale clearing, this also clears entity-level stale entries
-   * (e.g., `"User:1"`) when any field of that entity is written, because {@link invalidate}
-   * supports entity-level invalidation without specifying a field.
    * @param artifact - GraphQL document artifact.
    * @param variables - Query variables.
    * @param data - Query result data.
    */
   writeQuery<T extends Artifact>(artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
-    const changedKeys = new Map<DependencyKey, { oldValue: unknown; newValue: unknown }>();
+    const changes: FieldChange[] = [];
     const staleClearedKeys = new Set<DependencyKey>();
     const entityStaleCleared = new Set<StorageKey>();
 
@@ -192,45 +77,21 @@ export class Cache {
           entityStaleCleared.add(storageKey);
         }
 
-        if (oldValue !== newValue) {
-          changedKeys.set(depKey, { oldValue, newValue });
+        if (!isEqual(oldValue, newValue)) {
+          changes.push({
+            depKey,
+            storageKey,
+            fieldKey,
+            oldValue: oldValue as FieldValue,
+            newValue: newValue as FieldValue,
+          });
         }
       },
     );
 
-    const patchesBySubscription = generatePatches(changedKeys, this.#subscriptions, this.#storage);
+    this.#notifySubscribers(changes);
 
-    for (const [subscription, patches] of patchesBySubscription) {
-      subscription.listener(patches);
-    }
-
-    const staleOnlySubscriptions = new Set<QuerySubscription>();
-    for (const depKey of staleClearedKeys) {
-      if (changedKeys.has(depKey)) continue;
-      const entries = this.#subscriptions.get(depKey);
-      if (entries) {
-        for (const entry of entries) {
-          if (!patchesBySubscription.has(entry.subscription)) {
-            staleOnlySubscriptions.add(entry.subscription);
-          }
-        }
-      }
-    }
-    for (const entityKey of entityStaleCleared) {
-      const prefix = `${entityKey}.`;
-      for (const [depKey, entries] of this.#subscriptions) {
-        if (depKey.startsWith(prefix)) {
-          for (const entry of entries) {
-            if (!patchesBySubscription.has(entry.subscription)) {
-              staleOnlySubscriptions.add(entry.subscription);
-            }
-          }
-        }
-      }
-    }
-    for (const subscription of staleOnlySubscriptions) {
-      subscription.listener(null);
-    }
+    this.#notifyStaleCleared(staleClearedKeys, entityStaleCleared, changes);
   }
 
   /**
@@ -245,11 +106,10 @@ export class Cache {
   ): { data: DataOf<T> | null; stale: boolean } {
     let stale = false;
 
-    const storage = this.#getStorageView();
     const { data, partial } = denormalize(
       artifact.selections,
-      storage,
-      storage[RootFieldKey],
+      this.#storage,
+      this.#storage[RootFieldKey],
       variables as Record<string, unknown>,
       (storageKey, fieldKey) => {
         if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
@@ -270,63 +130,68 @@ export class Cache {
    * @param artifact - GraphQL document artifact.
    * @param variables - Query variables.
    * @param listener - Callback function to invoke on cache changes.
-   * @returns Object containing initial data, stale status, unsubscribe function, and subscription.
+   * @returns Object containing initial data, stale status, and unsubscribe function.
    */
   subscribeQuery<T extends Artifact<'query'>>(
     artifact: T,
     variables: VariablesOf<T>,
-    listener: (patches: Patch[] | null) => void,
-  ): { data: DataOf<T> | null; stale: boolean; unsubscribe: () => void; subscription: QuerySubscription } {
-    let stale = false;
-    const tuples: EntryTuple[] = [];
+    listener: (notification: CacheNotification) => void,
+  ): { data: DataOf<T> | null; stale: boolean; subId: number; unsubscribe: () => void } {
+    const id = this.#nextId++;
+    const vars = variables as Record<string, unknown>;
 
-    const storageView = this.#getStorageView();
-    const { data, partial } = denormalize(
+    let stale = false;
+
+    const traceResult = traceSelections(
       artifact.selections,
-      storageView,
-      storageView[RootFieldKey],
-      variables as Record<string, unknown>,
-      (storageKey, fieldKey, path, selections) => {
-        tuples.push({ storageKey, fieldKey, path, selections });
-        if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
-          stale = true;
-        }
-      },
-      { trackFragmentDeps: false },
+      this.#storage,
+      this.#storage[RootFieldKey],
+      vars,
+      RootFieldKey,
+      [],
+      id,
     );
 
-    const entryTree = buildEntryTree(tuples);
+    for (const { depKey } of traceResult.cursors) {
+      const { storageKey, fieldKey } = parseDependencyKey(depKey);
+      if (this.#stale.has(storageKey as string) || this.#stale.has(makeDependencyKey(storageKey, fieldKey))) {
+        stale = true;
+        break;
+      }
+    }
 
-    const subscription: QuerySubscription = {
+    const subscription: Subscription = {
+      id,
+      kind: 'query',
+      artifact,
+      variables: vars,
       listener,
-      selections: artifact.selections,
-      variables: variables as Record<string, unknown>,
-      entryTree,
+      data: traceResult.complete ? traceResult.data : null,
+      stale,
+      cursors: new Set(traceResult.cursors.map((c) => c.entry)),
     };
 
-    for (const tuple of tuples) {
-      const depKey = makeDependencyKey(tuple.storageKey, tuple.fieldKey);
-      const entry: SubscriptionEntry = {
-        path: tuple.path,
-        subscription,
-      };
-      let entrySet = this.#subscriptions.get(depKey);
-      if (!entrySet) {
-        entrySet = new Set();
-        this.#subscriptions.set(depKey, entrySet);
-      }
-      entrySet.add(entry);
+    this.#subscriptions.set(id, subscription);
+
+    for (const { depKey, entry } of traceResult.cursors) {
+      this.#registry.add(depKey, entry);
+    }
+
+    if (!traceResult.complete) {
+      this.#stalled.set(id, { subscription, missingDeps: traceResult.missingDeps });
     }
 
     const unsubscribe = () => {
-      this.#removeSubscriptionFromTree(entryTree, subscription);
+      this.#registry.removeAll(subscription.cursors);
+      this.#subscriptions.delete(id);
+      this.#stalled.delete(id);
     };
 
     return {
-      data: partial ? null : (data as DataOf<T>),
+      data: subscription.data as DataOf<T> | null,
       stale,
+      subId: id,
       unsubscribe,
-      subscription,
     };
   }
 
@@ -343,18 +208,16 @@ export class Cache {
     const storageKey = (fragmentRef as unknown as { [FragmentRefKey]: StorageKey })[FragmentRefKey];
     const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
 
-    const storageView = this.#getStorageView();
-
     let stale = false;
 
-    const value = storageView[storageKey];
+    const value = this.#storage[storageKey];
     if (!value) {
       return { data: null, stale: false };
     }
 
     const { data, partial } = denormalize(
       artifact.selections,
-      storageView,
+      this.#storage,
       storageKey === RootFieldKey ? value : { [EntityLinkKey]: storageKey },
       fragmentVars,
       (sk, fieldKey) => {
@@ -376,83 +239,101 @@ export class Cache {
    * @param artifact - GraphQL fragment artifact.
    * @param fragmentRef - Fragment reference containing entity key.
    * @param listener - Callback function to invoke on cache changes.
-   * @returns Object containing initial data, stale status, unsubscribe function, and subscription.
+   * @returns Object containing initial data, stale status, and unsubscribe function.
    */
   subscribeFragment<T extends Artifact<'fragment'>>(
     artifact: T,
     fragmentRef: FragmentRefs<string>,
-    listener: (patches: Patch[] | null) => void,
-  ): { data: DataOf<T> | null; stale: boolean; unsubscribe: () => void; subscription: QuerySubscription } {
+    listener: (notification: CacheNotification) => void,
+  ): { data: DataOf<T> | null; stale: boolean; subId: number; unsubscribe: () => void } {
     const storageKey = (fragmentRef as unknown as { [FragmentRefKey]: StorageKey })[FragmentRefKey];
     const fragmentVars = getFragmentVars(fragmentRef, artifact.name);
+    const id = this.#nextId++;
 
-    const storageView = this.#getStorageView();
-    const value = storageKey === RootFieldKey ? storageView[RootFieldKey] : storageView[storageKey];
+    const value = storageKey === RootFieldKey ? this.#storage[RootFieldKey] : this.#storage[storageKey];
     if (!value) {
-      const entryTree = buildEntryTree([]);
-      const subscription: QuerySubscription = {
-        listener,
-        selections: artifact.selections,
+      const subscription: Subscription = {
+        id,
+        kind: 'fragment',
+        artifact,
         variables: fragmentVars,
-        entryTree,
+        listener,
+        entityKey: storageKey,
+        data: null,
+        stale: false,
+        cursors: new Set(),
       };
-      return { data: null, stale: false, unsubscribe: () => {}, subscription };
+      this.#subscriptions.set(id, subscription);
+      return { data: null, stale: false, subId: id, unsubscribe: () => this.#subscriptions.delete(id) };
     }
 
     let stale = false;
-    const tuples: EntryTuple[] = [];
 
-    const denormalizeValue = storageKey === RootFieldKey ? value : { [EntityLinkKey]: storageKey };
-    const { data, partial } = denormalize(
+    const denormalizeValue = storageKey === RootFieldKey ? value : value;
+    const traceResult = traceSelections(
       artifact.selections,
-      storageView,
-      denormalizeValue,
+      this.#storage,
+      denormalizeValue as Record<string, unknown>,
       fragmentVars,
-      (sk, fieldKey, path, selections) => {
-        tuples.push({ storageKey: sk, fieldKey, path, selections });
-        if (this.#stale.has(sk as string) || this.#stale.has(makeDependencyKey(sk, fieldKey))) {
-          stale = true;
-        }
-      },
-      { trackFragmentDeps: false },
+      storageKey,
+      [],
+      id,
     );
-    if (partial) {
-      const entryTree = buildEntryTree([]);
-      const subscription: QuerySubscription = {
-        listener,
-        selections: artifact.selections,
-        variables: fragmentVars,
-        entryTree,
-      };
-      return { data: null, stale: false, unsubscribe: () => {}, subscription };
+
+    for (const { depKey } of traceResult.cursors) {
+      const { storageKey: sk, fieldKey } = parseDependencyKey(depKey);
+      if (this.#stale.has(sk as string) || this.#stale.has(makeDependencyKey(sk, fieldKey))) {
+        stale = true;
+        break;
+      }
     }
 
-    const rootDepKey = storageKey === RootFieldKey ? undefined : (storageKey as unknown as DependencyKey);
-    const entryTree = buildEntryTree(tuples, rootDepKey);
+    if (!traceResult.complete) {
+      const subscription: Subscription = {
+        id,
+        kind: 'fragment',
+        artifact,
+        variables: fragmentVars,
+        listener,
+        entityKey: storageKey,
+        data: null,
+        stale: false,
+        cursors: new Set(),
+      };
+      this.#subscriptions.set(id, subscription);
+      return { data: null, stale: false, subId: id, unsubscribe: () => this.#subscriptions.delete(id) };
+    }
 
-    const subscription: QuerySubscription = {
-      listener,
-      selections: artifact.selections,
+    const subscription: Subscription = {
+      id,
+      kind: 'fragment',
+      artifact,
       variables: fragmentVars,
-      entryTree,
+      listener,
+      entityKey: storageKey,
+      data: traceResult.data,
+      stale,
+      cursors: new Set(traceResult.cursors.map((c) => c.entry)),
     };
 
-    for (const tuple of tuples) {
-      const depKey = makeDependencyKey(tuple.storageKey, tuple.fieldKey);
-      const entry: SubscriptionEntry = { path: tuple.path, subscription };
-      let entrySet = this.#subscriptions.get(depKey);
-      if (!entrySet) {
-        entrySet = new Set();
-        this.#subscriptions.set(depKey, entrySet);
-      }
-      entrySet.add(entry);
+    this.#subscriptions.set(id, subscription);
+
+    for (const { depKey, entry } of traceResult.cursors) {
+      this.#registry.add(depKey, entry);
     }
 
     const unsubscribe = () => {
-      this.#removeSubscriptionFromTree(entryTree, subscription);
+      this.#registry.removeAll(subscription.cursors);
+      this.#subscriptions.delete(id);
+      this.#stalled.delete(id);
     };
 
-    return { data: partial ? null : (data as DataOf<T>), stale, unsubscribe, subscription };
+    return {
+      data: traceResult.data as DataOf<T>,
+      stale,
+      subId: id,
+      unsubscribe,
+    };
   }
 
   readFragments<T extends Artifact<'fragment'>>(
@@ -479,7 +360,7 @@ export class Cache {
   subscribeFragments<T extends Artifact<'fragment'>>(
     artifact: T,
     fragmentRefs: FragmentRefs<string>[],
-    listener: (patches: Patch[] | null) => void,
+    listener: (notification: CacheNotification) => void,
   ): () => void {
     const unsubscribes: (() => void)[] = [];
 
@@ -496,11 +377,62 @@ export class Cache {
   }
 
   /**
+   * Writes an optimistic response to the cache.
+   * @internal
+   */
+  writeOptimistic<T extends Artifact>(key: string, artifact: T, variables: VariablesOf<T>, data: DataOf<T>): void {
+    const changes: FieldChange[] = [];
+    const optimisticChanges = new Map<DependencyKey, { old: FieldValue; new: FieldValue }>();
+
+    normalize(
+      this.#schemaMeta,
+      artifact.selections,
+      this.#storage,
+      data,
+      variables as Record<string, unknown>,
+      (storageKey, fieldKey, oldValue, newValue) => {
+        const depKey = makeDependencyKey(storageKey, fieldKey);
+        if (!isEqual(oldValue, newValue)) {
+          changes.push({
+            depKey,
+            storageKey,
+            fieldKey,
+            oldValue: oldValue as FieldValue,
+            newValue: newValue as FieldValue,
+          });
+          optimisticChanges.set(depKey, { old: oldValue as FieldValue, new: newValue as FieldValue });
+        }
+      },
+    );
+
+    this.#optimistic.push(key, optimisticChanges);
+    this.#notifySubscribers(changes);
+  }
+
+  /**
+   * Removes an optimistic layer and notifies affected subscribers.
+   * @internal
+   */
+  removeOptimistic(key: string): void {
+    const restorations = this.#optimistic.rollback(key);
+
+    for (const restoration of restorations) {
+      const { storageKey, fieldKey, newValue } = restoration;
+      const fields = this.#storage[storageKey];
+      if (fields) {
+        (fields as Record<string, unknown>)[fieldKey] = newValue;
+      }
+    }
+
+    this.#notifySubscribers(restorations);
+  }
+
+  /**
    * Invalidates one or more cache entries and notifies affected subscribers.
    * @param targets - Cache entries to invalidate.
    */
   invalidate(...targets: InvalidateTarget[]): void {
-    const affectedSubscriptions = new Set<QuerySubscription>();
+    const affectedSubscriptions = new Set<number>();
 
     for (const target of targets) {
       if (target.__typename === 'Query') {
@@ -508,10 +440,10 @@ export class Cache {
           const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
           const depKey = makeDependencyKey(RootFieldKey, fieldKey);
           this.#stale.add(depKey);
-          this.#collectSubscriptions(RootFieldKey, fieldKey, affectedSubscriptions);
+          this.#collectAffectedSubscriptions(RootFieldKey, fieldKey, affectedSubscriptions);
         } else {
           this.#stale.add(RootFieldKey as string);
-          this.#collectSubscriptions(RootFieldKey, undefined, affectedSubscriptions);
+          this.#collectAffectedSubscriptions(RootFieldKey, undefined, affectedSubscriptions);
         }
       } else {
         const entityMeta = this.#schemaMeta.entities[target.__typename];
@@ -524,10 +456,10 @@ export class Cache {
           if ('$field' in target) {
             const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
             this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-            this.#collectSubscriptions(entityKey, fieldKey, affectedSubscriptions);
+            this.#collectAffectedSubscriptions(entityKey, fieldKey, affectedSubscriptions);
           } else {
             this.#stale.add(entityKey);
-            this.#collectSubscriptions(entityKey, undefined, affectedSubscriptions);
+            this.#collectAffectedSubscriptions(entityKey, undefined, affectedSubscriptions);
           }
         } else {
           const prefix = `${target.__typename}:`;
@@ -537,10 +469,10 @@ export class Cache {
               if ('$field' in target) {
                 const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
                 this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-                this.#collectSubscriptions(entityKey, fieldKey, affectedSubscriptions);
+                this.#collectAffectedSubscriptions(entityKey, fieldKey, affectedSubscriptions);
               } else {
                 this.#stale.add(entityKey);
-                this.#collectSubscriptions(entityKey, undefined, affectedSubscriptions);
+                this.#collectAffectedSubscriptions(entityKey, undefined, affectedSubscriptions);
               }
             }
           }
@@ -548,8 +480,18 @@ export class Cache {
       }
     }
 
-    for (const subscription of affectedSubscriptions) {
-      subscription.listener(null);
+    const subsToNotify: Subscription[] = [];
+    for (const subId of affectedSubscriptions) {
+      const sub = this.#subscriptions.get(subId);
+      if (sub) {
+        sub.stale = true;
+        subsToNotify.push(sub);
+      }
+    }
+    for (const sub of subsToNotify) {
+      if (sub.stale) {
+        sub.listener({ type: 'stale' });
+      }
     }
   }
 
@@ -557,70 +499,13 @@ export class Cache {
    * Checks if a subscription has stale data.
    * @internal
    */
-  isStale(subscription: QuerySubscription): boolean {
-    const check = (node: EntryTreeNode): boolean => {
-      if (node.depKey.includes('@')) {
-        const { storageKey } = parseDependencyKey(node.depKey);
-        if (this.#stale.has(storageKey as string) || this.#stale.has(node.depKey)) return true;
-      }
-      for (const child of node.children.values()) {
-        if (check(child)) return true;
-      }
-      return false;
-    };
-    return check(subscription.entryTree);
-  }
-
-  #hasKeyFields(target: Record<string, unknown>, keyFields: string[]): boolean {
-    return keyFields.every((f) => f in target);
-  }
-
-  #collectSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<QuerySubscription>): void {
-    if (fieldKey === undefined) {
-      const prefix = `${storageKey}.`;
-      for (const [depKey, entries] of this.#subscriptions) {
-        if (depKey.startsWith(prefix)) {
-          for (const entry of entries) {
-            out.add(entry.subscription);
-          }
-        }
-      }
-    } else {
-      const depKey = makeDependencyKey(storageKey, fieldKey);
-      const entries = this.#subscriptions.get(depKey);
-      if (entries) {
-        for (const entry of entries) {
-          out.add(entry.subscription);
-        }
-      }
-    }
-  }
-
-  #removeSubscriptionFromTree(node: EntryTreeNode, subscription: QuerySubscription): void {
-    const entries = this.#subscriptions.get(node.depKey);
-    if (entries) {
-      for (const entry of entries) {
-        if (entry.subscription === subscription) {
-          entries.delete(entry);
-          break;
-        }
-      }
-      if (entries.size === 0) {
-        this.#subscriptions.delete(node.depKey);
-      }
-    }
-    for (const child of node.children.values()) {
-      this.#removeSubscriptionFromTree(child, subscription);
-    }
-  }
-
-  #parseDepKey(depKey: DependencyKey): { storageKey: StorageKey; fieldKey: FieldKey } {
-    return parseDependencyKey(depKey);
+  isStale(subId: number): boolean {
+    const sub = this.#subscriptions.get(subId);
+    return sub?.stale ?? false;
   }
 
   /**
    * Extracts a serializable snapshot of the cache storage.
-   * Optimistic layers are excluded because they represent transient in-flight state.
    */
   extract(): CacheSnapshot {
     return { storage: structuredClone(this.#storage) } as unknown as CacheSnapshot;
@@ -635,8 +520,6 @@ export class Cache {
     for (const [key, fields] of Object.entries(storage)) {
       this.#storage[key as StorageKey] = { ...this.#storage[key as StorageKey], ...fields };
     }
-
-    this.#storageView = null;
   }
 
   /**
@@ -644,10 +527,147 @@ export class Cache {
    */
   clear(): void {
     this.#storage = { [RootFieldKey]: {} };
+    this.#registry.clear();
     this.#subscriptions.clear();
+    this.#stalled.clear();
     this.#stale.clear();
-    this.#optimisticKeys = [];
-    this.#optimisticLayers.clear();
-    this.#storageView = null;
+  }
+
+  #notifySubscribers(changes: FieldChange[]): void {
+    if (changes.length === 0) return;
+
+    const unstalledPatches = this.#checkStalled(changes);
+
+    const { scalar, structural } = classifyChanges(changes);
+
+    const scalarPatches = processScalarChanges(scalar, this.#registry, this.#subscriptions);
+
+    const structuralPatches = processStructuralChanges(
+      structural,
+      this.#registry,
+      this.#subscriptions,
+      this.#storage,
+      this.#stalled,
+    );
+
+    const allPatches = new Map<number, Patch[]>();
+    for (const [subId, patches] of unstalledPatches) {
+      allPatches.set(subId, patches);
+    }
+    for (const [subId, patches] of scalarPatches) {
+      if (unstalledPatches.has(subId)) continue;
+      allPatches.set(subId, [...(allPatches.get(subId) ?? []), ...patches]);
+    }
+    for (const [subId, patches] of structuralPatches) {
+      if (unstalledPatches.has(subId)) continue;
+      allPatches.set(subId, [...(allPatches.get(subId) ?? []), ...patches]);
+    }
+
+    for (const [subId, patches] of allPatches) {
+      const sub = this.#subscriptions.get(subId);
+      if (sub && patches.length > 0) {
+        if (!structuralPatches.has(subId) && !unstalledPatches.has(subId)) {
+          sub.data = applyPatchesImmutable(sub.data, patches);
+        }
+        sub.listener({ type: 'patch', patches });
+      }
+    }
+  }
+
+  #checkStalled(changes: FieldChange[]): Map<number, Patch[]> {
+    const result = new Map<number, Patch[]>();
+    const writtenDepKeys = new Set(changes.map((c) => c.depKey));
+
+    for (const [subId, info] of this.#stalled) {
+      const intersects = [...info.missingDeps].some((dep) => writtenDepKeys.has(dep));
+      if (!intersects) continue;
+
+      const sub = info.subscription;
+      const rootStorageKey = sub.entityKey ?? RootFieldKey;
+      const rootValue = this.#storage[rootStorageKey];
+      if (!rootValue) continue;
+
+      const traceResult = traceSelections(
+        sub.artifact.selections,
+        this.#storage,
+        rootValue,
+        sub.variables,
+        rootStorageKey,
+        [],
+        sub.id,
+      );
+
+      if (traceResult.complete) {
+        this.#registry.removeAll(sub.cursors);
+        sub.cursors = new Set(traceResult.cursors.map((c) => c.entry));
+        for (const { depKey, entry } of traceResult.cursors) {
+          this.#registry.add(depKey, entry);
+        }
+        this.#stalled.delete(subId);
+
+        const entityArrayChanges = buildEntityArrayContext(changes, traceResult.cursors);
+        const patches = diffSnapshots(sub.data, traceResult.data, entityArrayChanges);
+        if (patches.length > 0) {
+          sub.data = traceResult.data;
+          result.set(subId, patches);
+        }
+      } else {
+        info.missingDeps = traceResult.missingDeps;
+      }
+    }
+    return result;
+  }
+
+  #notifyStaleCleared(
+    staleClearedKeys: Set<DependencyKey>,
+    entityStaleCleared: Set<StorageKey>,
+    changes: FieldChange[],
+  ): void {
+    const changedDepKeys = new Set(changes.map((c) => c.depKey));
+    const notifiedSubs = new Set<number>();
+
+    for (const depKey of staleClearedKeys) {
+      if (changedDepKeys.has(depKey)) continue;
+      const entries = this.#registry.get(depKey);
+      if (entries) {
+        for (const entry of entries) {
+          notifiedSubs.add(entry.subscriptionId);
+        }
+      }
+    }
+
+    for (const entityKey of entityStaleCleared) {
+      this.#registry.forEachByPrefix(`${entityKey}.`, (entry) => {
+        notifiedSubs.add(entry.subscriptionId);
+      });
+    }
+
+    for (const subId of notifiedSubs) {
+      const sub = this.#subscriptions.get(subId);
+      if (sub?.stale) {
+        sub.stale = false;
+        sub.listener({ type: 'stale' });
+      }
+    }
+  }
+
+  #hasKeyFields(target: Record<string, unknown>, keyFields: string[]): boolean {
+    return keyFields.every((f) => f in target);
+  }
+
+  #collectAffectedSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<number>): void {
+    if (fieldKey === undefined) {
+      this.#registry.forEachByPrefix(`${storageKey}.`, (entry) => {
+        out.add(entry.subscriptionId);
+      });
+    } else {
+      const depKey = makeDependencyKey(storageKey, fieldKey);
+      const entries = this.#registry.get(depKey);
+      if (entries) {
+        for (const entry of entries) {
+          out.add(entry.subscriptionId);
+        }
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { Selection, SchemaMeta } from '@mearie/shared';
+import type { Artifact, Selection, SchemaMeta } from '@mearie/shared';
 import type { EntityLinkKey, RootFieldKey } from './constants.ts';
 
 /**
@@ -83,33 +83,64 @@ export type Patch =
   | { type: 'swap'; path: PropertyPath; i: number; j: number };
 
 /**
- * Node in the entry tree that mirrors the denormalized result structure.
+ * A cursor entry tracking a single field dependency for a subscription.
  * @internal
  */
-export type EntryTreeNode = {
-  depKey: DependencyKey;
-  children: Map<string, EntryTreeNode>;
+export type CursorEntry = {
+  subscriptionId: number;
+  path: PropertyPath;
   selections?: readonly Selection[];
 };
 
 /**
- * Active subscription for a query or fragment, holding its listener, entry tree, and context.
+ * An active subscription for a query or fragment.
  * @internal
  */
-export type QuerySubscription = {
-  listener: (patches: Patch[] | null) => void;
-  selections: readonly Selection[];
+export type Subscription = {
+  id: number;
+  kind: 'query' | 'fragment';
+  artifact: Artifact;
   variables: Record<string, unknown>;
-  entryTree: EntryTreeNode;
+  listener: (notification: CacheNotification) => void;
+  entityKey?: StorageKey;
+  data: unknown;
+  stale: boolean;
+  cursors: Set<CursorEntry>;
 };
 
 /**
- * Entry in the #subscriptions map linking a dependency key to a specific subscription with its path.
+ * Notification sent to subscription listeners.
+ */
+export type CacheNotification = { type: 'patch'; patches: Patch[] } | { type: 'stale' };
+
+/**
+ * Information about a stalled subscription waiting for missing dependencies.
  * @internal
  */
-export type SubscriptionEntry = {
-  path: PropertyPath;
-  subscription: QuerySubscription;
+export type StalledInfo = {
+  subscription: Subscription;
+  missingDeps: Set<DependencyKey>;
+};
+
+/**
+ * An entry in the optimistic stack tracking CoW field changes.
+ * @internal
+ */
+export type OptimisticEntry = {
+  key: string;
+  changes: Map<DependencyKey, { old: FieldValue; new: FieldValue }>;
+};
+
+/**
+ * A single field change produced by normalization.
+ * @internal
+ */
+export type FieldChange = {
+  depKey: DependencyKey;
+  storageKey: StorageKey;
+  fieldKey: FieldKey;
+  oldValue: FieldValue;
+  newValue: FieldValue;
 };
 
 type EntityTypes<TMeta extends SchemaMeta> = NonNullable<TMeta[' $entityTypes']>;

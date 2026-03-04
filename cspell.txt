@@ -24,6 +24,7 @@ serde
 shikijs
 solidjs
 tmdb
+unstalled
 unsub
 unsubscription
 urql

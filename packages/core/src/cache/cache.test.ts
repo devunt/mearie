@@ -6327,15 +6327,15 @@ describe('Cache', () => {
   });
 
   describe('root-level embedded object across different queries', () => {
-    const queryWithBothFields = createArtifact('query', 'DashboardLayout', [
+    const queryWithBothFields = createArtifact('query', 'GetSessionFull', [
       {
         kind: 'Field',
-        name: 'impersonation',
-        type: 'Impersonation',
+        name: 'session',
+        type: 'Session',
         selections: [
           {
             kind: 'Field',
-            name: 'admin',
+            name: 'owner',
             type: 'User',
             selections: [
               { kind: 'Field', name: '__typename', type: 'String' },
@@ -6345,7 +6345,7 @@ describe('Cache', () => {
           },
           {
             kind: 'Field',
-            name: 'user',
+            name: 'viewer',
             type: 'User',
             selections: [
               { kind: 'Field', name: '__typename', type: 'String' },
@@ -6357,15 +6357,15 @@ describe('Cache', () => {
       },
     ]);
 
-    const queryWithOneField = createArtifact('query', 'EntityPane', [
+    const queryWithOneField = createArtifact('query', 'GetSessionOwner', [
       {
         kind: 'Field',
-        name: 'impersonation',
-        type: 'Impersonation',
+        name: 'session',
+        type: 'Session',
         selections: [
           {
             kind: 'Field',
-            name: 'admin',
+            name: 'owner',
             type: 'User',
             selections: [
               { kind: 'Field', name: '__typename', type: 'String' },
@@ -6384,9 +6384,9 @@ describe('Cache', () => {
         queryWithBothFields,
         {},
         {
-          impersonation: {
-            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
-            user: { __typename: 'User', id: 'user1', name: 'Target' },
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+            viewer: { __typename: 'User', id: '2', name: 'Bob' },
           },
         },
       );
@@ -6395,15 +6395,15 @@ describe('Cache', () => {
         queryWithOneField,
         {},
         {
-          impersonation: {
-            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
           },
         },
       );
 
       const result = cache.readQuery(queryWithBothFields, {});
-      const impersonation = (result.data as Record<string, unknown>).impersonation as Record<string, unknown>;
-      expect(impersonation.user).toEqual({ __typename: 'User', id: 'user1', name: 'Target' });
+      const session = (result.data as Record<string, unknown>).session as Record<string, unknown>;
+      expect(session.viewer).toEqual({ __typename: 'User', id: '2', name: 'Bob' });
     });
 
     it('subscriber patch should not null-out fields missing from partial query write', () => {
@@ -6413,9 +6413,9 @@ describe('Cache', () => {
         queryWithBothFields,
         {},
         {
-          impersonation: {
-            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
-            user: { __typename: 'User', id: 'user1', name: 'Target' },
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+            viewer: { __typename: 'User', id: '2', name: 'Bob' },
           },
         },
       );
@@ -6427,8 +6427,8 @@ describe('Cache', () => {
         queryWithOneField,
         {},
         {
-          impersonation: {
-            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
           },
         },
       );
@@ -6437,14 +6437,14 @@ describe('Cache', () => {
         const notification = listener.mock.calls[0]![0] as CacheNotification;
         if (notification.type === 'patch') {
           const data = {
-            impersonation: {
-              admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
-              user: { __typename: 'User', id: 'user1', name: 'Target' },
+            session: {
+              owner: { __typename: 'User', id: '1', name: 'Alice' },
+              viewer: { __typename: 'User', id: '2', name: 'Bob' },
             },
           };
           applyPatchesMutable(data, notification.patches);
-          expect(data.impersonation.user).not.toBeNull();
-          expect(data.impersonation.user.name).toBe('Target');
+          expect(data.session.viewer).not.toBeNull();
+          expect(data.session.viewer.name).toBe('Bob');
         }
       }
 

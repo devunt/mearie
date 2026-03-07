@@ -8,6 +8,7 @@ import {
   getFragmentVars,
   parseDependencyKey,
   isEqual,
+  mergeFields,
 } from './utils.ts';
 import { RootFieldKey, FragmentRefKey, EntityLinkKey } from './constants.ts';
 import type {
@@ -518,7 +519,12 @@ export class Cache {
     const { storage } = snapshot as unknown as { storage: Record<string, Record<string, unknown>> };
 
     for (const [key, fields] of Object.entries(storage)) {
-      this.#storage[key as StorageKey] = { ...this.#storage[key as StorageKey], ...fields };
+      const existing = this.#storage[key as StorageKey];
+      if (existing) {
+        mergeFields(existing, fields, true);
+      } else {
+        this.#storage[key as StorageKey] = fields as Storage[StorageKey];
+      }
     }
   }
 

@@ -1,5 +1,14 @@
 # @mearie/svelte
 
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [5c8640d]
+- Updated dependencies [aba3afe]
+- Updated dependencies [6167b22]
+  - @mearie/core@0.6.4
+
 ## 0.4.3
 
 ### Patch Changes

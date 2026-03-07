@@ -1,5 +1,12 @@
 # @mearie/codegen
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [6167b22]
+  - @mearie/native@0.4.1
+
 ## 0.1.6
 
 ### Patch Changes

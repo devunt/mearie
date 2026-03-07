@@ -1,5 +1,18 @@
 # @mearie/core
 
+## 0.6.4
+
+### Patch Changes
+
+- 5c8640d: Fix embedded object patches losing unaffected fields during partial updates
+
+  When a mutation returned a subset of an embedded object's fields (e.g. `usage { current }` without `limit`), the generated subscriber patch would replace the entire embedded object, dropping fields that weren't part of the mutation response. Now `processScalarChanges` reads the post-merge value from storage, ensuring patches include all fields.
+
+- aba3afe: fix(cache): denormalize embedded object arrays in scalar patches
+- 6167b22: Support `@skip` and `@include` directives in type generation and normalized cache
+  - **Type generation**: Fields with `@skip` or `@include` directives are now generated as optional properties in TypeScript types, since they may be absent from the response. No-op cases (`@skip(if: false)`, `@include(if: true)`) are correctly detected and left non-optional.
+  - **Normalized cache**: `denormalize`, `normalize`, and `traceSelections` now evaluate `@skip`/`@include` directive conditions against variables. Skipped fields are excluded from cache reads/writes, preserving previously cached values and avoiding false partial results.
+
 ## 0.6.3
 
 ### Patch Changes

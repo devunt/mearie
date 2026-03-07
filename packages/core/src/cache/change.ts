@@ -70,7 +70,11 @@ export const processScalarChanges = (
       if (!sub) continue;
 
       let patchValue: unknown = change.newValue;
-      if (entry.selections && isNormalizedRecord(change.newValue)) {
+      const needsDenormalize =
+        entry.selections &&
+        (isNormalizedRecord(change.newValue) ||
+          (Array.isArray(change.newValue) && change.newValue.some((v) => isNormalizedRecord(v))));
+      if (needsDenormalize) {
         const mergedValue = storage[change.storageKey]?.[change.fieldKey] ?? change.newValue;
         const { data } = denormalize(entry.selections, {} as Storage, mergedValue, sub.variables);
         patchValue = data;

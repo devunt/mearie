@@ -1,5 +1,15 @@
 # @mearie/core
 
+## 0.6.5
+
+### Patch Changes
+
+- c9e062a: Use deep merge in `cache.hydrate()` to preserve existing embedded object fields that are not present in the incoming snapshot.
+- d56d7c7: Fix race condition in dedupExchange where `delay(0)` allowed torn-down operations to leak through to downstream exchanges, causing duplicate cache subscriptions and double patch delivery.
+- 0b1c58b: Skip redundant `set` patches for newly splice-inserted items in entity array diffs.
+- 2a66735: Deduplicate accessor calls in `normalize` when the same entity field is encountered multiple times with identical values during a single normalization pass.
+- ae778c4: fix(cache): preserve root-level embedded object fields across partial query writes
+
 ## 0.6.4
 
 ### Patch Changes

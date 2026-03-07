@@ -1,5 +1,14 @@
 import type { Selection, SchemaMeta } from '@mearie/shared';
-import { makeEntityKey, makeFieldKey, isEntityLink, isNullish, isEqual, mergeFields, markNormalized } from './utils.ts';
+import {
+  makeEntityKey,
+  makeFieldKey,
+  isEntityLink,
+  isNullish,
+  isEqual,
+  mergeFields,
+  markNormalized,
+  shouldIncludeField,
+} from './utils.ts';
 import { EntityLinkKey, RootFieldKey } from './constants.ts';
 import type { StorageKey, FieldKey, Storage } from './types.ts';
 
@@ -61,6 +70,8 @@ export const normalize = (
 
     for (const selection of selections) {
       if (selection.kind === 'Field') {
+        if (!shouldIncludeField(selection.directives, variables)) continue;
+
         const fieldKey = makeFieldKey(selection, variables);
         let fieldValue = data[selection.alias ?? selection.name];
 

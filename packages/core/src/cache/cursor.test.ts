@@ -737,4 +737,110 @@ describe('traceSelections', () => {
 
     expect(resultIncomplete.complete).toBe(false);
   });
+
+  describe('@skip and @include directives', () => {
+    it('@skip(if: true) excludes field from trace and data', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'email',
+              type: 'String',
+              directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+          'email@{}': 'alice@test.com',
+        },
+      };
+
+      const result = traceSelections(
+        selections,
+        storage,
+        storage[RootFieldKey],
+        { skipEmail: true },
+        RootFieldKey,
+        [],
+        1,
+      );
+
+      expect((result.data as Record<string, Record<string, unknown>>).user).toEqual({
+        __typename: 'User',
+        id: '1',
+        name: 'Alice',
+      });
+      expect(result.complete).toBe(true);
+      expect(result.cursors.some((c) => c.depKey.includes('email'))).toBe(false);
+    });
+
+    it('skipped field missing from storage does not cause incomplete', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const result = traceSelections(
+        selections,
+        storage,
+        storage[RootFieldKey],
+        { skipEmail: true },
+        RootFieldKey,
+        [],
+        1,
+      );
+
+      expect(result.complete).toBe(true);
+      expect(result.data).toEqual({ name: 'Alice' });
+    });
+
+    it('@include(if: false) excludes field from trace', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'include', args: { if: { kind: 'variable', name: 'withEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const result = traceSelections(
+        selections,
+        storage,
+        storage[RootFieldKey],
+        { withEmail: false },
+        RootFieldKey,
+        [],
+        1,
+      );
+
+      expect(result.complete).toBe(true);
+      expect(result.data).toEqual({ name: 'Alice' });
+    });
+  });
 });

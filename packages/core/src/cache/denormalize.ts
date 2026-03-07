@@ -1,5 +1,5 @@
 import type { Selection } from '@mearie/shared';
-import { makeFieldKey, resolveArguments, isEntityLink, isNullish, mergeFields } from './utils.ts';
+import { makeFieldKey, resolveArguments, isEntityLink, isNullish, mergeFields, shouldIncludeField } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { Storage, StorageKey, FieldKey, PropertyPath } from './types.ts';
 
@@ -54,6 +54,8 @@ export const denormalize = (
 
     for (const selection of selections) {
       if (selection.kind === 'Field') {
+        if (!shouldIncludeField(selection.directives, variables)) continue;
+
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[fieldKey];
         const fieldPath = [...path, selection.alias ?? selection.name];

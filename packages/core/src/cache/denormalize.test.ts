@@ -5512,4 +5512,161 @@ describe('denormalize', () => {
       expect(result.partial).toBe(false);
     });
   });
+
+  describe('@skip and @include directives', () => {
+    it('@skip(if: true) with variable excludes field from output', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, { skipEmail: true });
+
+      expect(data).toEqual({ name: 'Alice' });
+      expect(partial).toBe(false);
+    });
+
+    it('@skip(if: false) with variable includes field in output', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, { skipEmail: false });
+
+      expect(data).toEqual({ name: 'Alice', email: 'alice@test.com' });
+      expect(partial).toBe(false);
+    });
+
+    it('@include(if: false) with variable excludes field from output', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'include', args: { if: { kind: 'variable', name: 'withEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, { withEmail: false });
+
+      expect(data).toEqual({ name: 'Alice' });
+      expect(partial).toBe(false);
+    });
+
+    it('@include(if: true) with variable includes field in output', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'include', args: { if: { kind: 'variable', name: 'withEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, { withEmail: true });
+
+      expect(data).toEqual({ name: 'Alice', email: 'alice@test.com' });
+      expect(partial).toBe(false);
+    });
+
+    it('skipped field missing from cache does not cause partial', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, { skipEmail: true });
+
+      expect(data).toEqual({ name: 'Alice' });
+      expect(partial).toBe(false);
+    });
+
+    it('@skip with literal true excludes field', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: true } }],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      const { data, partial } = denormalizeTest(selections, storage, {});
+
+      expect(data).toEqual({ name: 'Alice' });
+      expect(partial).toBe(false);
+    });
+
+    it('skipped field does not register accessor call', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'email',
+              type: 'String',
+              directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+            },
+          ],
+        },
+      ];
+      const storage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+          'email@{}': 'alice@test.com',
+        },
+      };
+
+      const { data, calls } = denormalizeTest(selections, storage, { skipEmail: true });
+
+      expect(data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
+      expect(calls.some(([, fieldKey]) => fieldKey === 'email@{}')).toBe(false);
+    });
+  });
 });

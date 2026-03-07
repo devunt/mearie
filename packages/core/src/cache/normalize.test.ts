@@ -656,10 +656,55 @@ describe('normalize', () => {
         ['User:1', 'id@{}'],
         ['User:1', 'name@{}'],
         [RootFieldKey, 'author@{}'],
-        ['User:1', '__typename@{}'],
-        ['User:1', 'id@{}'],
         ['User:1', 'email@{}'],
       ]);
+    });
+
+    it('should not call accessor multiple times for the same entity field', () => {
+      const selections = [
+        {
+          kind: 'Field' as const,
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            { kind: 'Field' as const, name: 'name', type: 'String' },
+            {
+              kind: 'Field' as const,
+              name: 'friend',
+              type: 'User',
+              selections: [
+                { kind: 'Field' as const, name: '__typename', type: 'String' },
+                { kind: 'Field' as const, name: 'id', type: 'ID' },
+                { kind: 'Field' as const, name: 'name', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const data = {
+        user: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+          friend: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+          },
+        },
+      };
+
+      const { calls } = normalizeTest(selections, data);
+
+      const seen = new Set<string>();
+      for (const [storageKey, fieldKey] of calls) {
+        const key = `${storageKey}:${fieldKey}`;
+        expect(seen.has(key), `duplicate accessor call for ${key}`).toBe(false);
+        seen.add(key);
+      }
     });
 
     it('same entity appears multiple times in array', () => {
@@ -710,8 +755,6 @@ describe('normalize', () => {
         ['User:2', '__typename@{}'],
         ['User:2', 'id@{}'],
         ['User:2', 'name@{}'],
-        ['User:1', '__typename@{}'],
-        ['User:1', 'id@{}'],
         ['User:1', 'name@{}'],
       ]);
     });
@@ -3676,7 +3719,6 @@ describe('normalize', () => {
       expectSameCalls(calls, [
         [RootFieldKey, 'name@{}'],
         [RootFieldKey, 'email@{}'],
-        [RootFieldKey, 'email@{}'],
         [RootFieldKey, 'phone@{}'],
       ]);
     });
@@ -3705,7 +3747,6 @@ describe('normalize', () => {
         },
       });
       expectSameCalls(calls, [
-        [RootFieldKey, 'name@{}'],
         [RootFieldKey, 'name@{}'],
         [RootFieldKey, 'email@{}'],
       ]);
@@ -3756,7 +3797,6 @@ describe('normalize', () => {
         [RootFieldKey, 'entity@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
-        ['User:1', 'name@{}'],
         ['User:1', 'name@{}'],
       ]);
     });
@@ -3903,7 +3943,6 @@ describe('normalize', () => {
         [RootFieldKey, 'user@{}'],
         ['User:1', '__typename@{}'],
         ['User:1', 'id@{}'],
-        ['User:1', 'name@{}'],
         ['User:1', 'name@{}'],
         ['User:1', 'email@{}'],
       ]);

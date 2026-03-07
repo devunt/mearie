@@ -29,6 +29,15 @@ export const normalize = (
   variables: Record<string, unknown>,
   accessor?: (storageKey: StorageKey, fieldKey: FieldKey, oldValue: unknown, newValue: unknown) => void,
 ): void => {
+  const accessorNotified = accessor ? new Map<string, unknown>() : undefined;
+
+  const callAccessor = (storageKey: StorageKey, fieldKey: FieldKey, oldValue: unknown, newValue: unknown): void => {
+    const key = `${storageKey}\0${fieldKey}`;
+    if (accessorNotified!.has(key) && isEqual(accessorNotified!.get(key), newValue)) return;
+    accessorNotified!.set(key, newValue);
+    accessor!(storageKey, fieldKey, oldValue, newValue);
+  };
+
   const resolveEntityKey = (typename: string | undefined, data: Record<string, unknown>): StorageKey | null => {
     if (!typename) return null;
 
@@ -102,7 +111,7 @@ export const normalize = (
         const oldValue = storageKey === null ? undefined : storage[storageKey]?.[fieldKey];
 
         if (storageKey !== null && (!selection.selections || isNullish(oldValue) || isNullish(fieldValue))) {
-          accessor?.(storageKey, fieldKey, oldValue, fieldValue);
+          callAccessor?.(storageKey, fieldKey, oldValue, fieldValue);
         }
 
         const normalized = selection.selections
@@ -118,7 +127,7 @@ export const normalize = (
           !isEntityLink(fields[fieldKey]) &&
           !isEqual(oldValue, fields[fieldKey])
         ) {
-          accessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
+          callAccessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
         }
       } else if (
         selection.kind === 'FragmentSpread' ||

@@ -540,7 +540,7 @@ export class Cache {
 
     const { scalar, structural } = classifyChanges(changes);
 
-    const scalarPatches = processScalarChanges(scalar, this.#registry, this.#subscriptions);
+    const scalarPatches = processScalarChanges(scalar, this.#registry, this.#subscriptions, this.#storage);
 
     const structuralPatches = processStructuralChanges(
       structural,

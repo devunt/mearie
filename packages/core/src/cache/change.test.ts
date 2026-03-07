@@ -170,7 +170,7 @@ describe('processScalarChanges', () => {
 
     const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
 
-    const result = processScalarChanges(changes, registry, subscriptions);
+    const result = processScalarChanges(changes, registry, subscriptions, {} as Storage);
 
     expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'name'], value: 'Bob' }]);
   });
@@ -190,7 +190,7 @@ describe('processScalarChanges', () => {
 
     const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
 
-    const result = processScalarChanges(changes, registry, subscriptions);
+    const result = processScalarChanges(changes, registry, subscriptions, {} as Storage);
 
     expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'name'], value: 'Bob' }]);
     expect(result.get(2)).toEqual([{ type: 'set', path: ['author', 'name'], value: 'Bob' }]);
@@ -215,7 +215,7 @@ describe('processScalarChanges', () => {
 
     const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
 
-    const result = processScalarChanges(changes, registry, subscriptions);
+    const result = processScalarChanges(changes, registry, subscriptions, {} as Storage);
 
     expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'name'], value: 'Bob' }]);
     expect(result.has(2)).toBe(false);
@@ -227,7 +227,7 @@ describe('processScalarChanges', () => {
 
     const changes: FieldChange[] = [makeChange('User:1', 'name', 'Alice', 'Bob')];
 
-    const result = processScalarChanges(changes, registry, subscriptions);
+    const result = processScalarChanges(changes, registry, subscriptions, {} as Storage);
 
     expect(result.size).toBe(0);
   });
@@ -263,7 +263,7 @@ describe('processScalarChanges', () => {
       },
     ];
 
-    const result = processScalarChanges(changes, registry, subscriptions);
+    const result = processScalarChanges(changes, registry, subscriptions, {} as Storage);
 
     expect(result.get(1)).toEqual([{ type: 'set', path: ['user', 'address'], value: { city: 'Seoul', zip: '12345' } }]);
   });

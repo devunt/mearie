@@ -5475,4 +5475,803 @@ describe('Cache', () => {
       unsubQuery();
     });
   });
+
+  describe('mutation writing entity that also appears in a sibling array', () => {
+    it('should not produce duplicate entries when mutation creates entity and returns updated parent array', () => {
+      const cache = new Cache(schema);
+
+      // Selections shared by both query and mutation for User.posts
+      const postSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
+      ];
+
+      // Query: user(id) { posts { id, title } }
+      const queryArtifact = createArtifact('query', 'GetUserPosts', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'variable', name: 'userId' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              array: true,
+              selections: postSelections,
+            },
+          ],
+        },
+      ]);
+
+      // Step 1: Write initial query data — user with 2 posts
+      cache.writeQuery(
+        queryArtifact,
+        { userId: '1' },
+        {
+          user: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+            posts: [
+              { __typename: 'Post', id: '1', title: 'Post 1' },
+              { __typename: 'Post', id: '2', title: 'Post 2' },
+            ],
+          },
+        },
+      );
+
+      // Step 2: Subscribe to the query
+      const patches: Patch[] = [];
+      const { data: initialData, unsubscribe } = cache.subscribeQuery(
+        queryArtifact,
+        { userId: '1' },
+        (notification) => {
+          if (notification.type === 'patch') {
+            patches.push(...notification.patches);
+          }
+        },
+      );
+
+      expect(initialData).toEqual({
+        user: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+          posts: [
+            { __typename: 'Post', id: '1', title: 'Post 1' },
+            { __typename: 'Post', id: '2', title: 'Post 2' },
+          ],
+        },
+      });
+
+      // Step 3: Mutation creates Post 3 and returns the author's updated posts list.
+      // Post 3 appears BOTH as `createPost` (top-level) AND inside `createPost.author.posts`.
+      const mutationArtifact = createArtifact('mutation', 'CreatePost', [
+        {
+          kind: 'Field',
+          name: 'createPost',
+          type: 'Post',
+          selections: [
+            ...postSelections,
+            {
+              kind: 'Field',
+              name: 'author',
+              type: 'User',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'name', type: 'String' },
+                {
+                  kind: 'Field',
+                  name: 'posts',
+                  type: 'Post',
+                  array: true,
+                  selections: postSelections,
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          createPost: {
+            __typename: 'Post',
+            id: '3',
+            title: 'Post 3',
+            author: {
+              __typename: 'User',
+              id: '1',
+              name: 'Alice',
+              posts: [
+                { __typename: 'Post', id: '1', title: 'Post 1' },
+                { __typename: 'Post', id: '2', title: 'Post 2' },
+                { __typename: 'Post', id: '3', title: 'Post 3' },
+              ],
+            },
+          },
+        },
+      );
+
+      // Step 4: Verify subscription received correct patches and data has no duplicates
+      expect(patches.length).toBeGreaterThan(0);
+
+      // Apply patches to initial data and verify no duplicates
+      const data = structuredClone(initialData);
+      for (const patch of patches) {
+        if (patch.type === 'set') {
+          let target = data as Record<string | number, unknown>;
+          for (let i = 0; i < patch.path.length - 1; i++) {
+            target = target[patch.path[i]!] as Record<string | number, unknown>;
+          }
+          target[patch.path.at(-1)!] = patch.value;
+        } else if (patch.type === 'splice') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          (target as unknown as unknown[]).splice(patch.index, patch.deleteCount, ...patch.items);
+        } else if (patch.type === 'swap') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          const arr = target as unknown as unknown[];
+          [arr[patch.i], arr[patch.j]] = [arr[patch.j], arr[patch.i]];
+        }
+      }
+
+      const posts = (data as { user: { posts: { id: string }[] } }).user.posts;
+      const postIds = posts.map((p) => p.id);
+
+      // No duplicate IDs
+      expect(postIds).toEqual([...new Set(postIds)]);
+
+      // Correct final state
+      expect(posts).toEqual([
+        { __typename: 'Post', id: '1', title: 'Post 1' },
+        { __typename: 'Post', id: '2', title: 'Post 2' },
+        { __typename: 'Post', id: '3', title: 'Post 3' },
+      ]);
+
+      // Also verify readQuery returns consistent data
+      const readResult = cache.readQuery(queryArtifact, { userId: '1' });
+      expect(readResult.data).toEqual({
+        user: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+          posts: [
+            { __typename: 'Post', id: '1', title: 'Post 1' },
+            { __typename: 'Post', id: '2', title: 'Post 2' },
+            { __typename: 'Post', id: '3', title: 'Post 3' },
+          ],
+        },
+      });
+
+      unsubscribe();
+    });
+
+    it('should not produce duplicate entries when mutation uses InlineFragment (union type) to return updated array', () => {
+      const cache = new Cache(schema);
+
+      const postSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
+      ];
+
+      // Query: user(id) { posts { id, title } }
+      const queryArtifact = createArtifact('query', 'GetUserPosts', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'variable', name: 'userId' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              array: true,
+              selections: postSelections,
+            },
+          ],
+        },
+      ]);
+
+      // Initial data: user with 2 posts
+      cache.writeQuery(
+        queryArtifact,
+        { userId: '1' },
+        {
+          user: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+            posts: [
+              { __typename: 'Post', id: '1', title: 'Post 1' },
+              { __typename: 'Post', id: '2', title: 'Post 2' },
+            ],
+          },
+        },
+      );
+
+      // Subscribe
+      const patches: Patch[] = [];
+      const { data: initialData, unsubscribe } = cache.subscribeQuery(
+        queryArtifact,
+        { userId: '1' },
+        (notification) => {
+          if (notification.type === 'patch') {
+            patches.push(...notification.patches);
+          }
+        },
+      );
+
+      // Mutation uses InlineFragment (union type pattern) to return updated array.
+      // This mirrors: container { ... on User { id, posts { ... } } }
+      // where container is a union type and Post 3 also appears at createPost top level.
+      const mutationArtifact = createArtifact('mutation', 'CreatePost', [
+        {
+          kind: 'Field',
+          name: 'createPost',
+          type: 'Post',
+          selections: [
+            ...postSelections,
+            {
+              kind: 'Field',
+              name: 'container',
+              type: 'User',
+              selections: [
+                {
+                  kind: 'InlineFragment',
+                  on: 'User',
+                  selections: [
+                    { kind: 'Field', name: '__typename', type: 'String' },
+                    { kind: 'Field', name: 'id', type: 'ID' },
+                    { kind: 'Field', name: 'name', type: 'String' },
+                    {
+                      kind: 'Field',
+                      name: 'posts',
+                      type: 'Post',
+                      array: true,
+                      selections: postSelections,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          createPost: {
+            __typename: 'Post',
+            id: '3',
+            title: 'Post 3',
+            container: {
+              __typename: 'User',
+              id: '1',
+              name: 'Alice',
+              posts: [
+                { __typename: 'Post', id: '1', title: 'Post 1' },
+                { __typename: 'Post', id: '2', title: 'Post 2' },
+                { __typename: 'Post', id: '3', title: 'Post 3' },
+              ],
+            },
+          },
+        },
+      );
+
+      expect(patches.length).toBeGreaterThan(0);
+
+      // Apply patches to initial data
+      const data = structuredClone(initialData);
+      for (const patch of patches) {
+        if (patch.type === 'set') {
+          let target = data as Record<string | number, unknown>;
+          for (let i = 0; i < patch.path.length - 1; i++) {
+            target = target[patch.path[i]!] as Record<string | number, unknown>;
+          }
+          target[patch.path.at(-1)!] = patch.value;
+        } else if (patch.type === 'splice') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          (target as unknown as unknown[]).splice(patch.index, patch.deleteCount, ...patch.items);
+        } else if (patch.type === 'swap') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          const arr = target as unknown as unknown[];
+          [arr[patch.i], arr[patch.j]] = [arr[patch.j], arr[patch.i]];
+        }
+      }
+
+      const posts = (data as { user: { posts: { id: string }[] } }).user.posts;
+      const postIds = posts.map((p) => p.id);
+
+      // No duplicate IDs
+      expect(postIds).toEqual([...new Set(postIds)]);
+
+      // Correct final state
+      expect(posts).toEqual([
+        { __typename: 'Post', id: '1', title: 'Post 1' },
+        { __typename: 'Post', id: '2', title: 'Post 2' },
+        { __typename: 'Post', id: '3', title: 'Post 3' },
+      ]);
+
+      // Verify readQuery consistency
+      const readResult = cache.readQuery(queryArtifact, { userId: '1' });
+      expect(readResult.data).toEqual({
+        user: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+          posts: [
+            { __typename: 'Post', id: '1', title: 'Post 1' },
+            { __typename: 'Post', id: '2', title: 'Post 2' },
+            { __typename: 'Post', id: '3', title: 'Post 3' },
+          ],
+        },
+      });
+
+      unsubscribe();
+    });
+
+    it('should not produce duplicate entries when mutation causes both scalar and structural changes on the same subscription', () => {
+      const cache = new Cache(schema);
+
+      const postSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
+      ];
+
+      // Query: user(id) { name, posts { id, title } }
+      const queryArtifact = createArtifact('query', 'GetUserPosts', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'variable', name: 'userId' } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              array: true,
+              selections: postSelections,
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        queryArtifact,
+        { userId: '1' },
+        {
+          user: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+            posts: [
+              { __typename: 'Post', id: '1', title: 'Post 1' },
+              { __typename: 'Post', id: '2', title: 'Post 2' },
+            ],
+          },
+        },
+      );
+
+      const allNotifications: Patch[][] = [];
+      const { data: initialData, unsubscribe } = cache.subscribeQuery(
+        queryArtifact,
+        { userId: '1' },
+        (notification) => {
+          if (notification.type === 'patch') {
+            allNotifications.push(notification.patches);
+          }
+        },
+      );
+
+      // Mutation: creates Post 3, updates existing Post 1's title (scalar change),
+      // AND returns updated posts array (structural change).
+      // This causes BOTH scalar and structural changes for the same subscription.
+      const mutationArtifact = createArtifact('mutation', 'CreatePost', [
+        {
+          kind: 'Field',
+          name: 'createPost',
+          type: 'Post',
+          selections: [
+            ...postSelections,
+            {
+              kind: 'Field',
+              name: 'container',
+              type: 'User',
+              selections: [
+                {
+                  kind: 'InlineFragment',
+                  on: 'User',
+                  selections: [
+                    { kind: 'Field', name: '__typename', type: 'String' },
+                    { kind: 'Field', name: 'id', type: 'ID' },
+                    { kind: 'Field', name: 'name', type: 'String' },
+                    {
+                      kind: 'Field',
+                      name: 'posts',
+                      type: 'Post',
+                      array: true,
+                      selections: postSelections,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          createPost: {
+            __typename: 'Post',
+            id: '3',
+            title: 'Post 3',
+            container: {
+              __typename: 'User',
+              id: '1',
+              name: 'Alice',
+              posts: [
+                { __typename: 'Post', id: '1', title: 'Updated Post 1' }, // scalar change
+                { __typename: 'Post', id: '2', title: 'Post 2' },
+                { __typename: 'Post', id: '3', title: 'Post 3' }, // structural change (new)
+              ],
+            },
+          },
+        },
+      );
+
+      // Collect ALL patches from ALL notifications
+      const allPatches = allNotifications.flat();
+      expect(allPatches.length).toBeGreaterThan(0);
+
+      // Apply all patches to initial data
+      const data = structuredClone(initialData);
+      for (const patch of allPatches) {
+        if (patch.type === 'set') {
+          let target = data as Record<string | number, unknown>;
+          for (let i = 0; i < patch.path.length - 1; i++) {
+            target = target[patch.path[i]!] as Record<string | number, unknown>;
+          }
+          target[patch.path.at(-1)!] = patch.value;
+        } else if (patch.type === 'splice') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          (target as unknown as unknown[]).splice(patch.index, patch.deleteCount, ...patch.items);
+        } else if (patch.type === 'swap') {
+          let target = data as Record<string | number, unknown>;
+          for (const segment of patch.path) {
+            target = target[segment] as Record<string | number, unknown>;
+          }
+          const arr = target as unknown as unknown[];
+          [arr[patch.i], arr[patch.j]] = [arr[patch.j], arr[patch.i]];
+        }
+      }
+
+      const posts = (data as { user: { posts: { id: string; title: string }[] } }).user.posts;
+      const postIds = posts.map((p) => p.id);
+
+      // No duplicate IDs
+      expect(postIds).toEqual([...new Set(postIds)]);
+
+      // Correct final state with both scalar and structural changes applied
+      expect(posts).toEqual([
+        { __typename: 'Post', id: '1', title: 'Updated Post 1' },
+        { __typename: 'Post', id: '2', title: 'Post 2' },
+        { __typename: 'Post', id: '3', title: 'Post 3' },
+      ]);
+
+      unsubscribe();
+    });
+
+    it('should produce correct independent patches when two query subscriptions track the same entity array', () => {
+      const cache = new Cache(schema);
+
+      const postSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'title', type: 'String' },
+      ];
+
+      const userWithPostsSelections = [
+        { kind: 'Field' as const, name: '__typename', type: 'String' },
+        { kind: 'Field' as const, name: 'id', type: 'ID' },
+        { kind: 'Field' as const, name: 'name', type: 'String' },
+        {
+          kind: 'Field' as const,
+          name: 'posts',
+          type: 'Post',
+          array: true,
+          selections: postSelections,
+        },
+      ];
+
+      // Query A: user(id) { posts { ... } } — like FolderChildren query
+      const queryA = createArtifact('query', 'GetUserPostsA', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          args: { id: { kind: 'variable', name: 'userId' } },
+          selections: userWithPostsSelections,
+        },
+      ]);
+
+      // Query B: author(id) { posts { ... } } — another query tracking same entity's posts
+      const queryB = createArtifact('query', 'GetUserPostsB', [
+        {
+          kind: 'Field',
+          name: 'author',
+          type: 'User',
+          args: { id: { kind: 'variable', name: 'authorId' } },
+          selections: userWithPostsSelections,
+        },
+      ]);
+
+      // Write initial data for both queries (same User:1)
+      cache.writeQuery(
+        queryA,
+        { userId: '1' },
+        {
+          user: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+            posts: [
+              { __typename: 'Post', id: '1', title: 'Post 1' },
+              { __typename: 'Post', id: '2', title: 'Post 2' },
+            ],
+          },
+        },
+      );
+      cache.writeQuery(
+        queryB,
+        { authorId: '1' },
+        {
+          author: {
+            __typename: 'User',
+            id: '1',
+            name: 'Alice',
+            posts: [
+              { __typename: 'Post', id: '1', title: 'Post 1' },
+              { __typename: 'Post', id: '2', title: 'Post 2' },
+            ],
+          },
+        },
+      );
+
+      // Subscribe to both
+      const patchesA: Patch[] = [];
+      const resultA = cache.subscribeQuery(queryA, { userId: '1' }, (n) => {
+        if (n.type === 'patch') patchesA.push(...n.patches);
+      });
+
+      const patchesB: Patch[] = [];
+      const resultB = cache.subscribeQuery(queryB, { authorId: '1' }, (n) => {
+        if (n.type === 'patch') patchesB.push(...n.patches);
+      });
+
+      // Mutation creates Post 3, returns updated User:1.posts via InlineFragment (union)
+      const mutationArtifact = createArtifact('mutation', 'CreatePost', [
+        {
+          kind: 'Field',
+          name: 'createPost',
+          type: 'Post',
+          selections: [
+            ...postSelections,
+            {
+              kind: 'Field',
+              name: 'container',
+              type: 'User',
+              selections: [
+                {
+                  kind: 'InlineFragment',
+                  on: 'User',
+                  selections: userWithPostsSelections,
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        mutationArtifact,
+        {},
+        {
+          createPost: {
+            __typename: 'Post',
+            id: '3',
+            title: 'Post 3',
+            container: {
+              __typename: 'User',
+              id: '1',
+              name: 'Alice',
+              posts: [
+                { __typename: 'Post', id: '1', title: 'Post 1' },
+                { __typename: 'Post', id: '2', title: 'Post 2' },
+                { __typename: 'Post', id: '3', title: 'Post 3' },
+              ],
+            },
+          },
+        },
+      );
+
+      // Both subscriptions should receive patches
+      expect(patchesA.length).toBeGreaterThan(0);
+      expect(patchesB.length).toBeGreaterThan(0);
+
+      // Verify each subscription's patches produce correct results independently
+      const dataA = structuredClone(resultA.data);
+      applyPatchesMutable(dataA, patchesA);
+      const postsA = (dataA as { user: { posts: { id: string }[] } }).user.posts;
+      expect(postsA.map((p) => p.id)).toEqual(['1', '2', '3']);
+
+      const dataB = structuredClone(resultB.data);
+      applyPatchesMutable(dataB, patchesB);
+      const postsB = (dataB as { author: { posts: { id: string }[] } }).author.posts;
+      expect(postsB.map((p) => p.id)).toEqual(['1', '2', '3']);
+
+      // No duplicates in either
+      expect(postsA.map((p) => p.id)).toEqual([...new Set(postsA.map((p) => p.id))]);
+      expect(postsB.map((p) => p.id)).toEqual([...new Set(postsB.map((p) => p.id))]);
+
+      resultA.unsubscribe();
+      resultB.unsubscribe();
+    });
+  });
+
+  describe('embedded object partial update', () => {
+    const fullArtifact = createArtifact('query', 'GetUserUsage', [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          {
+            kind: 'Field',
+            name: 'usage',
+            type: 'Usage',
+            selections: [
+              { kind: 'Field', name: 'current', type: 'Int' },
+              { kind: 'Field', name: 'limit', type: 'Int' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const partialArtifact = createArtifact('mutation', 'UpdateUsage', [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          {
+            kind: 'Field',
+            name: 'usage',
+            type: 'Usage',
+            selections: [{ kind: 'Field', name: 'current', type: 'Int' }],
+          },
+        ],
+      },
+    ]);
+
+    it('subscriber should retain all embedded object fields after partial update', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(fullArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 50, limit: 100 } } });
+
+      const listener = vi.fn();
+      cache.subscribeQuery(fullArtifact, {}, listener);
+
+      cache.writeQuery(partialArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 75 } } });
+
+      expect(listener).toHaveBeenCalled();
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        const data = { user: { __typename: 'User', id: '1', usage: { current: 50, limit: 100 } } };
+        applyPatchesMutable(data, notification.patches);
+        expect(data.user.usage).toEqual({ current: 75, limit: 100 });
+      }
+    });
+
+    it('subscriber cached data should preserve unaffected embedded fields', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(fullArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 50, limit: 100 } } });
+
+      const listener = vi.fn();
+      const sub = cache.subscribeQuery(fullArtifact, {}, listener);
+
+      cache.writeQuery(partialArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 75 } } });
+
+      const result = cache.readQuery(fullArtifact, {});
+      const user = (result.data as Record<string, unknown>).user as Record<string, unknown>;
+      const usage = user.usage as Record<string, number>;
+      expect(usage.limit).toBe(100);
+      expect(usage.current).toBe(75);
+
+      sub.unsubscribe();
+    });
+
+    it('object scalar (no selections) should be replaced atomically', () => {
+      const cache = new Cache(schema);
+
+      const artifactWithMeta = createArtifact('query', 'GetUserMeta', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'metadata', type: 'JSON' },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifactWithMeta,
+        {},
+        { user: { __typename: 'User', id: '1', metadata: { theme: 'dark', lang: 'en' } } },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifactWithMeta, {}, listener);
+
+      cache.writeQuery(artifactWithMeta, {}, { user: { __typename: 'User', id: '1', metadata: { theme: 'light' } } });
+
+      expect(listener).toHaveBeenCalled();
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        const data = { user: { __typename: 'User', id: '1', metadata: { theme: 'dark', lang: 'en' } } };
+        applyPatchesMutable(data, notification.patches);
+        // Object scalar should be fully replaced, NOT merged
+        expect(data.user.metadata).toEqual({ theme: 'light' });
+      }
+    });
+  });
 });

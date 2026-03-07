@@ -55,6 +55,7 @@ export const processScalarChanges = (
   changes: FieldChange[],
   registry: CursorRegistry,
   subscriptions: Map<number, Subscription>,
+  storage: Storage,
 ): Map<number, Patch[]> => {
   const result = new Map<number, Patch[]>();
 
@@ -70,7 +71,8 @@ export const processScalarChanges = (
 
       let patchValue: unknown = change.newValue;
       if (entry.selections && isNormalizedRecord(change.newValue)) {
-        const { data } = denormalize(entry.selections, {} as Storage, change.newValue, sub.variables);
+        const mergedValue = storage[change.storageKey]?.[change.fieldKey] ?? change.newValue;
+        const { data } = denormalize(entry.selections, {} as Storage, mergedValue, sub.variables);
         patchValue = data;
       }
 

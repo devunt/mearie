@@ -4508,6 +4508,85 @@ describe('normalize', () => {
     });
   });
 
+  describe('embedded object partial update', () => {
+    it('object scalar (no selections) should be replaced atomically', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'metadata', type: 'JSON' },
+          ],
+        },
+      ];
+
+      const { storage } = normalizeTest(selections, {
+        user: { __typename: 'User', id: '1', metadata: { theme: 'dark', lang: 'en' } },
+      });
+
+      normalizeTest(selections, { user: { __typename: 'User', id: '1', metadata: { theme: 'light' } } }, {}, storage);
+
+      const entityStorage = storage['User:1' as StorageKey]!;
+      // No selections on metadata → should be replaced atomically, not merged
+      expect(entityStorage['metadata@{}']).toEqual({ theme: 'light' });
+    });
+
+    it('should merge into existing embedded object instead of replacing', () => {
+      const fullSelections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'usage',
+              type: 'Usage',
+              selections: [
+                { kind: 'Field', name: 'current', type: 'Int' },
+                { kind: 'Field', name: 'limit', type: 'Int' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const { storage } = normalizeTest(fullSelections, {
+        user: { __typename: 'User', id: '1', usage: { current: 50, limit: 100 } },
+      });
+
+      const partialSelections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'usage',
+              type: 'Usage',
+              selections: [{ kind: 'Field', name: 'current', type: 'Int' }],
+            },
+          ],
+        },
+      ];
+
+      normalizeTest(partialSelections, { user: { __typename: 'User', id: '1', usage: { current: 75 } } }, {}, storage);
+
+      const entityStorage = storage['User:1' as StorageKey]!;
+      const usage = entityStorage['usage@{}'] as Record<string, unknown>;
+      expect(usage['current@{}']).toBe(75);
+      expect(usage['limit@{}']).toBe(100);
+    });
+  });
+
   describe('@skip and @include directives', () => {
     it('@skip(if: true) skips field during normalization', () => {
       const selections: Selection[] = [

@@ -5043,6 +5043,67 @@ describe('Cache', () => {
         user: { __typename: 'User', id: '1', name: 'Bob', email: 'alice@example.com' },
       });
     });
+
+    it('should deep merge embedded objects preserving fields not in snapshot', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'profile',
+              type: 'Profile',
+              selections: [
+                { kind: 'Field', name: 'bio', type: 'String' },
+                { kind: 'Field', name: 'avatar', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', profile: { bio: 'hello', avatar: 'pic.png' } } },
+      );
+
+      const snapshotCache = new Cache(schema);
+      const bioOnlyArtifact = createArtifact('query', 'GetUserBio', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'profile',
+              type: 'Profile',
+              selections: [{ kind: 'Field', name: 'bio', type: 'String' }],
+            },
+          ],
+        },
+      ]);
+      snapshotCache.writeQuery(
+        bioOnlyArtifact,
+        {},
+        { user: { __typename: 'User', id: '1', profile: { bio: 'updated' } } },
+      );
+      const snapshot = snapshotCache.extract();
+
+      cache.hydrate(snapshot);
+
+      const result = cache.readQuery(artifact, {});
+      expect(result.data).toEqual({
+        user: { __typename: 'User', id: '1', profile: { bio: 'updated', avatar: 'pic.png' } },
+      });
+    });
   });
 
   describe('extract captures optimistic state + stale not preserved', () => {

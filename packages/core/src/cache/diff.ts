@@ -181,8 +181,9 @@ export const diffSnapshots = (
 
     for (const [i, item] of cur.entries()) {
       const entityKey = newKeys[i];
-      const matchedOld = entityKey ? oldByKey.get(entityKey) : undefined;
-      diff(matchedOld, item, [...path, i]);
+      if (entityKey && oldByKey.has(entityKey)) {
+        diff(oldByKey.get(entityKey), item, [...path, i]);
+      }
     }
   };
 

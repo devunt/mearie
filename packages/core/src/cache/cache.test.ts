@@ -6208,7 +6208,7 @@ describe('Cache', () => {
       cache.writeQuery(partialArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 75 } } });
 
       expect(listener).toHaveBeenCalled();
-      const notification = listener.mock.calls[0][0] as CacheNotification;
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
       expect(notification.type).toBe('patch');
       if (notification.type === 'patch') {
         const data = { user: { __typename: 'User', id: '1', usage: { current: 50, limit: 100 } } };
@@ -6227,10 +6227,11 @@ describe('Cache', () => {
 
       cache.writeQuery(partialArtifact, {}, { user: { __typename: 'User', id: '1', usage: { current: 75 } } });
 
-      // After notification, re-reading the query from subscription should still have limit
       const result = cache.readQuery(fullArtifact, {});
-      expect((result.data as Record<string, Record<string, Record<string, number>>>).user.usage.limit).toBe(100);
-      expect((result.data as Record<string, Record<string, Record<string, number>>>).user.usage.current).toBe(75);
+      const user = (result.data as Record<string, unknown>).user as Record<string, unknown>;
+      const usage = user.usage as Record<string, number>;
+      expect(usage.limit).toBe(100);
+      expect(usage.current).toBe(75);
 
       sub.unsubscribe();
     });
@@ -6263,7 +6264,7 @@ describe('Cache', () => {
       cache.writeQuery(artifactWithMeta, {}, { user: { __typename: 'User', id: '1', metadata: { theme: 'light' } } });
 
       expect(listener).toHaveBeenCalled();
-      const notification = listener.mock.calls[0][0] as CacheNotification;
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
       expect(notification.type).toBe('patch');
       if (notification.type === 'patch') {
         const data = { user: { __typename: 'User', id: '1', metadata: { theme: 'dark', lang: 'en' } } };

@@ -6236,6 +6236,57 @@ describe('Cache', () => {
       sub.unsubscribe();
     });
 
+    it('embedded object array change should not expose storage keys in patch value', () => {
+      const cache = new Cache(schema);
+
+      const artifact = createArtifact('query', 'GetUserChanges', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'changes',
+              type: 'Change',
+              array: true,
+              selections: [{ kind: 'Field', name: 'additions', type: 'Int' }],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', changes: [{ additions: 10 }] },
+        },
+      );
+
+      const listener = vi.fn();
+      cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        {
+          user: { __typename: 'User', id: '1', changes: [{ additions: 20 }] },
+        },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        const data = { user: { __typename: 'User', id: '1', changes: [{ additions: 10 }] } };
+        applyPatchesMutable(data, notification.patches);
+        expect(data.user.changes).toEqual([{ additions: 20 }]);
+      }
+    });
+
     it('object scalar (no selections) should be replaced atomically', () => {
       const cache = new Cache(schema);
 

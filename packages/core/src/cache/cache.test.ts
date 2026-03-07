@@ -6402,8 +6402,8 @@ describe('Cache', () => {
       );
 
       const result = cache.readQuery(queryWithBothFields, {});
-      const data = result.data as Record<string, Record<string, unknown>>;
-      expect(data.impersonation.user).toEqual({ __typename: 'User', id: 'user1', name: 'Target' });
+      const impersonation = (result.data as Record<string, unknown>).impersonation as Record<string, unknown>;
+      expect(impersonation.user).toEqual({ __typename: 'User', id: 'user1', name: 'Target' });
     });
 
     it('subscriber patch should not null-out fields missing from partial query write', () => {

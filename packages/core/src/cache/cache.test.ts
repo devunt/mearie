@@ -6325,4 +6325,130 @@ describe('Cache', () => {
       }
     });
   });
+
+  describe('root-level embedded object across different queries', () => {
+    const queryWithBothFields = createArtifact('query', 'DashboardLayout', [
+      {
+        kind: 'Field',
+        name: 'impersonation',
+        type: 'Impersonation',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'admin',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const queryWithOneField = createArtifact('query', 'EntityPane', [
+      {
+        kind: 'Field',
+        name: 'impersonation',
+        type: 'Impersonation',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'admin',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    it('should not drop fields when another query writes a subset of the embedded object', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(
+        queryWithBothFields,
+        {},
+        {
+          impersonation: {
+            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+            user: { __typename: 'User', id: 'user1', name: 'Target' },
+          },
+        },
+      );
+
+      cache.writeQuery(
+        queryWithOneField,
+        {},
+        {
+          impersonation: {
+            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+          },
+        },
+      );
+
+      const result = cache.readQuery(queryWithBothFields, {});
+      const data = result.data as Record<string, Record<string, unknown>>;
+      expect(data.impersonation.user).toEqual({ __typename: 'User', id: 'user1', name: 'Target' });
+    });
+
+    it('subscriber patch should not null-out fields missing from partial query write', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(
+        queryWithBothFields,
+        {},
+        {
+          impersonation: {
+            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+            user: { __typename: 'User', id: 'user1', name: 'Target' },
+          },
+        },
+      );
+
+      const listener = vi.fn();
+      const sub = cache.subscribeQuery(queryWithBothFields, {}, listener);
+
+      cache.writeQuery(
+        queryWithOneField,
+        {},
+        {
+          impersonation: {
+            admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+          },
+        },
+      );
+
+      if (listener.mock.calls.length > 0) {
+        const notification = listener.mock.calls[0]![0] as CacheNotification;
+        if (notification.type === 'patch') {
+          const data = {
+            impersonation: {
+              admin: { __typename: 'User', id: 'admin1', name: 'Admin' },
+              user: { __typename: 'User', id: 'user1', name: 'Target' },
+            },
+          };
+          applyPatchesMutable(data, notification.patches);
+          expect(data.impersonation.user).not.toBeNull();
+          expect(data.impersonation.user.name).toBe('Target');
+        }
+      }
+
+      sub.unsubscribe();
+    });
+  });
 });

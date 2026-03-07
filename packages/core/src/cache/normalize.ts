@@ -147,5 +147,5 @@ export const normalize = (
   };
 
   const fields = normalizeField(RootFieldKey, selections, data) as Record<string, unknown>;
-  storage[RootFieldKey] = { ...storage[RootFieldKey], ...fields };
+  mergeFields(storage[RootFieldKey], fields);
 };

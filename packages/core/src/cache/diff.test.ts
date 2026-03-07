@@ -371,6 +371,35 @@ describe('diffSnapshots', () => {
     expect(splicePatch!.items[0]).toEqual({ id: '2', title: 'New' });
   });
 
+  it('should not generate redundant set patch for splice-inserted items', () => {
+    const oldData = {
+      posts: [{ id: '1', title: 'First' }],
+    };
+    const newData = {
+      posts: [
+        { id: '1', title: 'First' },
+        { id: '2', title: 'New' },
+      ],
+    };
+    const entityArrayChanges = new Map<string, EntityArrayChange>([
+      [
+        pathToKeyFn(['posts']),
+        {
+          oldKeys: ['Post:1'],
+          newKeys: ['Post:1', 'Post:2'],
+        },
+      ],
+    ]);
+
+    const patches = diffSnapshots(oldData, newData, entityArrayChanges);
+
+    const setPatches = patches.filter(
+      (p): p is Extract<typeof p, { type: 'set' }> =>
+        p.type === 'set' && p.path.length >= 2 && p.path[0] === 'posts' && p.path[1] === 1,
+    );
+    expect(setPatches).toHaveLength(0);
+  });
+
   it('generates swap + set patches for reorder with field change', () => {
     const oldData = {
       posts: [

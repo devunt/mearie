@@ -6325,4 +6325,130 @@ describe('Cache', () => {
       }
     });
   });
+
+  describe('root-level embedded object across different queries', () => {
+    const queryWithBothFields = createArtifact('query', 'GetSessionFull', [
+      {
+        kind: 'Field',
+        name: 'session',
+        type: 'Session',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'owner',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+          {
+            kind: 'Field',
+            name: 'viewer',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const queryWithOneField = createArtifact('query', 'GetSessionOwner', [
+      {
+        kind: 'Field',
+        name: 'session',
+        type: 'Session',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'owner',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    it('should not drop fields when another query writes a subset of the embedded object', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(
+        queryWithBothFields,
+        {},
+        {
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+            viewer: { __typename: 'User', id: '2', name: 'Bob' },
+          },
+        },
+      );
+
+      cache.writeQuery(
+        queryWithOneField,
+        {},
+        {
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+          },
+        },
+      );
+
+      const result = cache.readQuery(queryWithBothFields, {});
+      const session = (result.data as Record<string, unknown>).session as Record<string, unknown>;
+      expect(session.viewer).toEqual({ __typename: 'User', id: '2', name: 'Bob' });
+    });
+
+    it('subscriber patch should not null-out fields missing from partial query write', () => {
+      const cache = new Cache(schema);
+
+      cache.writeQuery(
+        queryWithBothFields,
+        {},
+        {
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+            viewer: { __typename: 'User', id: '2', name: 'Bob' },
+          },
+        },
+      );
+
+      const listener = vi.fn();
+      const sub = cache.subscribeQuery(queryWithBothFields, {}, listener);
+
+      cache.writeQuery(
+        queryWithOneField,
+        {},
+        {
+          session: {
+            owner: { __typename: 'User', id: '1', name: 'Alice' },
+          },
+        },
+      );
+
+      if (listener.mock.calls.length > 0) {
+        const notification = listener.mock.calls[0]![0] as CacheNotification;
+        if (notification.type === 'patch') {
+          const data = {
+            session: {
+              owner: { __typename: 'User', id: '1', name: 'Alice' },
+              viewer: { __typename: 'User', id: '2', name: 'Bob' },
+            },
+          };
+          applyPatchesMutable(data, notification.patches);
+          expect(data.session.viewer).not.toBeNull();
+          expect(data.session.viewer.name).toBe('Bob');
+        }
+      }
+
+      sub.unsubscribe();
+    });
+  });
 });

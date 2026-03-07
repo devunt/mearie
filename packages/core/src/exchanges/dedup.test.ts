@@ -356,6 +356,52 @@ describe('dedupExchange', () => {
     });
   });
 
+  describe('teardown race condition with delay', () => {
+    it('should not deliver duplicate results after rapid teardown and resubscribe', async () => {
+      const exchange = dedupExchange();
+      const results: OperationResult[] = [];
+
+      vi.useFakeTimers();
+
+      const subject = makeSubject<Operation>();
+      const forward = makeTestForward((op) => ({
+        operation: op,
+        data: { user: { id: 1 } },
+      }));
+
+      const unsubscribe = pipe(
+        subject.source,
+        exchange({ forward, client: null as never }).io,
+        subscribe({
+          next: (result) => {
+            results.push(result);
+          },
+        }),
+      );
+
+      // Simulate Svelte $effect re-run: subscribe → teardown → resubscribe
+      const op1 = makeTestOperation({ name: 'GetUser', variables: { id: 1 }, key: 'op-1' });
+      subject.next(op1);
+
+      // Teardown arrives before delay(0) fires — op-1 not yet delivered downstream
+      const teardown1 = makeTestOperation({ variant: 'teardown', key: 'op-1' });
+      subject.next(teardown1);
+
+      // Resubscribe with same query, new key
+      const op2 = makeTestOperation({ name: 'GetUser', variables: { id: 1 }, key: 'op-2' });
+      subject.next(op2);
+
+      await vi.runAllTimersAsync();
+
+      // op-2 should receive exactly one result, not two
+      const op2Results = results.filter((r) => r.operation.key === 'op-2');
+      expect(op2Results).toHaveLength(1);
+
+      unsubscribe();
+      vi.useRealTimers();
+    });
+  });
+
   describe('complex scenarios', () => {
     it('should handle mixed operation types', async () => {
       const exchange = dedupExchange();

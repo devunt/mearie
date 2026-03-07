@@ -72,6 +72,11 @@ export const dedupExchange = (): Exchange => {
           return (op.metadata.dedup?.skip ?? false) || !isInflight;
         }),
         delay(0),
+        filter((op) => {
+          const dedupKey = makeDedupKey(op);
+          const subs = operations.get(dedupKey);
+          return subs?.has(op.key) ?? false;
+        }),
       );
 
       const teardown$ = pipe(

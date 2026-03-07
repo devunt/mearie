@@ -1,6 +1,14 @@
 import type { Selection } from '@mearie/shared';
 import type { CursorEntry, DependencyKey, PropertyPath, Storage, StorageKey } from './types.ts';
-import { makeFieldKey, makeDependencyKey, resolveArguments, isEntityLink, isNullish, mergeFields } from './utils.ts';
+import {
+  makeFieldKey,
+  makeDependencyKey,
+  resolveArguments,
+  isEntityLink,
+  isNullish,
+  mergeFields,
+  shouldIncludeField,
+} from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 
 /**
@@ -157,6 +165,8 @@ export const traceSelections = (
 
     for (const selection of sels) {
       if (selection.kind === 'Field') {
+        if (!shouldIncludeField(selection.directives, variables)) continue;
+
         const fieldKey = makeFieldKey(selection, variables);
         const fieldValue = data[fieldKey];
         const fieldPath = [...path, selection.alias ?? selection.name];

@@ -459,6 +459,22 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         field.directives.iter().any(|d| d.name.as_str() == "required")
     }
 
+    fn has_conditional_directive(&self, field: &Field<'b>) -> bool {
+        field.directives.iter().any(|d| {
+            match d.name.as_str() {
+                "skip" => {
+                    // @skip(if: false) is a no-op → field always included
+                    !matches!(d.get_argument("if"), Some(Value::Boolean(false)))
+                }
+                "include" => {
+                    // @include(if: true) is a no-op → field always included
+                    !matches!(d.get_argument("if"), Some(Value::Boolean(true)))
+                }
+                _ => false,
+            }
+        })
+    }
+
     fn has_cascade_action(&self, field: &Field<'b>) -> bool {
         field.directives.iter().any(|d| {
             if d.name.as_str() != "required" {
@@ -520,7 +536,8 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
 
         let graphql_type = &field_def.typ;
         let has_required = self.has_required_directive(field);
-        let is_optional = graphql_type.is_nullable() && !has_required;
+        let has_conditional = self.has_conditional_directive(field);
+        let is_optional = has_conditional || (graphql_type.is_nullable() && !has_required);
 
         let field_type = if !field.selection_set.is_empty() {
             let inner_type_name = graphql_type.innermost_type().as_str();
@@ -1404,6 +1421,141 @@ mod tests {
         // profile is nullable → cascade absorbed at profile
         // user's selection set should NOT be nullable from cascade
         assert!(!source_buf.code.contains("export type GetUser$data = $Nullable<{"));
+    }
+
+    #[test]
+    fn test_skip_with_variable_makes_non_null_field_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser($cond: Boolean!) { user { name @skip(if: $cond) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // name is non-null in schema but @skip can exclude it → must be optional
+        assert_contains!(source_buf.code, "name?:");
+    }
+
+    #[test]
+    fn test_include_with_variable_makes_non_null_field_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser($cond: Boolean!) { user { name @include(if: $cond) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // name is non-null in schema but @include can exclude it → must be optional
+        assert_contains!(source_buf.code, "name?:");
+    }
+
+    #[test]
+    fn test_skip_with_literal_true_makes_field_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser { user { name @skip(if: true) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // @skip(if: true) always excludes → optional
+        assert_contains!(source_buf.code, "name?:");
+    }
+
+    #[test]
+    fn test_skip_with_literal_false_keeps_field_non_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser { user { name @skip(if: false) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // @skip(if: false) is a no-op → field stays non-optional
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+        assert!(!source_buf.code.contains("name?:"));
+    }
+
+    #[test]
+    fn test_include_with_literal_true_keeps_field_non_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser { user { name @include(if: true) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // @include(if: true) is a no-op → field stays non-optional
+        assert_contains!(source_buf.code, "name: $Scalars[\"String\"]");
+        assert!(!source_buf.code.contains("name?:"));
+    }
+
+    #[test]
+    fn test_include_with_literal_false_makes_field_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String! }
+            "#,
+            r#"query GetUser { user { name @include(if: false) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // @include(if: false) always excludes → optional
+        assert_contains!(source_buf.code, "name?:");
+    }
+
+    #[test]
+    fn test_skip_on_nullable_field_keeps_optional() {
+        let (ctx, schema_index, document_index) = setup_codegen!(
+            r#"
+                type Query { user: User }
+                type User { name: String }
+            "#,
+            r#"query GetUser($cond: Boolean!) { user { name @skip(if: $cond) } }"#
+        );
+
+        let generator = TypesGenerator::new(&ctx, &schema_index, &document_index);
+        let result = generator.generate();
+
+        assert_ok!(&result);
+        let source_buf = result.unwrap();
+        // Already nullable + @skip → still optional
+        assert_contains!(source_buf.code, "name?:");
     }
 
     #[test]

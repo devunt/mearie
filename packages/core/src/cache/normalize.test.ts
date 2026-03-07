@@ -4507,4 +4507,121 @@ describe('normalize', () => {
       });
     });
   });
+
+  describe('@skip and @include directives', () => {
+    it('@skip(if: true) skips field during normalization', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+
+      const data = { name: 'Alice' };
+      const { storage } = normalizeTest(selections, data, { skipEmail: true });
+
+      expect(storage[RootFieldKey]).toEqual({ 'name@{}': 'Alice' });
+      expect(storage[RootFieldKey]?.['email@{}']).toBeUndefined();
+    });
+
+    it('@skip(if: false) includes field during normalization', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+
+      const data = { name: 'Alice', email: 'alice@test.com' };
+      const { storage } = normalizeTest(selections, data, { skipEmail: false });
+
+      expect(storage[RootFieldKey]).toEqual({ 'name@{}': 'Alice', 'email@{}': 'alice@test.com' });
+    });
+
+    it('@include(if: false) skips field during normalization', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'include', args: { if: { kind: 'variable', name: 'withEmail' } } }],
+        },
+      ];
+
+      const data = { name: 'Alice' };
+      const { storage } = normalizeTest(selections, data, { withEmail: false });
+
+      expect(storage[RootFieldKey]).toEqual({ 'name@{}': 'Alice' });
+      expect(storage[RootFieldKey]?.['email@{}']).toBeUndefined();
+    });
+
+    it('skipping preserves previously cached value', () => {
+      const selections: Selection[] = [
+        { kind: 'Field', name: 'name', type: 'String' },
+        {
+          kind: 'Field',
+          name: 'email',
+          type: 'String',
+          directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+        },
+      ];
+
+      const existingStorage: Storage = {
+        [RootFieldKey]: { 'name@{}': 'Alice', 'email@{}': 'alice@test.com' },
+      };
+
+      normalizeTest(selections, { name: 'Bob' }, { skipEmail: true }, existingStorage);
+
+      expect(existingStorage[RootFieldKey]?.['name@{}']).toBe('Bob');
+      expect(existingStorage[RootFieldKey]?.['email@{}']).toBe('alice@test.com');
+    });
+
+    it('@skip on entity field does not overwrite cache with undefined', () => {
+      const selections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            {
+              kind: 'Field',
+              name: 'email',
+              type: 'String',
+              directives: [{ name: 'skip', args: { if: { kind: 'variable', name: 'skipEmail' } } }],
+            },
+          ],
+        },
+      ];
+
+      const existingStorage: Storage = {
+        [RootFieldKey]: { 'user@{}': { [EntityLinkKey]: 'User:1' } },
+        ['User:1' as StorageKey]: {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+          'email@{}': 'alice@test.com',
+        },
+      };
+
+      normalizeTest(
+        selections,
+        { user: { __typename: 'User', id: '1', name: 'Alice-updated' } },
+        { skipEmail: true },
+        existingStorage,
+      );
+
+      expect(existingStorage['User:1' as StorageKey]?.['name@{}']).toBe('Alice-updated');
+      expect(existingStorage['User:1' as StorageKey]?.['email@{}']).toBe('alice@test.com');
+    });
+  });
 });

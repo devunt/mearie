@@ -1,4 +1,4 @@
-import type { FieldSelection, Argument, FragmentRefs } from '@mearie/shared';
+import type { FieldSelection, Argument, Directive, FragmentRefs } from '@mearie/shared';
 import { stringify } from '../utils.ts';
 import { EntityLinkKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 import type { EntityKey, FieldKey, QueryKey, DependencyKey, StorageKey, EntityLink } from './types.ts';
@@ -28,6 +28,31 @@ export const resolveArguments = (
   return Object.fromEntries(
     Object.entries(args).map(([key, value]) => [key, value.kind === 'literal' ? value.value : variables[value.name]]),
   );
+};
+
+const resolveDirectiveValue = (value: unknown, variables: Record<string, unknown>): unknown => {
+  if (value !== null && typeof value === 'object' && 'kind' in (value as Record<string, unknown>)) {
+    const v = value as { kind: string; name?: string; value?: unknown };
+    if (v.kind === 'variable' && v.name) return variables[v.name];
+    if (v.kind === 'literal') return v.value;
+  }
+  return value;
+};
+
+/**
+ * Determines whether a field should be included based on @skip/@include directives.
+ * @internal
+ */
+export const shouldIncludeField = (
+  directives: readonly Directive[] | undefined,
+  variables: Record<string, unknown>,
+): boolean => {
+  if (!directives) return true;
+  for (const d of directives) {
+    if (d.name === 'skip' && resolveDirectiveValue(d.args?.if, variables) === true) return false;
+    if (d.name === 'include' && resolveDirectiveValue(d.args?.if, variables) === false) return false;
+  }
+  return true;
 };
 
 /**

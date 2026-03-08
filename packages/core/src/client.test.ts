@@ -1,12 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Artifact, Selection } from '@mearie/shared';
 import type { Exchange, Operation, OperationResult } from './exchange.ts';
 import { createClient } from './client.ts';
 import { AggregatedError, GraphQLError, ExchangeError } from './errors.ts';
 import { pipe } from './stream/pipe.ts';
 import { filter } from './stream/operators/filter.ts';
+import { tap } from './stream/operators/tap.ts';
 import { fromPromise } from './stream/sources/from-promise.ts';
 import { mergeMap } from './stream/operators/merge-map.ts';
+import { subscribe } from './stream/sinks/subscribe.ts';
 
 const testSchema = {
   entities: {},
@@ -38,6 +40,31 @@ const makeMockExchange = (handler: (op: Operation) => Partial<OperationResult>):
               operation: op,
               ...handler(op),
             } as OperationResult),
+          ),
+        ),
+      ),
+  });
+};
+
+const makeDelayedMockExchange = (handler: (op: Operation) => Partial<OperationResult>, delayMs: number): Exchange => {
+  return () => ({
+    name: 'mock',
+    io: (ops$) =>
+      pipe(
+        ops$,
+        filter((op) => op.variant === 'request'),
+        mergeMap((op) =>
+          fromPromise(
+            new Promise<OperationResult>((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    operation: op,
+                    ...handler(op),
+                  } as OperationResult),
+                delayMs,
+              ),
+            ),
           ),
         ),
       ),
@@ -157,5 +184,155 @@ describe('Client.mutation()', () => {
     const mutation = makeArtifact('mutation', 'CreateUser');
 
     await expect(client.mutation(mutation)).rejects.toThrow(AggregatedError);
+  });
+});
+
+describe('AbortSignal support', () => {
+  describe('executeQuery / executeMutation with signal', () => {
+    it('should complete stream and send teardown to exchange when signal aborts', async () => {
+      const teardownSpy = vi.fn();
+
+      const exchange: Exchange = () => ({
+        name: 'mock',
+        io: (ops$) =>
+          pipe(
+            ops$,
+            tap((op) => {
+              if (op.variant === 'teardown') teardownSpy(op.key);
+            }),
+            filter((op) => op.variant === 'request'),
+            mergeMap((op) =>
+              fromPromise(
+                new Promise<OperationResult>((resolve) =>
+                  setTimeout(() => resolve({ operation: op, data: { test: true } } as OperationResult), 100),
+                ),
+              ),
+            ),
+          ),
+      });
+
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const query = makeArtifact('query', 'GetUser');
+      const controller = new AbortController();
+
+      const values: OperationResult[] = [];
+      let completed = false;
+
+      pipe(
+        client.executeQuery(query, undefined, { signal: controller.signal }),
+        subscribe({
+          next(value) {
+            values.push(value);
+          },
+          complete() {
+            completed = true;
+          },
+        }),
+      );
+
+      controller.abort();
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(completed).toBe(true);
+      expect(values).toHaveLength(0);
+      expect(teardownSpy).toHaveBeenCalled();
+    });
+
+    it('should complete immediately when signal is already aborted', async () => {
+      const exchange = makeMockExchange(() => ({
+        data: { test: true },
+      }));
+
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const query = makeArtifact('query', 'GetUser');
+
+      const controller = new AbortController();
+      controller.abort();
+
+      let completed = false;
+      const values: OperationResult[] = [];
+
+      pipe(
+        client.executeQuery(query, undefined, { signal: controller.signal }),
+        subscribe({
+          next(value) {
+            values.push(value);
+          },
+          complete() {
+            completed = true;
+          },
+        }),
+      );
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(completed).toBe(true);
+      expect(values).toHaveLength(0);
+    });
+
+    it('should work normally without signal (regression)', async () => {
+      const exchange = makeMockExchange(() => ({
+        data: { user: { id: '1' } },
+      }));
+
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const query = makeArtifact('query', 'GetUser');
+
+      const data = await client.query(query);
+      expect(data).toEqual({ user: { id: '1' } });
+    });
+  });
+
+  describe('query() promise with signal', () => {
+    it('should reject with abort reason when aborted before response', async () => {
+      const exchange = makeDelayedMockExchange(() => ({ data: { test: true } }), 100);
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const query = makeArtifact('query', 'GetUser');
+
+      const controller = new AbortController();
+      const promise = client.query(query, undefined, { signal: controller.signal });
+
+      controller.abort();
+
+      await expect(promise).rejects.toBeDefined();
+    });
+
+    it('should throw immediately when signal is already aborted', async () => {
+      const exchange = makeMockExchange(() => ({ data: { test: true } }));
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const query = makeArtifact('query', 'GetUser');
+
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(client.query(query, undefined, { signal: controller.signal })).rejects.toBeDefined();
+    });
+  });
+
+  describe('mutation() promise with signal', () => {
+    it('should reject with abort reason when aborted before response', async () => {
+      const exchange = makeDelayedMockExchange(() => ({ data: { test: true } }), 100);
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const mutation = makeArtifact('mutation', 'CreateUser');
+
+      const controller = new AbortController();
+      const promise = client.mutation(mutation, undefined, { signal: controller.signal });
+
+      controller.abort();
+
+      await expect(promise).rejects.toBeDefined();
+    });
+
+    it('should throw immediately when signal is already aborted', async () => {
+      const exchange = makeMockExchange(() => ({ data: { test: true } }));
+      const client = createClient({ schema: testSchema, exchanges: [exchange] });
+      const mutation = makeArtifact('mutation', 'CreateUser');
+
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(client.mutation(mutation, undefined, { signal: controller.signal })).rejects.toBeDefined();
+    });
   });
 });

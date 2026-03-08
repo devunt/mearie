@@ -23,15 +23,19 @@ import { share } from './stream/operators/share.ts';
 import { finalize } from './stream/operators/finalize.ts';
 import { never } from './stream/sources/never.ts';
 import { take } from './stream/operators/take.ts';
+import { takeUntil } from './stream/operators/take-until.ts';
 import { collect } from './stream/sinks/collect.ts';
+import { fromAbortSignal } from './stream/sources/from-abort-signal.ts';
 import { AggregatedError } from './errors.ts';
 
 export type QueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = {
   initialData?: DataOf<T>;
   metadata?: OperationMetadata;
+  signal?: AbortSignal;
 };
 export type MutationOptions<T extends Artifact<'mutation'> = Artifact<'mutation'>> = {
   metadata?: OperationMetadata<T>;
+  signal?: AbortSignal;
 };
 export type SubscriptionOptions = {
   metadata?: OperationMetadata;
@@ -92,11 +96,19 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     };
   }
 
-  executeOperation(operation: Operation): Source<OperationResult> {
-    return pipe(
+  executeOperation(operation: Operation, options?: { signal?: AbortSignal }): Source<OperationResult> {
+    let source = pipe(
       this.results$,
       initialize(() => this.operations$.next(operation)),
       filter((result) => result.operation.key === operation.key),
+    );
+
+    if (options?.signal) {
+      source = pipe(source, takeUntil(fromAbortSignal(options.signal)));
+    }
+
+    return pipe(
+      source,
       finalize(() => this.operations$.next({ variant: 'teardown', key: operation.key, metadata: {} })),
       share(),
     );
@@ -109,7 +121,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       : [VariablesOf<T>, QueryOptions<T>?]
   ): Source<OperationResult> {
     const operation = this.createOperation(artifact, variables, options?.metadata);
-    return this.executeOperation(operation);
+    return this.executeOperation(operation, { signal: options?.signal });
   }
 
   executeMutation<T extends Artifact<'mutation'>>(
@@ -119,7 +131,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       : [VariablesOf<T>, MutationOptions<T>?]
   ): Source<OperationResult> {
     const operation = this.createOperation(artifact, variables, options?.metadata);
-    return this.executeOperation(operation);
+    return this.executeOperation(operation, { signal: options?.signal });
   }
 
   executeSubscription<T extends Artifact<'subscription'>>(
@@ -159,8 +171,20 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       ? [undefined?, QueryOptions<T>?]
       : [VariablesOf<T>, QueryOptions<T>?]
   ): Promise<DataOf<T>> {
+    const signal = options?.signal;
+    signal?.throwIfAborted();
+
     const operation = this.createOperation(artifact, variables, options?.metadata);
-    const result = await pipe(this.executeOperation(operation), take(1), collect);
+
+    let result: OperationResult;
+    try {
+      result = await pipe(this.executeOperation(operation, { signal }), take(1), collect);
+    } catch (err) {
+      if (signal?.aborted) {
+        throw signal.reason;
+      }
+      throw err;
+    }
 
     if (result.errors && result.errors.length > 0) {
       throw new AggregatedError(result.errors);
@@ -175,8 +199,20 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       ? [undefined?, MutationOptions<T>?]
       : [VariablesOf<T>, MutationOptions<T>?]
   ): Promise<DataOf<T>> {
+    const signal = options?.signal;
+    signal?.throwIfAborted();
+
     const operation = this.createOperation(artifact, variables, options?.metadata);
-    const result = await pipe(this.executeOperation(operation), take(1), collect);
+
+    let result: OperationResult;
+    try {
+      result = await pipe(this.executeOperation(operation, { signal }), take(1), collect);
+    } catch (err) {
+      if (signal?.aborted) {
+        throw signal.reason;
+      }
+      throw err;
+    }
 
     if (result.errors && result.errors.length > 0) {
       throw new AggregatedError(result.errors);

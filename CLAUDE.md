@@ -2,121 +2,62 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Language Guidelines
+## Commands
 
-- When adding memories to this file, always use English language.
+```bash
+# Build all publishable packages
+pnpm build
 
-## Project Overview
+# Run all tests
+pnpm test
 
-Mearie is a type-safe GraphQL client library with zero runtime overhead. The project uses:
+# Run tests in watch mode
+pnpm test:watch
 
-- Monorepo structure managed by pnpm workspaces and Turborepo
-- TypeScript for all JavaScript/TypeScript packages
-- Rust for native performance-critical operations (GraphQL parsing and code generation)
-- Build tool: tsdown for TypeScript packages, cargo for Rust crates
-- Testing: vitest for TypeScript, cargo test for Rust
+# Run a single test file
+pnpm vitest run packages/core/src/cache/patch.test.ts
 
-## Common Development Commands
+# Type checking
+pnpm typecheck
 
-### Building
+# Lint & format
+pnpm lint          # ESLint
+pnpm lint:fix
+pnpm format        # Prettier check
+pnpm format:fix
+pnpm spellcheck    # cSpell
 
-- `pnpm build` - Build all packages except docs and examples
-- `pnpm build:docs` - Build documentation only
-- `pnpm dev` - Run development mode with watch
-
-### Testing
-
-- `pnpm test` - Run all tests
-- `pnpm test:watch` - Run tests in watch mode
-- For specific package: `cd packages/<name> && pnpm test`
-- For native Rust code: `cd crates/native && cargo test`
-
-### Code Quality
-
-- `pnpm lint` - Run ESLint
-- `pnpm lint:fix` - Fix ESLint issues
-- `pnpm format` - Check code formatting with Prettier
-- `pnpm format:fix` - Fix formatting issues
-- `pnpm typecheck` - Run TypeScript type checking
-
-### Release Management
-
-- `pnpm changeset` - Create a changeset for version bumping
-- `pnpm changeset:version` - Update package versions based on changesets
-- `pnpm changeset:publish` - Publish packages to npm
+# Rust (crates/native)
+cargo test
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+```
 
 ## Architecture
 
-### Package Structure
+Mearie is a type-safe GraphQL client with ahead-of-time compilation. The monorepo (pnpm workspaces + Turbo) has two layers:
 
-The monorepo is organized as follows:
+**Build-time** — The `mearie` package bundles CLI, codegen, config, and a Vite plugin. Codegen parses GraphQL operations via a Rust native module (`crates/native` using NAPI) and generates typed `Artifact` objects and `SchemaMeta` for the runtime.
 
-- **packages/core** - Core GraphQL client implementation including:
-  - Link system (composable middleware)
-  - Normalized cache implementation
-  - Built-in links: httpLink, cacheLink, authLink, retryLink, dedupLink
-  - Error handling, logging, and utilities
+**Runtime** — `@mearie/core` provides the client engine; framework packages (`@mearie/react`, `@mearie/vue`, `@mearie/svelte`, `@mearie/solid`) expose hooks (`useQuery`, `useMutation`, `useSubscription`, `useFragment`).
 
-- **packages/client** - Minimal re-export of the `graphql` template tag from core
+### Core concepts
 
-- **packages/codegen** - TypeScript code generation from GraphQL operations:
-  - Extracts GraphQL queries from source code
-  - Generates TypeScript types for operations
-  - Uses native Rust parser for performance
+- **Stream system** (`packages/core/src/stream/`) — A pull-based reactive stream library (sources, operators, sinks) derived from Wonka. All data flow goes through `pipe()` and stream composition.
+- **Exchange pipeline** (`packages/core/src/exchange.ts`) — Middleware chain: `Exchange = (ExchangeInput) => ExchangeResult`. Each exchange receives a `Source<Operation>` and returns a `Source<OperationResult>`. The client auto-wraps user exchanges with `requiredExchange`, `scalarExchange` (before) and `fragmentExchange`, `terminalExchange` (after).
+- **Normalized cache** (`packages/core/src/cache/`) — Entity-based storage keyed by `typename:id`. Tracks field-level dependencies via `DependencyKey`. Supports cursors for granular subscription updates, patch-based notifications (`set`, `splice`, `swap`), optimistic mutations with CoW rollback, and `extract`/`hydrate` for SSR.
+- **Artifact** (`@mearie/shared`) — The unit of a compiled GraphQL operation. Contains `kind`, `name`, `body`, `selections`, and phantom types `' $data'` / `' $variables'` for type inference.
+- **SchemaMeta** — Generated schema metadata with entity key fields, input definitions, and custom scalar mappings. Drives both cache normalization and type-level inference.
 
-- **packages/extractor** - Extracts GraphQL queries from various file formats:
-  - TypeScript/JavaScript (using Rust parser via @mearie/native)
-  - Vue SFC
-  - Svelte components
+### Rust native module (`crates/native`)
 
-- **packages/config** - Configuration schema and utilities
+GraphQL parsing, validation, AST transformation (directive processing, fragment argument inlining), and TypeScript code generation. Exposed to JS via NAPI FFI (`src/ffi/napi.rs`). Arena-allocated AST for performance.
 
-- **packages/vite** - Vite plugin for automatic code generation during build
+## Conventions
 
-- **packages/mearie** - Main entry point package that re-exports core, client, and config
-
-- **Framework bindings**:
-  - **packages/react** - React hooks (useQuery, useMutation, etc.)
-  - **packages/vue** - Vue composables
-  - **packages/solid** - Solid primitives
-  - **packages/svelte** - Svelte stores
-
-- **crates/native** - Rust implementation for:
-  - GraphQL query parsing and extraction from TypeScript/JavaScript
-  - High-performance operations using N-API bindings
-  - Published as @mearie/native npm package (multi-platform binaries)
-
-### Build System
-
-- **Turborepo** orchestrates builds across packages with dependency graph awareness
-- **tsdown** builds TypeScript packages with dual CommonJS/ESM output
-- Packages use workspace protocol (`workspace:*`) for internal dependencies
-- Build outputs go to `dist/` directories, excluded from docs and examples
-- Native package uses cargo-based build with NAPI bindings
-
-### Type System
-
-- All GraphQL operations get type-safe TypeScript definitions via codegen
-- Uses template literal type `graphql()` for compile-time type safety
-- Fragment colocation pattern supported
-- Generated types include: `VariablesOf<T>`, `DataOf<T>`, `FragmentRef<T>`
-
-## Code Guidelines
-
-- Write code in a way that is easy to understand and maintain.
-- Always use .ts extension when importing TypeScript files.
-- If a function is public but intended only for internal library use, always add the `@internal` JSDoc tag.
-- Except for JSDoc, do not add comments to the code.
-- Use pnpm as the package manager.
-
-## Documentation Guidelines
-
-- All JSDoc comments must be written in clear, readable English.
-
-## Git Guidelines
-
-- Follow the Conventional Commits specification for all commit messages.
-- Commit message format: `<type>(<scope>): <description>`
-  - Common types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `test`, `ci`, `build`, `perf`
-  - Scope is optional but recommended (e.g., `release`, `deps`, package name)
-  - Example: `chore(release): version packages`
+- **TypeScript**: strict mode, `erasableSyntaxOnly`, `verbatimModuleSyntax`. Use `.ts` extensions in relative imports.
+- **Build**: tsdown for all packages. Dual ESM/CJS output. Development uses source `exports` (e.g., `"./src/index.ts"`); `publishConfig` overrides for dist.
+- **Tests**: Vitest. Test files are colocated as `*.test.ts` next to source files. Test projects: core, react, vue, solid, svelte.
+- **Commits**: `type(scope): description` format. Types: `fix`, `feat`, `refactor`, `test`, `chore`, `ci`, `revert`. Scope is the package or subsystem name — e.g., `cache`, `core`, `react`, `native`, `dedup`, `ci`. Multiple scopes comma-separated: `feat(cache,codegen): ...`. Description is lowercase, imperative, concise.
+- **Changesets**: Required for changes to published packages (`@mearie/*`, `mearie`). Internal packages (`@mearie-internal/*`) are ignored. Write changeset summaries that explain _what changed and why_, not just repeat the commit message. Include the affected behavior and the root cause for fixes.
+- **PRs**: One feature/fix per PR. Title matches the commit convention. Body is plain text (no markdown headings), written in English — explain the problem, what caused it, and what the fix does. Keep it concise and technical.

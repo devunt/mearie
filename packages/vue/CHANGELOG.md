@@ -1,5 +1,12 @@
 # @mearie/vue
 
+## 0.4.6
+
+### Patch Changes
+
+- Updated dependencies [d879830]
+  - @mearie/core@0.6.6
+
 ## 0.4.5
 
 ### Patch Changes

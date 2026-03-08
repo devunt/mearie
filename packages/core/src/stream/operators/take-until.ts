@@ -17,15 +17,15 @@ export const takeUntil = <T>(notifier: Source<unknown>): Operator<T> => {
         if (completed) return;
         completed = true;
 
-        if (sourceSubscription) {
-          sourceSubscription.unsubscribe();
-        }
-
         if (notifierSubscription) {
           notifierSubscription.unsubscribe();
         }
 
         sink.complete();
+
+        if (sourceSubscription) {
+          sourceSubscription.unsubscribe();
+        }
       };
 
       notifierSubscription = notifier({

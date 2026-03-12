@@ -438,10 +438,13 @@ export class Cache {
     for (const target of targets) {
       if (target.__typename === 'Query') {
         if ('$field' in target) {
-          const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
-          const depKey = makeDependencyKey(RootFieldKey, fieldKey);
-          this.#stale.add(depKey);
-          this.#collectAffectedSubscriptions(RootFieldKey, fieldKey, affectedSubscriptions);
+          this.#invalidateField(
+            RootFieldKey,
+            target.$field as string,
+            target.$args as Record<string, unknown> | undefined,
+            !('$args' in target),
+            affectedSubscriptions,
+          );
         } else {
           this.#stale.add(RootFieldKey as string);
           this.#collectAffectedSubscriptions(RootFieldKey, undefined, affectedSubscriptions);
@@ -455,9 +458,13 @@ export class Cache {
           const entityKey = makeEntityKey(target.__typename, keyValues);
 
           if ('$field' in target) {
-            const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
-            this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-            this.#collectAffectedSubscriptions(entityKey, fieldKey, affectedSubscriptions);
+            this.#invalidateField(
+              entityKey,
+              target.$field as string,
+              target.$args as Record<string, unknown> | undefined,
+              !('$args' in target),
+              affectedSubscriptions,
+            );
           } else {
             this.#stale.add(entityKey);
             this.#collectAffectedSubscriptions(entityKey, undefined, affectedSubscriptions);
@@ -468,9 +475,13 @@ export class Cache {
             if (key.startsWith(prefix)) {
               const entityKey = key as EntityKey;
               if ('$field' in target) {
-                const fieldKey = makeFieldKeyFromArgs(target.$field as string, target.$args as Record<string, unknown>);
-                this.#stale.add(makeDependencyKey(entityKey, fieldKey));
-                this.#collectAffectedSubscriptions(entityKey, fieldKey, affectedSubscriptions);
+                this.#invalidateField(
+                  entityKey,
+                  target.$field as string,
+                  target.$args as Record<string, unknown> | undefined,
+                  !('$args' in target),
+                  affectedSubscriptions,
+                );
               } else {
                 this.#stale.add(entityKey);
                 this.#collectAffectedSubscriptions(entityKey, undefined, affectedSubscriptions);
@@ -659,6 +670,33 @@ export class Cache {
 
   #hasKeyFields(target: Record<string, unknown>, keyFields: string[]): boolean {
     return keyFields.every((f) => f in target);
+  }
+
+  #invalidateField(
+    storageKey: StorageKey,
+    fieldName: string,
+    args: Record<string, unknown> | undefined,
+    allArgs: boolean,
+    out: Set<number>,
+  ): void {
+    if (allArgs) {
+      const fieldPrefix = `${fieldName}@`;
+      const record = this.#storage[storageKey];
+      if (record) {
+        for (const key of Object.keys(record)) {
+          if (key.startsWith(fieldPrefix)) {
+            this.#stale.add(makeDependencyKey(storageKey, key as FieldKey));
+          }
+        }
+      }
+      this.#registry.forEachByPrefix(`${storageKey}.${fieldPrefix}`, (entry) => {
+        out.add(entry.subscriptionId);
+      });
+    } else {
+      const fieldKey = makeFieldKeyFromArgs(fieldName, args);
+      this.#stale.add(makeDependencyKey(storageKey, fieldKey));
+      this.#collectAffectedSubscriptions(storageKey, fieldKey, out);
+    }
   }
 
   #collectAffectedSubscriptions(storageKey: StorageKey, fieldKey: FieldKey | undefined, out: Set<number>): void {

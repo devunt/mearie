@@ -2259,6 +2259,102 @@ describe('Cache', () => {
       cache.invalidate({ __typename: 'Profile' });
       expect(cache.readQuery(artifact, {}).stale).toBe(true);
     });
+
+    it('should invalidate root query field with all args when $args is omitted', () => {
+      const cache = new Cache(schema);
+      const artifact1 = createArtifact('query', 'GetPosts1', [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          array: true,
+          args: { limit: { kind: 'literal', value: 20 } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+          ],
+        },
+      ]);
+      const artifact2 = createArtifact('query', 'GetPosts2', [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          array: true,
+          args: { limit: { kind: 'literal', value: 50 } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+          ],
+        },
+      ]);
+      const unrelatedArtifact = createArtifact('query', 'GetName', [{ kind: 'Field', name: 'name', type: 'String' }]);
+
+      cache.writeQuery(artifact1, {}, { posts: [{ __typename: 'Post', id: '1' }] });
+      cache.writeQuery(artifact2, {}, { posts: [{ __typename: 'Post', id: '2' }] });
+      cache.writeQuery(unrelatedArtifact, {}, { name: 'Alice' });
+
+      // Invalidate all 'posts' queries regardless of args
+      cache.invalidate({ __typename: 'Query', $field: 'posts' });
+
+      expect(cache.readQuery(artifact1, {}).stale).toBe(true);
+      expect(cache.readQuery(artifact2, {}).stale).toBe(true);
+      expect(cache.readQuery(unrelatedArtifact, {}).stale).toBe(false);
+    });
+
+    it('should notify subscribers when invalidating root field without $args', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetPosts', [
+        {
+          kind: 'Field',
+          name: 'posts',
+          type: 'Post',
+          array: true,
+          args: { limit: { kind: 'literal', value: 10 } },
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { posts: [{ __typename: 'Post', id: '1' }] });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.invalidate({ __typename: 'Query', $field: 'posts' });
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
+
+      unsubscribe();
+    });
+
+    it('should invalidate entity field with all args when $args is omitted', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              array: true,
+              args: { limit: { kind: 'literal', value: 5 } },
+            },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', posts: ['p1', 'p2'] } });
+
+      // Invalidate 'posts' field on User:1 without specifying args
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'posts' });
+
+      expect(cache.readQuery(artifact, {}).stale).toBe(true);
+    });
   });
 
   describe('isStale', () => {

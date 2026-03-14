@@ -679,33 +679,34 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             }
         }
 
-        if !self.is_root_type(parent_type) && self.schema.is_object(parent_type) {
-            if let Some(key_field) = self.determine_key_field(parent_type) {
-                let has_key_field = selection_set
-                    .selections
-                    .iter()
-                    .any(|s| matches!(s, Selection::Field(f) if f.name.as_str() == key_field));
+        if !self.is_root_type(parent_type)
+            && self.schema.is_object(parent_type)
+            && let Some(key_field) = self.determine_key_field(parent_type)
+        {
+            let has_key_field = selection_set
+                .selections
+                .iter()
+                .any(|s| matches!(s, Selection::Field(f) if f.name.as_str() == key_field));
 
-                if !has_key_field {
-                    let field_def = self.schema.get_field(parent_type, key_field).ok_or_else(|| {
-                        MearieError::codegen(format!("Key field '{}' not found on type '{}'", key_field, parent_type))
-                    })?;
+            if !has_key_field {
+                let field_def = self.schema.get_field(parent_type, key_field).ok_or_else(|| {
+                    MearieError::codegen(format!("Key field '{}' not found on type '{}'", key_field, parent_type))
+                })?;
 
-                    let type_name = field_def.typ.innermost_type().to_string();
-                    let is_array = field_def.typ.is_list();
-                    let is_nullable = field_def.typ.is_nullable();
+                let type_name = field_def.typ.innermost_type().to_string();
+                let is_array = field_def.typ.is_list();
+                let is_nullable = field_def.typ.is_nullable();
 
-                    result.push(SelectionNodeData::Field {
-                        name: key_field,
-                        type_name: Some(type_name),
-                        array: Some(is_array),
-                        nullable: Some(is_nullable),
-                        alias: None,
-                        args: None,
-                        selections: None,
-                        directives: None,
-                    });
-                }
+                result.push(SelectionNodeData::Field {
+                    name: key_field,
+                    type_name: Some(type_name),
+                    array: Some(is_array),
+                    nullable: Some(is_nullable),
+                    alias: None,
+                    args: None,
+                    selections: None,
+                    directives: None,
+                });
             }
         }
 

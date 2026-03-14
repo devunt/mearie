@@ -657,6 +657,59 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     ) -> Result<Vec<SelectionNodeData<'b>>> {
         let mut result = Vec::new();
 
+        // Inject __typename and key fields for non-root composite types,
+        // matching the transformation phase that injects them into the body.
+        if !self.is_root_type(parent_type) && self.schema.has_type(parent_type) {
+            let has_typename = selection_set
+                .selections
+                .iter()
+                .any(|s| matches!(s, Selection::Field(f) if f.name.as_str() == "__typename"));
+
+            if !has_typename {
+                result.push(SelectionNodeData::Field {
+                    name: "__typename",
+                    type_name: None,
+                    array: None,
+                    nullable: None,
+                    alias: None,
+                    args: None,
+                    selections: None,
+                    directives: None,
+                });
+            }
+        }
+
+        if !self.is_root_type(parent_type)
+            && self.schema.is_object(parent_type)
+            && let Some(key_field) = self.determine_key_field(parent_type)
+        {
+            let has_key_field = selection_set
+                .selections
+                .iter()
+                .any(|s| matches!(s, Selection::Field(f) if f.name.as_str() == key_field));
+
+            if !has_key_field {
+                let field_def = self.schema.get_field(parent_type, key_field).ok_or_else(|| {
+                    MearieError::codegen(format!("Key field '{}' not found on type '{}'", key_field, parent_type))
+                })?;
+
+                let type_name = field_def.typ.innermost_type().to_string();
+                let is_array = field_def.typ.is_list();
+                let is_nullable = field_def.typ.is_nullable();
+
+                result.push(SelectionNodeData::Field {
+                    name: key_field,
+                    type_name: Some(type_name),
+                    array: Some(is_array),
+                    nullable: Some(is_nullable),
+                    alias: None,
+                    args: None,
+                    selections: None,
+                    directives: None,
+                });
+            }
+        }
+
         for selection in &selection_set.selections {
             match selection {
                 Selection::Field(field) => {
@@ -675,6 +728,15 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         }
 
         Ok(result)
+    }
+
+    fn is_root_type(&self, type_name: &str) -> bool {
+        type_name == "Query"
+            || type_name == "Mutation"
+            || type_name == "Subscription"
+            || Some(type_name) == self.schema.query_type()
+            || Some(type_name) == self.schema.mutation_type()
+            || Some(type_name) == self.schema.subscription_type()
     }
 
     fn process_field(&self, field: &'b Field<'b>, parent_type: &str) -> Result<SelectionNodeData<'b>> {

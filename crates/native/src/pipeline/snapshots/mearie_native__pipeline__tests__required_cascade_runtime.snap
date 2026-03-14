@@ -10,29 +10,43 @@ export const $GetUserAvatar = {
 		kind: "Field",
 		name: "user",
 		type: "User",
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "profile",
-			type: "Profile",
-			selections: [{
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
 				kind: "Field",
 				name: "id",
 				type: "ID"
-			}, {
+			},
+			{
 				kind: "Field",
-				name: "avatar",
-				type: "String",
-				nullable: true,
-				directives: [{
-					name: "required",
-					args: { action: "CASCADE" }
-				}]
-			}]
-		}]
+				name: "profile",
+				type: "Profile",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "avatar",
+						type: "String",
+						nullable: true,
+						directives: [{
+							name: "required",
+							args: { action: "CASCADE" }
+						}]
+					}
+				]
+			}
+		]
 	}]
 };
 export const artifactMap = { "\n            query GetUserAvatar {\n                user {\n                    id\n                    profile {\n                        id\n                        avatar @required(action: CASCADE)\n                    }\n                }\n            }\n        ": $GetUserAvatar };

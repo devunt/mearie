@@ -15,15 +15,22 @@ export const $FindUsers = {
 			kind: "variable",
 			name: "ids"
 		} },
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "name",
-			type: "String"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			}
+		]
 	}, {
 		kind: "Field",
 		name: "search",
@@ -34,15 +41,22 @@ export const $FindUsers = {
 			kind: "variable",
 			name: "tags"
 		} },
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "title",
-			type: "String"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "title",
+				type: "String"
+			}
+		]
 	}],
 	variableDefs: [{
 		name: "ids",

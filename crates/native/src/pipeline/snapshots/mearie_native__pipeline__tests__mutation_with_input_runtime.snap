@@ -17,6 +17,10 @@ export const $CreateUser = {
 		selections: [
 			{
 				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
 				name: "id",
 				type: "ID"
 			},

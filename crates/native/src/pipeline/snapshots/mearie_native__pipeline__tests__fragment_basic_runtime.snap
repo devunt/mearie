@@ -11,40 +11,71 @@ export const $GetUser = {
 		name: "user",
 		type: "User",
 		nullable: true,
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "FragmentSpread",
-			name: "UserInfo",
-			selections: [{
+		selections: [
+			{
 				kind: "Field",
-				name: "name",
-				type: "String"
-			}, {
+				name: "__typename"
+			},
+			{
 				kind: "Field",
-				name: "email",
-				type: "String",
-				nullable: true
-			}]
-		}]
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "FragmentSpread",
+				name: "UserInfo",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "name",
+						type: "String"
+					},
+					{
+						kind: "Field",
+						name: "email",
+						type: "String",
+						nullable: true
+					}
+				]
+			}
+		]
 	}]
 };
 export const $UserInfo = {
 	name: "UserInfo",
 	body: "fragment UserInfo on User {\n  __typename\n  id\n  name\n  email\n}",
 	kind: "fragment",
-	selections: [{
-		kind: "Field",
-		name: "name",
-		type: "String"
-	}, {
-		kind: "Field",
-		name: "email",
-		type: "String",
-		nullable: true
-	}]
+	selections: [
+		{
+			kind: "Field",
+			name: "__typename"
+		},
+		{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		},
+		{
+			kind: "Field",
+			name: "name",
+			type: "String"
+		},
+		{
+			kind: "Field",
+			name: "email",
+			type: "String",
+			nullable: true
+		}
+	]
 };
 export const artifactMap = {
 	"\n            query GetUser {\n                user {\n                    id\n                    ...UserInfo\n                }\n            }\n        ": $GetUser,

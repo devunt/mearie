@@ -11,26 +11,33 @@ export const $GetUserAvatar = {
 		name: "user",
 		type: "User",
 		nullable: true,
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "avatar",
-			type: "String",
-			nullable: true,
-			args: {
-				size: {
-					kind: "literal",
-					value: 200
-				},
-				format: {
-					kind: "variable",
-					name: "fmt"
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "avatar",
+				type: "String",
+				nullable: true,
+				args: {
+					size: {
+						kind: "literal",
+						value: 200
+					},
+					format: {
+						kind: "variable",
+						name: "fmt"
+					}
 				}
 			}
-		}]
+		]
 	}],
 	variableDefs: [{
 		name: "fmt",

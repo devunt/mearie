@@ -11,46 +11,89 @@ export const $GetFeed = {
 		name: "feed",
 		type: "FeedItem",
 		array: true,
-		selections: [{
-			kind: "InlineFragment",
-			on: "Article",
-			selections: [{
+		selections: [
+			{
 				kind: "Field",
-				name: "id",
-				type: "ID"
-			}, {
-				kind: "FragmentSpread",
-				name: "ArticlePreview",
-				selections: [{
-					kind: "Field",
-					name: "headline",
-					type: "String"
-				}]
-			}]
-		}, {
-			kind: "InlineFragment",
-			on: "Comment",
-			selections: [{
-				kind: "Field",
-				name: "id",
-				type: "ID"
-			}, {
-				kind: "Field",
-				name: "body",
-				type: "String"
-			}]
-		}]
+				name: "__typename"
+			},
+			{
+				kind: "InlineFragment",
+				on: "Article",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "FragmentSpread",
+						name: "ArticlePreview",
+						selections: [
+							{
+								kind: "Field",
+								name: "__typename"
+							},
+							{
+								kind: "Field",
+								name: "id",
+								type: "ID"
+							},
+							{
+								kind: "Field",
+								name: "headline",
+								type: "String"
+							}
+						]
+					}
+				]
+			},
+			{
+				kind: "InlineFragment",
+				on: "Comment",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "body",
+						type: "String"
+					}
+				]
+			}
+		]
 	}]
 };
 export const $ArticlePreview = {
 	name: "ArticlePreview",
 	body: "fragment ArticlePreview on Article {\n  __typename\n  id\n  headline\n}",
 	kind: "fragment",
-	selections: [{
-		kind: "Field",
-		name: "headline",
-		type: "String"
-	}]
+	selections: [
+		{
+			kind: "Field",
+			name: "__typename"
+		},
+		{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		},
+		{
+			kind: "Field",
+			name: "headline",
+			type: "String"
+		}
+	]
 };
 export const artifactMap = {
 	"\n            query GetFeed {\n                feed {\n                    ... on Article {\n                        id\n                        ...ArticlePreview\n                    }\n                    ... on Comment {\n                        id\n                        body\n                    }\n                }\n            }\n        ": $GetFeed,

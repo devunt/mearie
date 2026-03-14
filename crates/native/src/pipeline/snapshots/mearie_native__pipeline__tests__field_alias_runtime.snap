@@ -19,6 +19,10 @@ export const $GetTwoUsers = {
 		selections: [
 			{
 				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
 				name: "id",
 				type: "ID"
 			},
@@ -45,16 +49,23 @@ export const $GetTwoUsers = {
 			kind: "variable",
 			name: "second"
 		} },
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "name",
-			type: "String",
-			alias: "displayName"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String",
+				alias: "displayName"
+			}
+		]
 	}],
 	variableDefs: [{
 		name: "first",

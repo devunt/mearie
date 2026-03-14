@@ -14,15 +14,22 @@ export const $CreateOrder = {
 			kind: "variable",
 			name: "input"
 		} },
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "status",
-			type: "String"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "status",
+				type: "String"
+			}
+		]
 	}],
 	variableDefs: [{
 		name: "input",

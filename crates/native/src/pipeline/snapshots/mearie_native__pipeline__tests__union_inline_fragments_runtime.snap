@@ -11,31 +11,52 @@ export const $Search = {
 		name: "search",
 		type: "SearchResult",
 		array: true,
-		selections: [{
-			kind: "InlineFragment",
-			on: "User",
-			selections: [{
+		selections: [
+			{
 				kind: "Field",
-				name: "id",
-				type: "ID"
-			}, {
-				kind: "Field",
-				name: "name",
-				type: "String"
-			}]
-		}, {
-			kind: "InlineFragment",
-			on: "Post",
-			selections: [{
-				kind: "Field",
-				name: "id",
-				type: "ID"
-			}, {
-				kind: "Field",
-				name: "title",
-				type: "String"
-			}]
-		}]
+				name: "__typename"
+			},
+			{
+				kind: "InlineFragment",
+				on: "User",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "name",
+						type: "String"
+					}
+				]
+			},
+			{
+				kind: "InlineFragment",
+				on: "Post",
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "title",
+						type: "String"
+					}
+				]
+			}
+		]
 	}]
 };
 export const artifactMap = { "\n            query Search {\n                search {\n                    ... on User {\n                        id\n                        name\n                    }\n                    ... on Post {\n                        id\n                        title\n                    }\n                }\n            }\n        ": $Search };

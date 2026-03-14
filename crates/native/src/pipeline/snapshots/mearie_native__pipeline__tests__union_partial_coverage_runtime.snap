@@ -11,17 +11,27 @@ export const $GetResult = {
 		name: "result",
 		type: "Result",
 		selections: [{
+			kind: "Field",
+			name: "__typename"
+		}, {
 			kind: "InlineFragment",
 			on: "Success",
-			selections: [{
-				kind: "Field",
-				name: "id",
-				type: "ID"
-			}, {
-				kind: "Field",
-				name: "value",
-				type: "String"
-			}]
+			selections: [
+				{
+					kind: "Field",
+					name: "__typename"
+				},
+				{
+					kind: "Field",
+					name: "id",
+					type: "ID"
+				},
+				{
+					kind: "Field",
+					name: "value",
+					type: "String"
+				}
+			]
 		}]
 	}]
 };

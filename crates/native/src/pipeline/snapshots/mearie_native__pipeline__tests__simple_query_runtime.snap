@@ -18,6 +18,10 @@ export const $GetUser = {
 		selections: [
 			{
 				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
 				name: "id",
 				type: "ID"
 			},

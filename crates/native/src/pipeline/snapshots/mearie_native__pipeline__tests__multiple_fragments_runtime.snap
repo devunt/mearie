@@ -14,32 +14,59 @@ export const $GetUser = {
 		selections: [
 			{
 				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
 				name: "id",
 				type: "ID"
 			},
 			{
 				kind: "FragmentSpread",
 				name: "UserName",
-				selections: [{
-					kind: "Field",
-					name: "name",
-					type: "String"
-				}]
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "name",
+						type: "String"
+					}
+				]
 			},
 			{
 				kind: "FragmentSpread",
 				name: "UserContact",
-				selections: [{
-					kind: "Field",
-					name: "email",
-					type: "String",
-					nullable: true
-				}, {
-					kind: "Field",
-					name: "age",
-					type: "Int",
-					nullable: true
-				}]
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "email",
+						type: "String",
+						nullable: true
+					},
+					{
+						kind: "Field",
+						name: "age",
+						type: "Int",
+						nullable: true
+					}
+				]
 			}
 		]
 	}]
@@ -48,27 +75,50 @@ export const $UserContact = {
 	name: "UserContact",
 	body: "fragment UserContact on User {\n  __typename\n  id\n  email\n  age\n}",
 	kind: "fragment",
-	selections: [{
-		kind: "Field",
-		name: "email",
-		type: "String",
-		nullable: true
-	}, {
-		kind: "Field",
-		name: "age",
-		type: "Int",
-		nullable: true
-	}]
+	selections: [
+		{
+			kind: "Field",
+			name: "__typename"
+		},
+		{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		},
+		{
+			kind: "Field",
+			name: "email",
+			type: "String",
+			nullable: true
+		},
+		{
+			kind: "Field",
+			name: "age",
+			type: "Int",
+			nullable: true
+		}
+	]
 };
 export const $UserName = {
 	name: "UserName",
 	body: "fragment UserName on User {\n  __typename\n  id\n  name\n}",
 	kind: "fragment",
-	selections: [{
-		kind: "Field",
-		name: "name",
-		type: "String"
-	}]
+	selections: [
+		{
+			kind: "Field",
+			name: "__typename"
+		},
+		{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		},
+		{
+			kind: "Field",
+			name: "name",
+			type: "String"
+		}
+	]
 };
 export const artifactMap = {
 	"\n            query GetUser {\n                user {\n                    id\n                    ...UserName\n                    ...UserContact\n                }\n            }\n        ": $GetUser,

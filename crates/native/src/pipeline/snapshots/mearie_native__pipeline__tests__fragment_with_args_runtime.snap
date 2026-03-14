@@ -11,44 +11,73 @@ export const $GetUser = {
 		name: "user",
 		type: "User",
 		nullable: true,
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "FragmentSpread",
-			name: "Avatar",
-			args: { size: {
-				kind: "literal",
-				value: 100
-			} },
-			selections: [{
+		selections: [
+			{
 				kind: "Field",
-				name: "profilePic",
-				type: "String",
-				nullable: true,
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "FragmentSpread",
+				name: "Avatar",
 				args: { size: {
-					kind: "variable",
-					name: "size"
-				} }
-			}]
-		}]
+					kind: "literal",
+					value: 100
+				} },
+				selections: [
+					{
+						kind: "Field",
+						name: "__typename"
+					},
+					{
+						kind: "Field",
+						name: "id",
+						type: "ID"
+					},
+					{
+						kind: "Field",
+						name: "profilePic",
+						type: "String",
+						nullable: true,
+						args: { size: {
+							kind: "variable",
+							name: "size"
+						} }
+					}
+				]
+			}
+		]
 	}]
 };
 export const $Avatar = {
 	name: "Avatar",
 	body: "fragment Avatar on User {\n  __typename\n  id\n  profilePic(size: $size)\n}",
 	kind: "fragment",
-	selections: [{
-		kind: "Field",
-		name: "profilePic",
-		type: "String",
-		nullable: true,
-		args: { size: {
-			kind: "variable",
-			name: "size"
-		} }
-	}]
+	selections: [
+		{
+			kind: "Field",
+			name: "__typename"
+		},
+		{
+			kind: "Field",
+			name: "id",
+			type: "ID"
+		},
+		{
+			kind: "Field",
+			name: "profilePic",
+			type: "String",
+			nullable: true,
+			args: { size: {
+				kind: "variable",
+				name: "size"
+			} }
+		}
+	]
 };
 export const artifactMap = {
 	"\n            query GetUser {\n                user {\n                    id\n                    ...Avatar(size: 100)\n                }\n            }\n        ": $GetUser,

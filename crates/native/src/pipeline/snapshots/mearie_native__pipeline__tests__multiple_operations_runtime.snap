@@ -15,15 +15,22 @@ export const $GetUser = {
 			kind: "variable",
 			name: "id"
 		} },
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "name",
-			type: "String"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			}
+		]
 	}],
 	variableDefs: [{
 		name: "id",
@@ -39,15 +46,22 @@ export const $ListUsers = {
 		name: "users",
 		type: "User",
 		array: true,
-		selections: [{
-			kind: "Field",
-			name: "id",
-			type: "ID"
-		}, {
-			kind: "Field",
-			name: "name",
-			type: "String"
-		}]
+		selections: [
+			{
+				kind: "Field",
+				name: "__typename"
+			},
+			{
+				kind: "Field",
+				name: "id",
+				type: "ID"
+			},
+			{
+				kind: "Field",
+				name: "name",
+				type: "String"
+			}
+		]
 	}]
 };
 export const $DeleteUser = {

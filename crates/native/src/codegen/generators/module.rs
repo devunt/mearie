@@ -8,7 +8,7 @@ use oxc_allocator::Box as OxcBox;
 use oxc_ast::AstBuilder;
 use oxc_ast::ast::*;
 use oxc_codegen::Codegen;
-use oxc_span::{Atom, SPAN, SourceType};
+use oxc_span::{SPAN, SourceType};
 
 type StmtVec<'b> = oxc_allocator::Vec<'b, Statement<'b>>;
 
@@ -176,7 +176,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
         let string_literal_type = self.ast.ts_type_literal_type(
             SPAN,
-            self.ast.ts_literal_string_literal(SPAN, document_source, None::<Atom>),
+            self.ast.ts_literal_string_literal(SPAN, document_source, None::<Str>),
         );
         let type_annotation = self.ast.ts_type_annotation(SPAN, string_literal_type);
 
@@ -194,7 +194,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
         let id = self
             .ast
-            .binding_pattern_binding_identifier(SPAN, self.ast.atom("schema"));
+            .binding_pattern_binding_identifier(SPAN, self.ast.ident("schema"));
 
         let declarator = self.ast.variable_declarator(
             SPAN,
@@ -253,7 +253,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
         let module_name = self
             .ast
-            .ts_module_declaration_name_string_literal(SPAN, name, None::<Atom>);
+            .ts_module_declaration_name_string_literal(SPAN, name, None::<Str>);
 
         let module_decl = self.ast.ts_module_declaration(
             SPAN,
@@ -307,7 +307,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
 
         self.ast.ts_type_import_type(
             SPAN,
-            self.ast.string_literal(SPAN, "./types.d.ts", None::<Atom>),
+            self.ast.string_literal(SPAN, "./types.d.ts", None::<Str>),
             None::<OxcBox<ObjectExpression>>,
             Some(qualifier),
             None::<OxcBox<TSTypeParameterInstantiation>>,
@@ -329,7 +329,7 @@ impl<'a, 'b> ModuleGenerator<'a, 'b> {
     }
 
     fn create_binding_pattern(&self, name: &'b str) -> BindingPattern<'b> {
-        self.ast.binding_pattern_binding_identifier(SPAN, Atom::from(name))
+        self.ast.binding_pattern_binding_identifier(SPAN, name)
     }
 
     fn create_formal_parameter(

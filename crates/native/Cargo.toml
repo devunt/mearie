@@ -22,16 +22,16 @@ serde_json = "1.0"
 logos = "0.16"
 napi = { version = "3", features = ["serde-json"], optional = true }
 napi-derive = { version = "3", optional = true }
-oxc_allocator = "0.115"
-oxc_ast = "0.115"
-oxc_ast_visit = "0.115"
-oxc_codegen = "0.115"
-oxc_parser = "0.115"
-oxc_span = "0.115"
+oxc_allocator = "0.128"
+oxc_ast = "0.128"
+oxc_ast_visit = "0.128"
+oxc_codegen = "0.128"
+oxc_parser = "0.128"
+oxc_span = "0.128"
 
 [build-dependencies]
 napi-build = { version = "2", optional = true }
 
 [dev-dependencies]
-assertables = "9.8.6"
-insta = { version = "1.46", features = ["yaml", "redactions"] }
+assertables = "9.9.0"
+insta = { version = "1.47", features = ["yaml", "redactions"] }

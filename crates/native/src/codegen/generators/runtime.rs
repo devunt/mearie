@@ -8,7 +8,7 @@ use oxc_allocator::Box as OxcBox;
 use oxc_ast::AstBuilder;
 use oxc_ast::ast::*;
 use oxc_codegen::Codegen;
-use oxc_span::{Atom, SPAN, SourceType};
+use oxc_span::{SPAN, SourceType};
 use rustc_hash::FxHashSet;
 
 type StmtVec<'b> = oxc_allocator::Vec<'b, Statement<'b>>;
@@ -158,7 +158,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     }
 
     fn stmt_export_const(&self, name: &str, init: Expression<'b>) -> Statement<'b> {
-        let id = self.ast.binding_pattern_binding_identifier(SPAN, self.ast.atom(name));
+        let id = self.ast.binding_pattern_binding_identifier(SPAN, self.ast.ident(name));
 
         let declarator = self.ast.variable_declarator(
             SPAN,
@@ -188,7 +188,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
     fn prop_object(&self, key: &str, value: Expression<'b>) -> ObjectPropertyKind<'b> {
         let property_key =
-            PropertyKey::StaticIdentifier(self.ast.alloc(self.ast.identifier_name(SPAN, self.ast.atom(key))));
+            PropertyKey::StaticIdentifier(self.ast.alloc(self.ast.identifier_name(SPAN, self.ast.ident(key))));
 
         let property = self
             .ast
@@ -202,10 +202,10 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             let var_name = format!("${}", name);
             let var_ref = Expression::Identifier(
                 self.ast
-                    .alloc(self.ast.identifier_reference(SPAN, self.ast.atom(&var_name))),
+                    .alloc(self.ast.identifier_reference(SPAN, self.ast.ident(&var_name))),
             );
 
-            let string_literal = self.ast.string_literal(SPAN, self.ast.atom(source), None::<Atom>);
+            let string_literal = self.ast.string_literal(SPAN, self.ast.str(source), None::<Str>);
             let property_key = PropertyKey::StringLiteral(self.ast.alloc(string_literal));
 
             let property =
@@ -221,9 +221,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     }
 
     fn stmt_graphql_function(&self) -> Statement<'b> {
-        let param_pattern = self
-            .ast
-            .binding_pattern_binding_identifier(SPAN, Atom::from("artifact"));
+        let param_pattern = self.ast.binding_pattern_binding_identifier(SPAN, "artifact");
         let param = self.ast.formal_parameter(
             SPAN,
             self.ast.vec(),
@@ -271,7 +269,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let var_declarator = self.ast.variable_declarator(
             SPAN,
             VariableDeclarationKind::Const,
-            self.ast.binding_pattern_binding_identifier(SPAN, Atom::from("graphql")),
+            self.ast.binding_pattern_binding_identifier(SPAN, "graphql"),
             None::<OxcBox<TSTypeAnnotation>>,
             Some(Expression::ArrowFunctionExpression(self.ast.alloc(arrow_function))),
             false,
@@ -323,7 +321,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                 let entity_meta_obj =
                     Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, entity_meta_props)));
 
-                let type_name_literal = self.ast.string_literal(SPAN, self.ast.atom(type_name), None::<Atom>);
+                let type_name_literal = self.ast.string_literal(SPAN, self.ast.str(type_name), None::<Str>);
                 let property_key = PropertyKey::StringLiteral(self.ast.alloc(type_name_literal));
 
                 let property = self.ast.object_property(
@@ -357,7 +355,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                 let input_meta_obj =
                     Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, input_meta_props)));
 
-                let type_name_literal = self.ast.string_literal(SPAN, self.ast.atom(type_name), None::<Atom>);
+                let type_name_literal = self.ast.string_literal(SPAN, self.ast.str(type_name), None::<Str>);
                 let property_key = PropertyKey::StringLiteral(self.ast.alloc(type_name_literal));
 
                 let property = self.ast.object_property(
@@ -392,7 +390,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
     fn expr_string(&self, value: &str) -> Expression<'b> {
         Expression::StringLiteral(
             self.ast
-                .alloc(self.ast.string_literal(SPAN, self.ast.atom(value), None::<Atom>)),
+                .alloc(self.ast.string_literal(SPAN, self.ast.str(value), None::<Str>)),
         )
     }
 
@@ -400,7 +398,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         Expression::NumericLiteral(self.ast.alloc(self.ast.numeric_literal(
             SPAN,
             value,
-            None::<Atom>,
+            None::<Str>,
             NumberBase::Decimal,
         )))
     }

@@ -9,7 +9,7 @@ use oxc_allocator::Box as OxcBox;
 use oxc_ast::AstBuilder;
 use oxc_ast::ast::*;
 use oxc_codegen::Codegen;
-use oxc_span::{Atom, SPAN, SourceType};
+use oxc_span::{SPAN, SourceType};
 use rustc_hash::FxHashMap;
 
 type StmtVec<'b> = oxc_allocator::Vec<'b, Statement<'b>>;
@@ -294,7 +294,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             let field_types: Vec<TSType<'b>> = fields
                 .keys()
                 .map(|&field_name| {
-                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
+                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Str>);
                     self.ast.ts_type_literal_type(SPAN, string_literal)
                 })
                 .collect();
@@ -311,7 +311,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
             let field_types: Vec<TSType<'b>> = fields
                 .keys()
                 .map(|&field_name| {
-                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Atom>);
+                    let string_literal = self.ast.ts_literal_string_literal(SPAN, field_name, None::<Str>);
                     self.ast.ts_type_literal_type(SPAN, string_literal)
                 })
                 .collect();
@@ -662,11 +662,11 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     ) -> TSType<'b> {
         let mut type_params = self.ast.vec();
 
-        let kind_literal = self.ast.ts_literal_string_literal(SPAN, kind, None::<Atom>);
+        let kind_literal = self.ast.ts_literal_string_literal(SPAN, kind, None::<Str>);
         let kind_type = self.ast.ts_type_literal_type(SPAN, kind_literal);
         type_params.push(kind_type);
 
-        let name_literal = self.ast.ts_literal_string_literal(SPAN, name, None::<Atom>);
+        let name_literal = self.ast.ts_literal_string_literal(SPAN, name, None::<Str>);
         let name_type = self.ast.ts_type_literal_type(SPAN, name_literal);
         type_params.push(name_type);
 
@@ -729,8 +729,8 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let mut signatures = self.ast.vec();
 
         for (field_name, (field_type, is_optional)) in field_map {
-            let field_name_atom = self.ast.atom(field_name);
-            let key = self.ast.property_key_static_identifier(SPAN, field_name_atom);
+            let field_name_ident = self.ast.ident(field_name);
+            let key = self.ast.property_key_static_identifier(SPAN, field_name_ident);
             let type_annotation = self.ast.ts_type_annotation(SPAN, field_type);
 
             let sig =
@@ -746,7 +746,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let union_types: Vec<TSType<'b>> = fragment_names
             .iter()
             .map(|name| {
-                let literal = self.ast.ts_literal_string_literal(SPAN, *name, None::<Atom>);
+                let literal = self.ast.ts_literal_string_literal(SPAN, *name, None::<Str>);
                 self.ast.ts_type_literal_type(SPAN, literal)
             })
             .collect();
@@ -791,7 +791,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     fn type_scalar_ref(&self, scalar_name: &'b str) -> TSType<'b> {
         let scalars = self.type_ref("$Scalars");
 
-        let string_literal = self.ast.ts_literal_string_literal(SPAN, scalar_name, None::<Atom>);
+        let string_literal = self.ast.ts_literal_string_literal(SPAN, scalar_name, None::<Str>);
         let literal_type = self.ast.ts_type_literal_type(SPAN, string_literal);
 
         self.ast.ts_type_indexed_access_type(SPAN, scalars, literal_type)
@@ -811,10 +811,10 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
     }
 
     fn stmt_export_type(&self, name: &str, ts_type: TSType<'b>) -> Statement<'b> {
-        let name_atom = self.ast.atom(name);
+        let name_ident = self.ast.ident(name);
         let decl = self.ast.ts_type_alias_declaration(
             SPAN,
-            self.ast.binding_identifier(SPAN, name_atom),
+            self.ast.binding_identifier(SPAN, name_ident),
             None::<OxcBox<TSTypeParameterDeclaration>>,
             ts_type,
             false,
@@ -840,10 +840,10 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         for type_name in type_names {
             let local_type_name = format!("${}", type_name);
 
-            let local = self.ast.binding_identifier(SPAN, self.ast.atom(&local_type_name));
+            let local = self.ast.binding_identifier(SPAN, self.ast.ident(&local_type_name));
             let imported = self
                 .ast
-                .module_export_name_identifier_name(SPAN, self.ast.atom(type_name));
+                .module_export_name_identifier_name(SPAN, self.ast.ident(type_name));
             let specifier = self.ast.import_declaration_specifier_import_specifier(
                 SPAN,
                 imported,
@@ -856,7 +856,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         let import_decl = self.ast.import_declaration(
             SPAN,
             Some(specifiers),
-            self.ast.string_literal(SPAN, "mearie/types", None::<Atom>),
+            self.ast.string_literal(SPAN, "mearie/types", None::<Str>),
             None,
             None::<OxcBox<WithClause>>,
             ImportOrExportKind::Type,

@@ -136,12 +136,8 @@ impl<'a, 'b> VariableRules<'a, 'b> {
             (Type::NonNull(var_inner), loc_type) => {
                 self.is_type_compatible_non_null_to_nullable(var_inner, loc_type, has_default_value)
             }
-            (var_type, Type::NonNull(loc_inner)) => {
-                if has_default_value {
-                    self.is_type_compatible_nullable_with_default(var_type, loc_inner)
-                } else {
-                    false
-                }
+            (var_type, Type::NonNull(loc_inner)) if has_default_value => {
+                self.is_type_compatible_nullable_with_default(var_type, loc_inner)
             }
             (Type::List(var_inner), Type::List(loc_inner)) => {
                 self.is_type_compatible(var_inner, loc_inner, has_default_value)

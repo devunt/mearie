@@ -198,18 +198,14 @@ impl<'a, 'b> ValueRules<'a, 'b> {
                     );
                 }
             }
-            Value::Int(_) => {
-                if type_name != "Int" && type_name != "Float" {
-                    ctx.add_error(format!("Expected type '{}', but got Int value", type_name), value_span);
-                }
+            Value::Int(_) if type_name != "Int" && type_name != "Float" => {
+                ctx.add_error(format!("Expected type '{}', but got Int value", type_name), value_span);
             }
-            Value::Float(_) => {
-                if type_name != "Float" {
-                    ctx.add_error(
-                        format!("Expected type '{}', but got Float value", type_name),
-                        value_span,
-                    );
-                }
+            Value::Float(_) if type_name != "Float" => {
+                ctx.add_error(
+                    format!("Expected type '{}', but got Float value", type_name),
+                    value_span,
+                );
             }
             Value::String(_) => {
                 let is_built_in_scalar = type_name == "Int" || type_name == "Float" || type_name == "Boolean";
@@ -225,13 +221,11 @@ impl<'a, 'b> ValueRules<'a, 'b> {
                     );
                 }
             }
-            Value::Boolean(_) => {
-                if type_name != "Boolean" {
-                    ctx.add_error(
-                        format!("Expected type '{}', but got Boolean value", type_name),
-                        value_span,
-                    );
-                }
+            Value::Boolean(_) if type_name != "Boolean" => {
+                ctx.add_error(
+                    format!("Expected type '{}', but got Boolean value", type_name),
+                    value_span,
+                );
             }
             _ => {}
         }

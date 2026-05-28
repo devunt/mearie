@@ -1,5 +1,5 @@
 use crate::arena::Arena;
-use crate::extraction::extract_graphql_sources;
+use crate::extraction::{extract_graphql_sources, extract_graphql_sources_from_documents};
 use crate::pipeline::{Pipeline, PipelineConfig};
 use crate::source::{Source, SourceBuf};
 use napi_derive::napi;
@@ -31,6 +31,15 @@ pub struct GenerateCodeConfig {
 #[napi(js_name = "extractGraphQLSources")]
 pub fn napi_extract_graphql_sources(source: SourceBuf) -> ExtractGraphQLSourcesResult {
     let result = extract_graphql_sources(source);
+    ExtractGraphQLSourcesResult {
+        sources: result.sources,
+        errors: serde_json::to_value(&result.errors).unwrap_or(serde_json::Value::Array(vec![])),
+    }
+}
+
+#[napi(js_name = "extractGraphQLSourcesFromDocuments")]
+pub fn napi_extract_graphql_sources_from_documents(sources: Vec<SourceBuf>) -> ExtractGraphQLSourcesResult {
+    let result = extract_graphql_sources_from_documents(sources);
     ExtractGraphQLSourcesResult {
         sources: result.sources,
         errors: serde_json::to_value(&result.errors).unwrap_or(serde_json::Value::Array(vec![])),

@@ -5,3 +5,4 @@ pnpm-lock.yaml
 fixture/data/
 **/.svelte-kit/
 **/routeTree.gen.ts
+__generated__/

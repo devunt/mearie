@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { extractGraphQLSources } from './extractor.ts';
+import { extractGraphQLSourcesFromDocuments } from './extractor.ts';
 import { MearieAggregateError } from './errors.ts';
 import { generate, type GenerateConfig } from './generator.ts';
 import { writeFiles } from './writer.ts';
@@ -11,7 +11,7 @@ import type { Source } from './types.ts';
  */
 export class CodegenContext {
   private schemas = new Map<string, Source>();
-  private documents = new Map<string, Source[]>();
+  private documents = new Map<string, Source>();
   private cwd: string;
   private config?: GenerateConfig;
 
@@ -41,18 +41,12 @@ export class CodegenContext {
   }
 
   /**
-   * Adds a document file by reading and extracting operations.
+   * Adds a document file by reading and caching it for cross-file extraction.
    * @param filePath - Document file path.
    */
   async addDocument(filePath: string): Promise<void> {
     const code = await readFile(filePath, 'utf8');
-    const { sources, errors } = await extractGraphQLSources({ code, filePath, startLine: 1 });
-
-    this.documents.set(filePath, sources);
-
-    if (errors.length > 0) {
-      throw new MearieAggregateError(errors);
-    }
+    this.documents.set(filePath, { code, filePath, startLine: 1 });
   }
 
   /**
@@ -70,9 +64,17 @@ export class CodegenContext {
    */
   async generate(): Promise<void> {
     const schemas = [...this.schemas.values()];
-    const documents = [...this.documents.values()].flat();
+    const extractedDocuments = await extractGraphQLSourcesFromDocuments([...this.documents.values()]);
 
-    const { sources, errors } = generate({ schemas, documents, config: this.config });
+    if (extractedDocuments.errors.length > 0) {
+      throw new MearieAggregateError(extractedDocuments.errors);
+    }
+
+    const { sources, errors } = generate({
+      schemas,
+      documents: extractedDocuments.sources,
+      config: this.config,
+    });
 
     await writeFiles(this.cwd, sources);
 

@@ -128,6 +128,27 @@ describe('parseScalars', () => {
     });
   });
 
+  it('should handle anonymous inline fragments', () => {
+    const data = {
+      __typename: 'Post',
+      createdAt: '2025-01-15T10:00:00Z',
+    };
+    const selections: Selection[] = [
+      { kind: 'Field', name: '__typename', type: 'String' },
+      {
+        kind: 'InlineFragment',
+        selections: [{ kind: 'Field', name: 'createdAt', type: 'DateTime' }],
+      },
+    ];
+
+    const result = parse(selections, scalars, data);
+
+    expect(result).toEqual({
+      __typename: 'Post',
+      createdAt: new Date('2025-01-15T10:00:00Z'),
+    });
+  });
+
   it('should handle field aliases', () => {
     const data = { publishDate: '2025-01-15T10:00:00Z' };
     const selections: Selection[] = [{ kind: 'Field', name: 'createdAt', alias: 'publishDate', type: 'DateTime' }];

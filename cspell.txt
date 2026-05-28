@@ -18,12 +18,14 @@ pife
 resub
 rfind
 rlib
+rsplit
 rustc
 sels
 serde
 shikijs
 solidjs
 tmdb
+unskipped
 unstalled
 unsub
 unsubscription
@@ -31,4 +33,5 @@ urql
 vitepress
 vitest
 vinxi
+webp
 wonka

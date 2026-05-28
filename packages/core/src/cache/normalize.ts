@@ -21,6 +21,12 @@ const resolveTypename = (selections: readonly Selection[], data: Record<string, 
   return data.__typename as string | undefined;
 };
 
+const inlineFragmentMatches = (
+  selection: Selection,
+  typename: string | undefined,
+): selection is Extract<Selection, { kind: 'InlineFragment' }> =>
+  selection.kind === 'InlineFragment' && (selection.on === undefined || selection.on === typename);
+
 export const normalize = (
   schemaMeta: SchemaMeta,
   selections: readonly Selection[],
@@ -129,10 +135,7 @@ export const normalize = (
         ) {
           callAccessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
         }
-      } else if (
-        selection.kind === 'FragmentSpread' ||
-        (selection.kind === 'InlineFragment' && selection.on === typename)
-      ) {
+      } else if (selection.kind === 'FragmentSpread' || inlineFragmentMatches(selection, typename)) {
         const inner = normalizeField(storageKey, selection.selections, value);
         if (!isEntityLink(inner)) {
           mergeFields(fields, inner);

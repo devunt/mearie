@@ -1,6 +1,12 @@
 import type { Selection, VariableDef, SchemaMeta, FieldSelection } from '@mearie/shared';
 import { isNullish } from './utils.ts';
 
+const inlineFragmentMatches = (
+  selection: Selection,
+  typename: unknown,
+): selection is Extract<Selection, { kind: 'InlineFragment' }> =>
+  selection.kind === 'InlineFragment' && (selection.on === undefined || selection.on === typename);
+
 export type ScalarTransformer<TExternal = unknown, TInternal = unknown> = {
   parse: (value: TInternal) => TExternal;
   serialize: (value: TExternal) => TInternal;
@@ -66,10 +72,7 @@ export const parse = <TMeta extends SchemaMeta = SchemaMeta>(
           parsed.add(fieldName);
           data[fieldName] = parseValue(selection, data[fieldName], parsedMap);
         }
-      } else if (
-        selection.kind === 'FragmentSpread' ||
-        (selection.kind === 'InlineFragment' && selection.on === data.__typename)
-      ) {
+      } else if (selection.kind === 'FragmentSpread' || inlineFragmentMatches(selection, data.__typename)) {
         parseField(selection.selections, value, parsedMap);
       }
     }

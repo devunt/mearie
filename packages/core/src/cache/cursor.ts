@@ -11,6 +11,12 @@ import {
 } from './utils.ts';
 import { EntityLinkKey, RootFieldKey, FragmentRefKey, FragmentVarsKey } from './constants.ts';
 
+const inlineFragmentMatches = (
+  selection: Selection,
+  typename: unknown,
+): selection is Extract<Selection, { kind: 'InlineFragment' }> =>
+  selection.kind === 'InlineFragment' && (selection.on === undefined || selection.on === typename);
+
 /**
  * Reverse index mapping dependency keys to cursor entries.
  * @internal
@@ -209,7 +215,7 @@ export const traceSelections = (
         } else {
           mergeFields(fields, traceField(sk, selection.selections, val, path, trackCursors), true);
         }
-      } else if (selection.kind === 'InlineFragment' && selection.on === data[typenameFieldKey]) {
+      } else if (inlineFragmentMatches(selection, data[typenameFieldKey])) {
         mergeFields(fields, traceField(sk, selection.selections, val, path, trackCursors), true);
       }
     }

@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct SourceBuf {
     pub code: String,
     pub file_path: String,
+    #[serde(default)]
+    pub importable_file_path: Option<String>,
     pub start_line: u32,
 }
 

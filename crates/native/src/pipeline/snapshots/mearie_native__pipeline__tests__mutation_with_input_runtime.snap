@@ -42,6 +42,7 @@ export const $CreateUser = {
 	}]
 };
 export const artifactMap = { "\n            mutation CreateUser($input: CreateUserInput!) {\n                createUser(input: $input) {\n                    id\n                    name\n                    email\n                }\n            }\n        ": $CreateUser };
+export const artifactByName = { "mutation:CreateUser": $CreateUser };
 export const schema = {
 	entities: { "User": { keyFields: ["id"] } },
 	inputs: { "CreateUserInput": { fields: [
@@ -61,3 +62,8 @@ export const schema = {
 	] } }
 };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

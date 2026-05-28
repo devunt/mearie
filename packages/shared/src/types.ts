@@ -85,12 +85,14 @@ export type FragmentSpreadSelection = {
   kind: 'FragmentSpread';
   name: string;
   args?: Record<string, Argument>;
+  directives?: Directive[];
   selections: Selection[];
 };
 
 export type InlineFragmentSelection = {
   kind: 'InlineFragment';
-  on: string;
+  on?: string;
+  directives?: Directive[];
   selections: Selection[];
 };
 

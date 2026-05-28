@@ -215,6 +215,103 @@ mod tests {
     }
 
     #[test]
+    fn test_fragment_and_inline_directives_in_runtime_selections() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { id: ID!, name: String }
+        "#;
+
+        let fragment_code = r#"
+            fragment UserFields on User {
+                name
+            }
+        "#;
+
+        let operation_code = r#"
+            query GetUser($showFragment: Boolean!) {
+                user {
+                    ...UserFields @include(if: $showFragment)
+                    ... on User @include(if: true) {
+                        id
+                    }
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(fragment_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let runtime_file = output.sources.iter().find(|s| s.file_path == "graphql.js").unwrap();
+
+        assert!(
+            runtime_file
+                .code
+                .contains("kind: \"FragmentSpread\",\n\t\t\t\tname: \"UserFields\",\n\t\t\t\tdirectives:"),
+            "FragmentSpread runtime selection should preserve directives, got:\n{}",
+            runtime_file.code
+        );
+        assert!(
+            runtime_file
+                .code
+                .contains("kind: \"InlineFragment\",\n\t\t\t\ton: \"User\",\n\t\t\t\tdirectives:"),
+            "InlineFragment runtime selection should preserve directives, got:\n{}",
+            runtime_file.code
+        );
+    }
+
+    #[test]
+    fn test_anonymous_inline_fragment_omits_on_in_runtime_selections() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User }
+            type User { id: ID!, name: String }
+        "#;
+
+        let operation_code = r#"
+            query GetUser {
+                user {
+                    id
+                    ... {
+                        name
+                    }
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let runtime_file = output.sources.iter().find(|s| s.file_path == "graphql.js").unwrap();
+
+        assert!(
+            runtime_file
+                .code
+                .contains("kind: \"InlineFragment\",\n\t\t\t\tselections:"),
+            "Anonymous InlineFragment runtime selection should omit on, got:\n{}",
+            runtime_file.code
+        );
+        assert!(
+            !runtime_file.code.contains("on: \"User\""),
+            "Anonymous InlineFragment runtime selection should not fall back to parent type, got:\n{}",
+            runtime_file.code
+        );
+    }
+
+    #[test]
     fn test_fragment_vars_type_generated() {
         let arena = Arena::new();
 
@@ -298,6 +395,105 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_typed_graphql_required_cascade_unwraps_enum_literal_action() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User! }
+            type User { profile: Profile! }
+            type Profile { avatar: String }
+        "#;
+
+        let operation_code = r#"
+            query GetUserAvatar {
+                user {
+                    profile {
+                        avatar @required(action: CASCADE)
+                    }
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let module_file = output.sources.iter().find(|s| s.file_path == "graphql.d.ts").unwrap();
+
+        assert!(
+            module_file.code.contains(
+                "type $$DirectiveEnumValue<Value> = Value extends $$EnumLiteral<infer Literal extends string> ? Literal : Value;"
+            ),
+            "Typed GraphQL helpers should unwrap graphql.enum() values before directive action checks, got:\n{}",
+            module_file.code
+        );
+        assert!(
+            module_file.code.contains(
+                "type $$RequiredDirectiveAction<Directive> = Directive extends { action: infer Action } ? $$DirectiveEnumValue<Action> : never;"
+            ),
+            "Typed GraphQL @required(action: graphql.enum('CASCADE')) should be compared as the CASCADE literal, got:\n{}",
+            module_file.code
+        );
+    }
+
+    #[test]
+    fn test_typed_graphql_required_cascade_checks_fragment_bucket() {
+        let arena = Arena::new();
+
+        let schema_code = r#"
+            type Query { user: User! }
+            type User { profile: Profile! }
+            type Profile { avatar: String }
+        "#;
+
+        let operation_code = r#"
+            query GetUserAvatar {
+                user {
+                    profile {
+                        avatar @required(action: CASCADE)
+                    }
+                }
+            }
+        "#;
+
+        let output = Pipeline::builder(&arena)
+            .with_schema(Source::ephemeral(schema_code))
+            .with_document(Source::ephemeral(operation_code))
+            .build()
+            .process();
+
+        assert!(output.errors.is_empty(), "Expected no errors, got: {:?}", output.errors);
+
+        let module_file = output.sources.iter().find(|s| s.file_path == "graphql.d.ts").unwrap();
+
+        assert!(
+            module_file.code.contains(
+                "Selection extends { \"$\"?: infer Items } ? $$FragmentListHasEscapingCascade<TypeName, Items> : false;"
+            ),
+            "Typed GraphQL cascade inference should inspect the fragment bucket, got:\n{}",
+            module_file.code
+        );
+        assert!(
+            module_file
+                .code
+                .contains("Payload extends $$Artifact<\"fragment\", any, unknown, unknown>\n\t\t\t? false"),
+            "Typed GraphQL cascade inference should preserve opaque fragment artifact behavior, got:\n{}",
+            module_file.code
+        );
+        assert!(
+            module_file
+                .code
+                .contains(": Item extends object ? $$SelectionSetHasEscapingCascade<Parent, Item> : false;"),
+            "Typed GraphQL cascade inference should inspect raw fragment-bucket selections, got:\n{}",
+            module_file.code
+        );
     }
 
     macro_rules! assert_pipeline_snapshots {

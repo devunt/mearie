@@ -1,56 +1,56 @@
 import { Link } from '@tanstack/react-router';
-import { useFragment } from '@mearie/react';
+import { useFragment, type FragmentRefs } from '@mearie/react';
 import { graphql } from '$mearie';
-import type { MovieCard$key } from '$mearie';
 import { Star } from 'lucide-react';
 
+export const MovieCardFragment = graphql.fragment('MovieCard', 'Movie', {
+  select: () => ({
+    __typename: true,
+    id: true,
+    title: true,
+    posterUrl: true,
+    rating: true,
+    releaseDate: true,
+    credits: {
+      __typename: true,
+      $: [
+        [
+          { on: 'Cast' },
+          {
+            id: true,
+            character: true,
+            person: {
+              id: true,
+              name: true,
+            },
+          },
+        ],
+        [
+          { on: 'Crew' },
+          {
+            id: true,
+            job: true,
+            person: {
+              id: true,
+              name: true,
+            },
+          },
+        ],
+      ],
+    },
+    genres: {
+      id: true,
+      name: true,
+    },
+  }),
+});
+
 interface MovieCardProps {
-  $movie: MovieCard$key;
+  $movie: FragmentRefs<'MovieCard'>;
 }
 
 export function MovieCard({ $movie }: MovieCardProps) {
-  const movie = useFragment(
-    graphql(`
-      fragment MovieCard on Movie {
-        __typename
-        id
-        title
-        posterUrl
-        rating
-        releaseDate
-
-        credits {
-          __typename
-
-          ... on Cast {
-            id
-            character
-
-            person {
-              id
-              name
-            }
-          }
-
-          ... on Crew {
-            id
-            job
-
-            person {
-              id
-              name
-            }
-          }
-        }
-
-        genres {
-          id
-          name
-        }
-      }
-    `),
-    $movie,
-  );
+  const movie = useFragment(MovieCardFragment, $movie);
 
   const year = movie.data.releaseDate?.getFullYear();
   const genres = movie.data.genres.map((g) => g.name).join(', ');

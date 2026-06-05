@@ -443,13 +443,9 @@ impl<'a> TypedGraphqlCrossFileFragmentResolver<'a> {
     }
 
     fn resolve_module_path(&self, file_path: &str, module_source: &str) -> Option<String> {
-        for candidate in module_resolution_candidates(file_path, module_source)? {
-            if self.files.contains_key(&candidate) {
-                return Some(candidate);
-            }
-        }
-
-        None
+        module_resolution_candidates(file_path, module_source)?
+            .into_iter()
+            .find(|candidate| self.files.contains_key(candidate))
     }
 }
 
@@ -477,11 +473,11 @@ fn module_resolution_candidates(file_path: &str, module_source: &str) -> Option<
         for extension in TYPED_GRAPHQL_MODULE_EXTENSIONS {
             push_unique_candidate(&mut candidates, format!("{}.{}", base, extension));
         }
-    } else if matches!(extension, Some("js" | "jsx" | "mjs" | "cjs")) {
-        if let Some((stem, _)) = base.rsplit_once('.') {
-            for extension in ["ts", "tsx", "mts", "cts"] {
-                push_unique_candidate(&mut candidates, format!("{}.{}", stem, extension));
-            }
+    } else if matches!(extension, Some("js" | "jsx" | "mjs" | "cjs"))
+        && let Some((stem, _)) = base.rsplit_once('.')
+    {
+        for extension in ["ts", "tsx", "mts", "cts"] {
+            push_unique_candidate(&mut candidates, format!("{}.{}", stem, extension));
         }
     }
 
@@ -1284,6 +1280,7 @@ impl<'a> Extractor<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn write_configured_field(
         &self,
         out: &mut String,

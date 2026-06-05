@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "typecheck": "node test/fixtures/generate.ts && tsc"
+    "test:codegen": "node test/fixtures/generate.ts",
+    "typecheck": "pnpm test:codegen && tsc"
   },
   "dependencies": {
     "@logtape/logtape": "^2.0.2",

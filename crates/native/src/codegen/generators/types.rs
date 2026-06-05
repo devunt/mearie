@@ -57,6 +57,7 @@ impl<'a, 'b> TypesGenerator<'a, 'b> {
         Ok(SourceBuf {
             code,
             file_path: "types.d.ts".to_string(),
+            importable_file_path: None,
             start_line: 1,
         })
     }

@@ -32,7 +32,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let statements = self.ast.vec_from_iter(chain![
             self.gen_artifacts()?,
             std::iter::once(self.gen_schema()?),
-            std::iter::once(self.stmt_graphql_function()),
+            self.gen_graphql_runtime(),
         ]);
 
         let program = self.ast.program(
@@ -50,6 +50,7 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         Ok(SourceBuf {
             code,
             file_path: "graphql.js".to_string(),
+            importable_file_path: None,
             start_line: 1,
         })
     }
@@ -69,30 +70,35 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
             .collect();
 
         let artifacts: Vec<_> = chain![operations?, fragments?].collect();
-        let (statements, artifact_map): (Vec<_>, Vec<_>) = artifacts.into_iter().unzip();
-        let artifact_map_stmt = self.stmt_artifact_map(&artifact_map);
+        let (statements, artifact_registrations): (Vec<_>, Vec<_>) = artifacts.into_iter().unzip();
+        let artifact_map_stmt = self.stmt_artifact_map(&artifact_registrations);
+        let artifact_by_name_stmt = self.stmt_artifact_by_name(&artifact_registrations);
 
         Ok(self
             .ast
-            .vec_from_iter(chain![statements, std::iter::once(artifact_map_stmt)]))
+            .vec_from_iter(chain![statements, [artifact_map_stmt, artifact_by_name_stmt]]))
     }
 
     fn create_operation_artifact(
         &self,
         name: &'b str,
         operation: &'b OperationDefinition<'b>,
-    ) -> Result<(Statement<'b>, (&str, &str))> {
+    ) -> Result<(Statement<'b>, ArtifactRegistration<'b>)> {
         let source = self
             .document
             .get_operation_source(operation)
             .ok_or_else(|| MearieError::codegen("Operation source not found"))?;
 
         let stmt = self.stmt_operation_artifact(name, operation)?;
+        let kind = operation.kind_str();
 
-        Ok((stmt, (name, source)))
+        Ok((stmt, ArtifactRegistration { kind, name, source }))
     }
 
-    fn create_fragment_artifact(&self, fragment: &'b FragmentDefinition<'b>) -> Result<(Statement<'b>, (&str, &str))> {
+    fn create_fragment_artifact(
+        &self,
+        fragment: &'b FragmentDefinition<'b>,
+    ) -> Result<(Statement<'b>, ArtifactRegistration<'b>)> {
         let name = fragment.name.as_str();
         let source = self
             .document
@@ -101,7 +107,14 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
         let stmt = self.stmt_fragment_artifact(fragment)?;
 
-        Ok((stmt, (name, source)))
+        Ok((
+            stmt,
+            ArtifactRegistration {
+                kind: "fragment",
+                name,
+                source,
+            },
+        ))
     }
 
     fn stmt_operation_artifact(&self, name: &str, operation: &'b OperationDefinition<'b>) -> Result<Statement<'b>> {
@@ -197,15 +210,17 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         ObjectPropertyKind::ObjectProperty(self.ast.alloc(property))
     }
 
-    fn stmt_artifact_map(&self, artifacts: &[(&str, &str)]) -> Statement<'b> {
-        let properties = self.ast.vec_from_iter(artifacts.iter().map(|(name, source)| {
-            let var_name = format!("${}", name);
+    fn stmt_artifact_map(&self, artifacts: &[ArtifactRegistration<'b>]) -> Statement<'b> {
+        let properties = self.ast.vec_from_iter(artifacts.iter().map(|artifact| {
+            let var_name = format!("${}", artifact.name);
             let var_ref = Expression::Identifier(
                 self.ast
                     .alloc(self.ast.identifier_reference(SPAN, self.ast.ident(&var_name))),
             );
 
-            let string_literal = self.ast.string_literal(SPAN, self.ast.str(source), None::<Str>);
+            let string_literal = self
+                .ast
+                .string_literal(SPAN, self.ast.str(artifact.source), None::<Str>);
             let property_key = PropertyKey::StringLiteral(self.ast.alloc(string_literal));
 
             let property =
@@ -218,6 +233,40 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         let obj_expr = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)));
 
         self.stmt_export_const("artifactMap", obj_expr)
+    }
+
+    fn stmt_artifact_by_name(&self, artifacts: &[ArtifactRegistration<'b>]) -> Statement<'b> {
+        let properties = self.ast.vec_from_iter(artifacts.iter().map(|artifact| {
+            let var_name = format!("${}", artifact.name);
+            let var_ref = Expression::Identifier(
+                self.ast
+                    .alloc(self.ast.identifier_reference(SPAN, self.ast.ident(&var_name))),
+            );
+
+            let key = format!("{}:{}", artifact.kind, artifact.name);
+            let string_literal = self.ast.string_literal(SPAN, self.ast.str(&key), None::<Str>);
+            let property_key = PropertyKey::StringLiteral(self.ast.alloc(string_literal));
+
+            let property =
+                self.ast
+                    .object_property(SPAN, PropertyKind::Init, property_key, var_ref, false, false, false);
+
+            ObjectPropertyKind::ObjectProperty(self.ast.alloc(property))
+        }));
+
+        let obj_expr = Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)));
+
+        self.stmt_export_const("artifactByName", obj_expr)
+    }
+
+    fn gen_graphql_runtime(&self) -> StmtVec<'b> {
+        self.ast.vec_from_iter(chain![
+            std::iter::once(self.stmt_graphql_function()),
+            ["query", "mutation", "subscription", "fragment"]
+                .into_iter()
+                .map(|kind| self.stmt_graphql_method(kind)),
+            std::iter::once(self.stmt_graphql_enum_method()),
+        ])
     }
 
     fn stmt_graphql_function(&self) -> Statement<'b> {
@@ -292,6 +341,142 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         );
 
         Statement::ExportNamedDeclaration(self.ast.alloc(export_decl))
+    }
+
+    fn stmt_graphql_method(&self, kind: &'static str) -> Statement<'b> {
+        let param_pattern = self.ast.binding_pattern_binding_identifier(SPAN, "name");
+        let param = self.ast.formal_parameter(
+            SPAN,
+            self.ast.vec(),
+            param_pattern,
+            None::<OxcBox<TSTypeAnnotation>>,
+            None::<OxcBox<Expression>>,
+            false,
+            None,
+            false,
+            false,
+        );
+        let formal_params = self.ast.formal_parameters(
+            SPAN,
+            FormalParameterKind::ArrowFormalParameters,
+            self.ast.vec1(param),
+            None::<OxcBox<FormalParameterRest>>,
+        );
+
+        let artifact_by_name_expr =
+            Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "artifactByName")));
+        let prefix_expr = self.expr_string(&format!("{}:", kind));
+        let name_expr = Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "name")));
+        let key_expr = Expression::BinaryExpression(self.ast.alloc(self.ast.binary_expression(
+            SPAN,
+            prefix_expr,
+            BinaryOperator::Addition,
+            name_expr,
+        )));
+        let lookup_expr = self
+            .ast
+            .member_expression_computed(SPAN, artifact_by_name_expr, key_expr, false);
+
+        let expression_body = lookup_expr.into();
+        let function_body = self.ast.function_body(
+            SPAN,
+            self.ast.vec(),
+            self.ast.vec1(Statement::ExpressionStatement(
+                self.ast.alloc(self.ast.expression_statement(SPAN, expression_body)),
+            )),
+        );
+
+        let arrow_function = self.ast.arrow_function_expression(
+            SPAN,
+            true,
+            false,
+            None::<OxcBox<TSTypeParameterDeclaration>>,
+            self.ast.alloc(formal_params),
+            None::<OxcBox<TSTypeAnnotation>>,
+            self.ast.alloc(function_body),
+        );
+
+        let graphql_expr = Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "graphql")));
+        let left = AssignmentTarget::StaticMemberExpression(self.ast.alloc_static_member_expression(
+            SPAN,
+            graphql_expr,
+            self.ast.identifier_name(SPAN, self.ast.ident(kind)),
+            false,
+        ));
+        let assignment = self.ast.assignment_expression(
+            SPAN,
+            AssignmentOperator::Assign,
+            left,
+            Expression::ArrowFunctionExpression(self.ast.alloc(arrow_function)),
+        );
+
+        Statement::ExpressionStatement(
+            self.ast.alloc(
+                self.ast
+                    .expression_statement(SPAN, Expression::AssignmentExpression(self.ast.alloc(assignment))),
+            ),
+        )
+    }
+
+    fn stmt_graphql_enum_method(&self) -> Statement<'b> {
+        let param_pattern = self.ast.binding_pattern_binding_identifier(SPAN, "value");
+        let param = self.ast.formal_parameter(
+            SPAN,
+            self.ast.vec(),
+            param_pattern,
+            None::<OxcBox<TSTypeAnnotation>>,
+            None::<OxcBox<Expression>>,
+            false,
+            None,
+            false,
+            false,
+        );
+        let formal_params = self.ast.formal_parameters(
+            SPAN,
+            FormalParameterKind::ArrowFormalParameters,
+            self.ast.vec1(param),
+            None::<OxcBox<FormalParameterRest>>,
+        );
+
+        let value_expr = Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "value")));
+        let function_body = self.ast.function_body(
+            SPAN,
+            self.ast.vec(),
+            self.ast.vec1(Statement::ExpressionStatement(
+                self.ast.alloc(self.ast.expression_statement(SPAN, value_expr)),
+            )),
+        );
+
+        let arrow_function = self.ast.arrow_function_expression(
+            SPAN,
+            true,
+            false,
+            None::<OxcBox<TSTypeParameterDeclaration>>,
+            self.ast.alloc(formal_params),
+            None::<OxcBox<TSTypeAnnotation>>,
+            self.ast.alloc(function_body),
+        );
+
+        let graphql_expr = Expression::Identifier(self.ast.alloc(self.ast.identifier_reference(SPAN, "graphql")));
+        let left = AssignmentTarget::StaticMemberExpression(self.ast.alloc_static_member_expression(
+            SPAN,
+            graphql_expr,
+            self.ast.identifier_name(SPAN, self.ast.ident("enum")),
+            false,
+        ));
+        let assignment = self.ast.assignment_expression(
+            SPAN,
+            AssignmentOperator::Assign,
+            left,
+            Expression::ArrowFunctionExpression(self.ast.alloc(arrow_function)),
+        );
+
+        Statement::ExpressionStatement(
+            self.ast.alloc(
+                self.ast
+                    .expression_statement(SPAN, Expression::AssignmentExpression(self.ast.alloc(assignment))),
+            ),
+        )
     }
 
     fn gen_schema(&self) -> Result<Statement<'b>> {
@@ -533,7 +718,12 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
-            SelectionNodeData::FragmentSpread { name, args, selections } => {
+            SelectionNodeData::FragmentSpread {
+                name,
+                args,
+                directives,
+                selections,
+            } => {
                 let mut properties = self.ast.vec();
 
                 properties.push(self.prop_object("kind", self.expr_string("FragmentSpread")));
@@ -551,16 +741,36 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
                     properties.push(self.prop_object("args", args_expr));
                 }
 
+                if let Some(directives) = directives
+                    && !directives.is_empty()
+                {
+                    properties.push(self.prop_object("directives", self.expr_directives_array(directives)));
+                }
+
                 properties.push(self.prop_object("selections", self.expr_selections_array(selections)));
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
-            SelectionNodeData::InlineFragment { on, selections } => {
-                let properties = self.ast.vec_from_array([
-                    self.prop_object("kind", self.expr_string("InlineFragment")),
-                    self.prop_object("on", self.expr_string(on)),
-                    self.prop_object("selections", self.expr_selections_array(selections)),
-                ]);
+            SelectionNodeData::InlineFragment {
+                on,
+                directives,
+                selections,
+            } => {
+                let mut properties = self
+                    .ast
+                    .vec_from_array([self.prop_object("kind", self.expr_string("InlineFragment"))]);
+
+                if let Some(on) = on {
+                    properties.push(self.prop_object("on", self.expr_string(on)));
+                }
+
+                if let Some(directives) = directives
+                    && !directives.is_empty()
+                {
+                    properties.push(self.prop_object("directives", self.expr_directives_array(directives)));
+                }
+
+                properties.push(self.prop_object("selections", self.expr_selections_array(selections)));
 
                 Expression::ObjectExpression(self.ast.alloc(self.ast.object_expression(SPAN, properties)))
             }
@@ -811,6 +1021,11 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         Ok(SelectionNodeData::FragmentSpread {
             name: spread.fragment_name.as_str(),
             args,
+            directives: if spread.directives.is_empty() {
+                None
+            } else {
+                Some(&spread.directives[..])
+            },
             selections,
         })
     }
@@ -820,12 +1035,18 @@ impl<'a, 'b> RuntimeGenerator<'a, 'b> {
         inline: &'b InlineFragment<'b>,
         parent_type: &str,
     ) -> Result<SelectionNodeData<'b>> {
-        let type_condition = inline.type_condition.map(|t| t.as_str()).unwrap_or(parent_type);
+        let type_condition = inline.type_condition.map(|t| t.as_str());
+        let selection_parent_type = type_condition.unwrap_or(parent_type);
 
-        let selections = self.flatten_selections(&inline.selection_set, type_condition)?;
+        let selections = self.flatten_selections(&inline.selection_set, selection_parent_type)?;
 
         Ok(SelectionNodeData::InlineFragment {
-            on: type_condition.to_string(),
+            on: type_condition.map(str::to_string),
+            directives: if inline.directives.is_empty() {
+                None
+            } else {
+                Some(&inline.directives[..])
+            },
             selections,
         })
     }
@@ -933,10 +1154,18 @@ enum SelectionNodeData<'b> {
     FragmentSpread {
         name: &'b str,
         args: Option<&'b [crate::graphql::ast::Argument<'b>]>,
+        directives: Option<&'b [crate::graphql::ast::Directive<'b>]>,
         selections: Vec<SelectionNodeData<'b>>,
     },
     InlineFragment {
-        on: String,
+        on: Option<String>,
+        directives: Option<&'b [crate::graphql::ast::Directive<'b>]>,
         selections: Vec<SelectionNodeData<'b>>,
     },
+}
+
+struct ArtifactRegistration<'b> {
+    kind: &'static str,
+    name: &'b str,
+    source: &'b str,
 }

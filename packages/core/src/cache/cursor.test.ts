@@ -433,6 +433,37 @@ describe('traceSelections', () => {
     expect(result.data).toEqual({ node: { __typename: 'User', id: '1', name: 'Alice' } });
   });
 
+  it('merges anonymous InlineFragment sub-selections unconditionally', () => {
+    const storage: Storage = {
+      [RootFieldKey]: { 'node@{}': { [EntityLinkKey]: 'User:1' } },
+      ['User:1' as StorageKey]: {
+        '__typename@{}': 'User',
+        'id@{}': '1',
+        'name@{}': 'Alice',
+      },
+    };
+    const selections: Selection[] = [
+      {
+        kind: 'Field',
+        name: 'node',
+        type: 'Node',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          {
+            kind: 'InlineFragment',
+            selections: [{ kind: 'Field', name: 'name', type: 'String' }],
+          },
+        ],
+      },
+    ];
+
+    const result = traceSelections(selections, storage, storage[RootFieldKey], {}, RootFieldKey, [], 1);
+
+    expect(result.complete).toBe(true);
+    expect(result.data).toEqual({ node: { __typename: 'User', id: '1', name: 'Alice' } });
+  });
+
   it('skips InlineFragment when on does not match __typename', () => {
     const storage: Storage = {
       [RootFieldKey]: { 'node@{}': { [EntityLinkKey]: 'User:1' } },

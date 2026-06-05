@@ -286,6 +286,10 @@ impl<'a> SchemaIndex<'a> {
         self.directives.get(name).copied()
     }
 
+    pub fn directives(&self) -> impl Iterator<Item = &'a DirectiveDefinition<'a>> + '_ {
+        self.directives.values().copied()
+    }
+
     pub fn custom_scalars(&self) -> &[&'a str] {
         &self.custom_scalars
     }

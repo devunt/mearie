@@ -1,3 +1,11 @@
 {
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "$mearie": ["test/fixtures/__generated__/graphql.d.ts"],
+      "mearie/types": ["../mearie/src/types.ts"]
+    }
+  },
+  "include": ["src", "test"]
 }

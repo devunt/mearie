@@ -41,5 +41,11 @@ export const $GetEvent = {
 	}]
 };
 export const artifactMap = { "\n            query GetEvent {\n                event {\n                    id\n                    name\n                    startAt\n                    metadata\n                }\n            }\n        ": $GetEvent };
+export const artifactByName = { "query:GetEvent": $GetEvent };
 export const schema = { entities: { "Event": { keyFields: ["id"] } } };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

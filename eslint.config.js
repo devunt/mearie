@@ -15,6 +15,7 @@ export default defineConfig(
       '**/examples',
       '**/.mearie',
       '**/.vitepress/cache',
+      '**/__generated__',
       'eslint.config.js',
     ],
   },

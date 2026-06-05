@@ -20,14 +20,17 @@ jobs:
         include:
           - name: eslint
             command: pnpm lint
+            codegen: true
           - name: prettier
             command: pnpm format
           - name: spellcheck
             command: pnpm spellcheck
           - name: typecheck
             command: pnpm typecheck
+            codegen: true
           - name: vitest
             command: pnpm test
+            codegen: true
           - name: cargo fmt
             command: pnpm format:rust
             rust: true
@@ -52,11 +55,15 @@ jobs:
           cache: pnpm
 
       - name: Setup Rust
-        if: matrix.rust
+        if: matrix.rust || matrix.codegen
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Codegen
+        if: matrix.codegen
+        run: pnpm --filter @mearie/native build && pnpm --filter @mearie/codegen test:codegen
 
       - name: ${{ matrix.name }}
         run: ${{ matrix.command }}

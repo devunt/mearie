@@ -1,0 +1,102 @@
+scalar URL
+
+directive @auth(role: Role!) on QUERY | FIELD
+directive @clientFlag(value: Boolean) on QUERY
+directive @mutationOnly(reason: String) on MUTATION
+directive @subscriptionOnly on SUBSCRIPTION
+directive @fieldOnly on FIELD
+directive @fragmentOnly(reason: String) on FRAGMENT_DEFINITION
+directive @spreadOnly(flag: Boolean) on FRAGMENT_SPREAD
+directive @inlineOnly(flag: Boolean) on INLINE_FRAGMENT
+directive @varTag(reason: String!) on VARIABLE_DEFINITION
+
+type Query {
+  user(id: ID!, filter: UserFilter, role: Role = USER): User
+  node(id: ID!): Node
+  search(term: String!, limit: Int): [SearchResult!]!
+  viewer: Viewer!
+}
+
+type Mutation {
+  updateUser(id: ID!, input: UserInput!): User!
+}
+
+type Subscription {
+  userUpdated(id: ID!): User!
+}
+
+interface Node {
+  id: ID!
+}
+
+interface ProfileOwner {
+  profile: Profile
+}
+
+type Viewer implements Node {
+  id: ID!
+  user: User
+}
+
+type User implements Node & ProfileOwner {
+  id: ID!
+  name: String!
+  email: String
+  age: Int
+  role: Role!
+  profile: Profile
+  friends(first: Int, after: String): [User!]!
+  favorite: SearchResult
+}
+
+type Admin implements Node & ProfileOwner {
+  id: ID!
+  name: String!
+  permissions: [String!]!
+  profile: Profile
+}
+
+type Guest implements Node {
+  id: ID!
+  nickname: String
+}
+
+type Profile {
+  avatar(size: Int!, format: ImageFormat = PNG): Image
+  bio: String
+}
+
+type Image {
+  url: URL!
+  width: Int
+  height: Int
+}
+
+union SearchResult = User | Admin | Guest
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ImageFormat {
+  PNG
+  JPG
+  WEBP
+}
+
+input UserFilter {
+  role: Role
+  tags: [String!]
+  nested: NestedFilter
+}
+
+input NestedFilter {
+  active: Boolean!
+}
+
+input UserInput {
+  name: String!
+  email: String
+  tags: [String!]
+}

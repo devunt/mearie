@@ -36,8 +36,14 @@ export const $GetResult = {
 	}]
 };
 export const artifactMap = { "\n            query GetResult {\n                result {\n                    ... on Success {\n                        id\n                        value\n                    }\n                }\n            }\n        ": $GetResult };
+export const artifactByName = { "query:GetResult": $GetResult };
 export const schema = { entities: {
 	"Success": { keyFields: ["id"] },
 	"Error": { keyFields: ["id"] }
 } };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

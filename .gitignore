@@ -11,3 +11,4 @@ target/
 
 .env
 .worktrees/
+__generated__/

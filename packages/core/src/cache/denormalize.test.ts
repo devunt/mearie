@@ -1327,6 +1327,49 @@ describe('denormalize', () => {
       ]);
     });
 
+    it('anonymous inline fragment', () => {
+      const selections = [
+        {
+          kind: 'Field' as const,
+          name: 'entity',
+          type: 'Node',
+          selections: [
+            { kind: 'Field' as const, name: '__typename', type: 'String' },
+            { kind: 'Field' as const, name: 'id', type: 'ID' },
+            {
+              kind: 'InlineFragment' as const,
+              selections: [{ kind: 'Field' as const, name: 'name', type: 'String' }],
+            },
+          ],
+        },
+      ];
+      const storage = {
+        [RootFieldKey]: { 'entity@{}': { [EntityLinkKey]: 'User:1' } },
+        'User:1': {
+          '__typename@{}': 'User',
+          'id@{}': '1',
+          'name@{}': 'Alice',
+        },
+      };
+
+      const { data, partial, calls } = denormalizeTest(selections, storage);
+
+      expect(data).toEqual({
+        entity: {
+          __typename: 'User',
+          id: '1',
+          name: 'Alice',
+        },
+      });
+      expect(partial).toBe(false);
+      expectSameCalls(calls, [
+        [RootFieldKey, 'entity@{}'],
+        ['User:1', '__typename@{}'],
+        ['User:1', 'id@{}'],
+        ['User:1', 'name@{}'],
+      ]);
+    });
+
     it('non-matching typename', () => {
       const selections = [
         {

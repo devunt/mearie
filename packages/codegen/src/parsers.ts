@@ -47,6 +47,7 @@ export const extractSvelteScript = async (source: Source): Promise<Source[]> => 
     blocks.push({
       code,
       filePath: `${source.filePath}.instance.ts`,
+      importableFilePath: source.importableFilePath ?? source.filePath,
       startLine: source.startLine + lineOffset,
     });
   }
@@ -59,6 +60,7 @@ export const extractSvelteScript = async (source: Source): Promise<Source[]> => 
     blocks.push({
       code,
       filePath: `${source.filePath}.module.ts`,
+      importableFilePath: source.importableFilePath ?? source.filePath,
       startLine: source.startLine + lineOffset,
     });
   }
@@ -78,6 +80,7 @@ export const extractAstroScripts = (source: Source): Source[] => {
     blocks.push({
       code: frontmatterMatch[1]!,
       filePath: `${source.filePath}.frontmatter.ts`,
+      importableFilePath: source.importableFilePath ?? source.filePath,
       startLine: source.startLine + lineOffset,
     });
   }
@@ -92,6 +95,7 @@ export const extractAstroScripts = (source: Source): Source[] => {
     blocks.push({
       code: match[1]!,
       filePath: `${source.filePath}.${index}.ts`,
+      importableFilePath: source.importableFilePath ?? source.filePath,
       startLine: source.startLine + lineOffset,
     });
 
@@ -115,6 +119,7 @@ export const extractMarkdownCodeBlocks = (source: Source): Source[] => {
     codeBlocks.push({
       code: match[2]!,
       filePath: `${source.filePath}.${index}.${match[1]}`,
+      importableFilePath: source.importableFilePath ?? source.filePath,
       startLine: source.startLine + lineOffset,
     });
 

@@ -44,8 +44,14 @@ export const $GetUser = {
 	}]
 };
 export const artifactMap = { "\n            query GetUser($userId: ID!) {\n                user(id: $userId) {\n                    id\n                    name\n                    email\n                }\n            }\n        ": $GetUser };
+export const artifactByName = { "query:GetUser": $GetUser };
 export const schema = { entities: {
 	"User": { keyFields: ["id"] },
 	"Post": { keyFields: ["id"] }
 } };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

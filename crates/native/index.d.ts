@@ -1,6 +1,7 @@
 export interface SourceBuf {
   code: string;
   filePath: string;
+  importableFilePath?: string;
   startLine: number;
 }
 
@@ -19,6 +20,7 @@ export interface GenerateCodeResult {
 }
 
 export declare function extractGraphQLSources(source: SourceBuf): ExtractGraphQLSourcesResult;
+export declare function extractGraphQLSourcesFromDocuments(sources: SourceBuf[]): ExtractGraphQLSourcesResult;
 export declare function generateCode(
   schemas: SourceBuf[],
   documents: SourceBuf[],

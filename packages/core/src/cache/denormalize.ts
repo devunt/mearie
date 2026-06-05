@@ -5,6 +5,12 @@ import type { Storage, StorageKey, FieldKey, PropertyPath } from './types.ts';
 
 const typenameFieldKey = makeFieldKey({ kind: 'Field', name: '__typename', type: 'String' }, {});
 
+const inlineFragmentMatches = (
+  selection: Selection,
+  typename: unknown,
+): selection is Extract<Selection, { kind: 'InlineFragment' }> =>
+  selection.kind === 'InlineFragment' && (selection.on === undefined || selection.on === typename);
+
 export const denormalize = (
   selections: readonly Selection[],
   storage: Storage,
@@ -127,7 +133,7 @@ export const denormalize = (
         } else {
           mergeFields(fields, denormalizeField(storageKey, selection.selections, value, path), true);
         }
-      } else if (selection.kind === 'InlineFragment' && selection.on === data[typenameFieldKey]) {
+      } else if (inlineFragmentMatches(selection, data[typenameFieldKey])) {
         mergeFields(fields, denormalizeField(storageKey, selection.selections, value, path), true);
       }
     }

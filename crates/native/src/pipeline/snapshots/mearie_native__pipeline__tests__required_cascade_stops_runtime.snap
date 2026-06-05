@@ -67,9 +67,15 @@ export const $GetTheme = {
 	}]
 };
 export const artifactMap = { "\n            query GetTheme {\n                user {\n                    id\n                    settings {\n                        id\n                        theme {\n                            id\n                            primaryColor @required(action: CASCADE)\n                        }\n                    }\n                }\n            }\n        ": $GetTheme };
+export const artifactByName = { "query:GetTheme": $GetTheme };
 export const schema = { entities: {
 	"Settings": { keyFields: ["id"] },
 	"User": { keyFields: ["id"] },
 	"Theme": { keyFields: ["id"] }
 } };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

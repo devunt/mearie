@@ -60,8 +60,14 @@ export const $Search = {
 	}]
 };
 export const artifactMap = { "\n            query Search {\n                search {\n                    ... on User {\n                        id\n                        name\n                    }\n                    ... on Post {\n                        id\n                        title\n                    }\n                }\n            }\n        ": $Search };
+export const artifactByName = { "query:Search": $Search };
 export const schema = { entities: {
 	"Post": { keyFields: ["id"] },
 	"User": { keyFields: ["id"] }
 } };
 export const graphql = (artifact) => artifactMap[artifact];
+graphql.query = (name) => artifactByName["query:" + name];
+graphql.mutation = (name) => artifactByName["mutation:" + name];
+graphql.subscription = (name) => artifactByName["subscription:" + name];
+graphql.fragment = (name) => artifactByName["fragment:" + name];
+graphql.enum = (value) => value;

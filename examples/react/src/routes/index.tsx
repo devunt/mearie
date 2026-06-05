@@ -3,7 +3,7 @@ import { useQuery, useSubscription, type DataOf } from '@mearie/react';
 import { graphql } from '$mearie';
 import type { ReviewUpdates, Search } from '$mearie';
 import { useState, useCallback, useEffect } from 'react';
-import { MovieCard } from '../components/movie-card.tsx';
+import { MovieCard, MovieCardFragment } from '../components/movie-card.tsx';
 import { Card } from '../components/card.tsx';
 import { Button } from '../components/button.tsx';
 import { Search as SearchIcon, RefreshCw, ChevronDown, Radio, Star, Clock } from 'lucide-react';
@@ -23,6 +23,84 @@ type ActivityItem = {
   data: DataOf<ReviewUpdates>['reviewAdded'];
 };
 
+const MoviesQuery = graphql.query('Movies', {
+  variables: (t) => ({
+    first: t.Int.nonNull(),
+    after: t.String.optional(),
+    filter: t.MovieFilterInput.optional(),
+  }),
+  select: ($) => ({
+    movies: [
+      { args: { first: $.first, after: $.after, filter: $.filter } },
+      {
+        edges: {
+          cursor: true,
+          node: {
+            id: true,
+            $: [MovieCardFragment],
+          },
+        },
+        pageInfo: {
+          hasNextPage: true,
+          hasPreviousPage: true,
+          startCursor: true,
+          endCursor: true,
+        },
+        totalCount: true,
+      },
+    ],
+  }),
+});
+
+const SearchQuery = graphql.query('Search', {
+  variables: (t) => ({
+    query: t.String.nonNull(),
+    limit: t.Int.optional(),
+  }),
+  select: ($) => ({
+    search: [
+      { args: { query: $.query, limit: $.limit } },
+      {
+        __typename: true,
+        $: [
+          [
+            { on: 'Movie' },
+            {
+              id: true,
+              title: true,
+              releaseDate: true,
+              posterUrl: true,
+            },
+          ],
+          [
+            { on: 'Person' },
+            {
+              id: true,
+              name: true,
+              imageUrl: true,
+            },
+          ],
+        ],
+      },
+    ],
+  }),
+});
+
+const ReviewSubscription = graphql.subscription('ReviewUpdates', {
+  select: () => ({
+    reviewAdded: {
+      id: true,
+      rating: true,
+      text: true,
+      createdAt: true,
+      movie: {
+        id: true,
+        title: true,
+      },
+    },
+  }),
+});
+
 function HomePage() {
   const navigate = Route.useNavigate();
   const search = Route.useSearch();
@@ -32,59 +110,15 @@ function HomePage() {
   const [debouncedQuery, setDebouncedQuery] = useState(q);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isConnected, setIsConnected] = useState(true);
-  const [allMovies, setAllMovies] = useState<DataOf<Movies>['movies']['edges']>([]);
+  const [allMovies, setAllMovies] = useState<DataOf<typeof MoviesQuery>['movies']['edges']>([]);
 
-  const moviesResult = useQuery(
-    graphql(`
-      query Movies($first: Int!, $after: String, $filter: MovieFilterInput) {
-        movies(first: $first, after: $after, filter: $filter) {
-          edges {
-            cursor
-
-            node {
-              id
-              ...MovieCard
-            }
-          }
-
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-
-          totalCount
-        }
-      }
-    `),
-    {
-      first: 24,
-      after: cursor,
-    },
-  );
+  const moviesResult = useQuery(MoviesQuery, {
+    first: 24,
+    after: cursor,
+  });
 
   const searchResult = useQuery(
-    graphql(`
-      query Search($query: String!, $limit: Int) {
-        search(query: $query, limit: $limit) {
-          __typename
-
-          ... on Movie {
-            id
-            title
-            releaseDate
-            posterUrl
-          }
-
-          ... on Person {
-            id
-            name
-            imageUrl
-          }
-        }
-      }
-    `),
+    SearchQuery,
     { query: debouncedQuery, limit: 20 },
     { skip: !debouncedQuery || debouncedQuery.length < 1 },
   );
@@ -105,28 +139,10 @@ function HomePage() {
     setIsConnected(false);
   }, []);
 
-  const reviewSub = useSubscription(
-    graphql(`
-      subscription ReviewUpdates {
-        reviewAdded {
-          id
-          rating
-          text
-          createdAt
-
-          movie {
-            id
-            title
-          }
-        }
-      }
-    `),
-    undefined,
-    {
-      onData: handleReviewData,
-      onError: handleReviewError,
-    },
-  );
+  const reviewSub = useSubscription(ReviewSubscription, undefined, {
+    onData: handleReviewData,
+    onError: handleReviewError,
+  });
 
   useEffect(() => {
     if (moviesResult.data?.movies.edges) {

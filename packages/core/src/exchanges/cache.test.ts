@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { cacheExchange } from './cache.ts';
 import { makeTestOperation, makeTestForward, testExchange, makeTestClient } from './test-utils.ts';
-import type { SchemaMeta, Artifact, FragmentRefs } from '@mearie/shared';
+import type { SchemaMeta, Artifact, FragmentRefs, Selection } from '@mearie/shared';
 import type { Operation, RequestOperation, Exchange, ExchangeIO, OperationResult } from '../exchange.ts';
 import { Client } from '../client.ts';
 import { pipe } from '../stream/pipe.ts';
@@ -226,6 +226,151 @@ describe('cacheExchange', () => {
 
         const results = await testExchange(exchange, forward, [operation], client);
 
+        expect(results[0]!.data).toBeNull();
+      });
+    });
+
+    describe('per-operation overrides', () => {
+      const userSelections: Selection[] = [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ];
+
+      it('should use network-only for a single operation over a cache-first default', async () => {
+        const forwardedOps: Operation[] = [];
+        let callCount = 0;
+        const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+        const forward = makeTestForward((op) => {
+          forwardedOps.push(op);
+          callCount++;
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+          };
+        });
+        const seedOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationUser',
+          key: 'per-op-network-seed',
+          selections: userSelections,
+        });
+        const networkOnlyOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationUser',
+          key: 'per-op-network-only',
+          selections: userSelections,
+          metadata: { cache: { fetchPolicy: 'network-only' } },
+        });
+
+        const results = await testExchange(exchange, forward, [seedOperation, networkOnlyOperation], client);
+
+        expect(forwardedOps.map((op) => op.key)).toEqual(['per-op-network-seed', 'per-op-network-only']);
+        expect(results.find((result) => result.operation.key === 'per-op-network-only')!.data).toEqual({
+          user: { __typename: 'User', id: '1', name: 'Bob' },
+        });
+      });
+
+      it('should use cache-first for a single operation over a network-only default', async () => {
+        const forwardedOps: Operation[] = [];
+        const exchange = cacheExchange({ fetchPolicy: 'network-only' });
+        const forward = makeTestForward((op) => {
+          forwardedOps.push(op);
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: 'Alice' } },
+          };
+        });
+        const seedOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationCachedUser',
+          key: 'per-op-cache-seed',
+          selections: userSelections,
+        });
+        const cacheFirstOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationCachedUser',
+          key: 'per-op-cache-first',
+          selections: userSelections,
+          metadata: { cache: { fetchPolicy: 'cache-first' } },
+        });
+
+        const results = await testExchange(exchange, forward, [seedOperation, cacheFirstOperation], client);
+
+        expect(forwardedOps.map((op) => op.key)).toEqual(['per-op-cache-seed']);
+        expect(results.find((result) => result.operation.key === 'per-op-cache-first')!.data).toEqual({
+          user: { __typename: 'User', id: '1', name: 'Alice' },
+        });
+      });
+
+      it('should use cache-and-network for a single operation over a cache-first default', async () => {
+        const forwardedOps: Operation[] = [];
+        let callCount = 0;
+        const exchange = cacheExchange({ fetchPolicy: 'cache-first' });
+        const forward = makeTestForward((op) => {
+          forwardedOps.push(op);
+          callCount++;
+          return {
+            operation: op,
+            data: { user: { __typename: 'User', id: '1', name: callCount === 1 ? 'Alice' : 'Bob' } },
+          };
+        });
+        const seedOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationCacheAndNetworkUser',
+          key: 'per-op-cache-and-network-seed',
+          selections: userSelections,
+        });
+        const cacheAndNetworkOperation = makeTestOperation({
+          kind: 'query',
+          name: 'PerOperationCacheAndNetworkUser',
+          key: 'per-op-cache-and-network',
+          selections: userSelections,
+          metadata: { cache: { fetchPolicy: 'cache-and-network' } },
+        });
+
+        const results = await testExchange(exchange, forward, [seedOperation, cacheAndNetworkOperation], client);
+        const cacheAndNetworkResults = results.filter((result) => result.operation.key === 'per-op-cache-and-network');
+
+        expect(forwardedOps.map((op) => op.key)).toEqual(['per-op-cache-and-network-seed', 'per-op-cache-and-network']);
+        expect(cacheAndNetworkResults[0]!.data).toEqual({
+          user: { __typename: 'User', id: '1', name: 'Alice' },
+        });
+        expect(cacheAndNetworkResults).toContainEqual(
+          expect.objectContaining({
+            metadata: {
+              cache: {
+                patches: [{ type: 'set', path: ['user', 'name'], value: 'Bob' }],
+              },
+            },
+          }),
+        );
+      });
+
+      it('should use cache-only for a single operation over a network-only default', async () => {
+        const forwardedOps: Operation[] = [];
+        const exchange = cacheExchange({ fetchPolicy: 'network-only' });
+        const forward = makeTestForward((op) => {
+          forwardedOps.push(op);
+          return { operation: op, data: { test: true } };
+        });
+        const operation = makeTestOperation({
+          kind: 'query',
+          key: 'per-op-cache-only',
+          selections: [{ kind: 'Field', name: 'test', type: 'Boolean' }],
+          metadata: { cache: { fetchPolicy: 'cache-only' } },
+        });
+
+        const results = await testExchange(exchange, forward, [operation], client);
+
+        expect(forwardedOps).toHaveLength(0);
         expect(results[0]!.data).toBeNull();
       });
     });
@@ -1549,6 +1694,24 @@ describe('cacheExchange', () => {
 
       const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
 
+      const seedOp = makeTestOperation({
+        kind: 'query',
+        name: 'StaleCacheOnlyUser',
+        key: 'stale-co-seed',
+        metadata: { cache: { fetchPolicy: 'network-only' } },
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'name', type: 'String' },
+            ],
+          },
+        ],
+      });
       const queryOp = makeTestOperation({
         kind: 'query',
         name: 'StaleCacheOnlyUser',
@@ -1566,6 +1729,14 @@ describe('cacheExchange', () => {
           },
         ],
       });
+
+      subject.next(seedOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      results.length = 0;
 
       subject.next(queryOp);
       await vi.runAllTimersAsync();
@@ -1592,7 +1763,7 @@ describe('cacheExchange', () => {
       expect(staleResult!.data).toEqual({ user: { __typename: 'User', id: '1', name: 'Alice' } });
 
       const networkCallsDuringInvalidation = networkCallCount - networkCountAfterInit;
-      expect(networkCallsDuringInvalidation).toBeLessThanOrEqual(1);
+      expect(networkCallsDuringInvalidation).toBe(0);
 
       sub();
       vi.useRealTimers();

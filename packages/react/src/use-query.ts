@@ -83,7 +83,7 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   const unsubscribe = useRef<(() => void) | null>(null);
   const initialized = useRef(false);
   const stableVariables = useMemo(() => stringify(variables), [variables]);
-  const stableOptions = useMemo(() => options, [options?.skip]);
+  const stableOptions = useMemo(() => options, [options?.skip, options?.fetchPolicy]);
 
   const execute = useCallback(
     (force = false) => {

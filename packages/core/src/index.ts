@@ -45,6 +45,7 @@ export {
   Client,
   createClient,
   type ClientOptions,
+  type FetchPolicy,
   type QueryOptions,
   type MutationOptions,
   type SubscriptionOptions,

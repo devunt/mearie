@@ -1,5 +1,6 @@
 import type { Artifact, DataOf, SchemaMeta } from '@mearie/shared';
 import type { Exchange, RequestOperation, OperationResult } from '../exchange.ts';
+import type { FetchPolicy } from '../client.ts';
 import type { CacheNotification, CacheOperations, CacheSnapshot, InvalidateTarget, Patch } from '../cache/types.ts';
 import { Cache } from '../cache/cache.ts';
 import { pipe } from '../stream/pipe.ts';
@@ -22,6 +23,7 @@ declare module '@mearie/core' {
   interface OperationMetadataMap<T extends Artifact> {
     cache?: {
       optimisticResponse?: T extends Artifact<'mutation'> ? DataOf<T> : never;
+      fetchPolicy?: T extends Artifact<'query'> ? FetchPolicy : never;
     };
   }
   interface OperationResultMetadataMap {
@@ -30,7 +32,7 @@ declare module '@mearie/core' {
 }
 
 export type CacheOptions = {
-  fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
+  fetchPolicy?: FetchPolicy;
 };
 
 export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => {
@@ -38,6 +40,14 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
 
   return ({ forward, client }) => {
     const cache = new Cache(client.schema);
+
+    const getOperationFetchPolicy = (op: RequestOperation): FetchPolicy => {
+      if (op.artifact.kind !== 'query') return 'network-only';
+      return op.metadata.cache?.fetchPolicy ?? fetchPolicy;
+    };
+
+    const shouldRefetchStaleQuery = (op: RequestOperation<'query'>): boolean =>
+      getOperationFetchPolicy(op) !== 'cache-only';
 
     return {
       name: 'cache',
@@ -178,7 +188,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
               op.variant === 'request' &&
               (op.artifact.kind === 'mutation' ||
                 op.artifact.kind === 'subscription' ||
-                (op.artifact.kind === 'query' && fetchPolicy === 'network-only')),
+                (op.artifact.kind === 'query' && getOperationFetchPolicy(op) === 'network-only')),
           ),
           tap((op) => {
             if (op.artifact.kind === 'mutation' && op.metadata?.cache?.optimisticResponse) {
@@ -191,7 +201,9 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
           ops$,
           filter(
             (op): op is RequestOperation<'query'> =>
-              op.variant === 'request' && op.artifact.kind === 'query' && fetchPolicy !== 'network-only',
+              op.variant === 'request' &&
+              op.artifact.kind === 'query' &&
+              getOperationFetchPolicy(op) !== 'network-only',
           ),
           share(),
         );
@@ -199,6 +211,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
         const cache$ = pipe(
           query$,
           mergeMap((op) => {
+            const operationFetchPolicy = getOperationFetchPolicy(op);
             const results = makeSubject<OperationResult>();
 
             const listener = (notification: CacheNotification) => {
@@ -220,7 +233,9 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                       errors: [],
                     });
                   }
-                  refetch$.next(op);
+                  if (shouldRefetchStaleQuery(op)) {
+                    refetch$.next(op);
+                  }
                 }
               }
             };
@@ -241,7 +256,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
 
             const initial =
               data === null
-                ? fetchPolicy === 'cache-only'
+                ? operationFetchPolicy === 'cache-only'
                   ? fromValue({ operation: op, data: null, errors: [] as never })
                   : empty()
                 : fromValue({
@@ -253,22 +268,22 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
 
             const stream$ = pipe(merge(initial, results.source), takeUntil(teardown$));
 
-            if (stale) {
+            if (stale && shouldRefetchStaleQuery(op)) {
               refetch$.next(op);
             }
 
             return stream$;
           }),
-          filter(
-            () => fetchPolicy === 'cache-only' || fetchPolicy === 'cache-and-network' || fetchPolicy === 'cache-first',
-          ),
         );
 
         const network$ = pipe(
           query$,
           filter((op) => {
+            const operationFetchPolicy = getOperationFetchPolicy(op);
             const { data } = cache.readQuery(op.artifact, op.variables);
-            return fetchPolicy === 'cache-and-network' || data === null;
+            return (
+              operationFetchPolicy === 'cache-and-network' || (operationFetchPolicy === 'cache-first' && data === null)
+            );
           }),
         );
 
@@ -296,7 +311,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
             if (
               result.operation.variant !== 'request' ||
               result.operation.artifact.kind !== 'query' ||
-              fetchPolicy === 'network-only' ||
+              getOperationFetchPolicy(result.operation) === 'network-only' ||
               !!(result.errors && result.errors.length > 0)
             ) {
               return fromValue(result);

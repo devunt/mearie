@@ -1,5 +1,12 @@
 # @mearie/cli
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [17eca5d]
+  - @mearie/codegen@0.2.0
+
 ## 0.1.7
 
 ### Patch Changes

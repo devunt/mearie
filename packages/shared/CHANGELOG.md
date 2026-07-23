@@ -1,5 +1,11 @@
 # @mearie/shared
 
+## 0.5.0
+
+### Minor Changes
+
+- 17eca5d: Add alternative query API based on TypeScript DSL. Compared to the existing template-string-based API, the alternative API provides real-time output type inference without codegen process.
+
 ## 0.4.0
 
 ### Minor Changes

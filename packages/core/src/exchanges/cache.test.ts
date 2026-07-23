@@ -17,6 +17,7 @@ import { mergeMap } from '../stream/operators/merge-map.ts';
 import { fromPromise } from '../stream/sources/from-promise.ts';
 import type { Source } from '../stream/types.ts';
 import { fromValue } from '../stream/index.ts';
+import { applyPatchesMutable } from '../cache/patch.ts';
 
 const schema: SchemaMeta = {
   entities: {
@@ -1367,6 +1368,99 @@ describe('cacheExchange', () => {
       await vi.runAllTimersAsync();
 
       expect(callCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
+    });
+
+    it('should deliver refetched data when $field invalidation replaces an entity link', async () => {
+      vi.useFakeTimers();
+
+      let callCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op) => op.variant === 'request'),
+          map((op) => {
+            callCount++;
+            return {
+              operation: op,
+              data: {
+                user: {
+                  __typename: 'User',
+                  id: '1',
+                  favoritePost:
+                    callCount === 1
+                      ? { __typename: 'Post', id: '10', title: 'Old' }
+                      : { __typename: 'Post', id: '20', title: 'New' },
+                },
+              },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const queryOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserFavoritePost',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'Field',
+                name: 'favoritePost',
+                type: 'Post',
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'title', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      subject.next(queryOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(callCount).toBe(1);
+
+      result.extension.invalidate({ __typename: 'User', id: '1', $field: 'favoritePost' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(callCount).toBe(2);
+
+      let data: unknown;
+      for (const r of results) {
+        const patches = r.metadata?.cache?.patches;
+        if (patches) {
+          const root = applyPatchesMutable(data, patches);
+          if (root !== undefined) data = root;
+        } else if (r.data !== undefined) {
+          data = r.data;
+        }
+      }
+      expect((data as { user: { favoritePost: unknown } }).user.favoritePost).toEqual({
+        __typename: 'Post',
+        id: '20',
+        title: 'New',
+      });
 
       sub();
       vi.useRealTimers();

@@ -213,6 +213,7 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
           mergeMap((op) => {
             const operationFetchPolicy = getOperationFetchPolicy(op);
             const results = makeSubject<OperationResult>();
+            let subId = -1;
 
             const listener = (notification: CacheNotification) => {
               if (notification.type === 'patch') {
@@ -223,24 +224,24 @@ export const cacheExchange = (options: CacheOptions = {}): Exchange<'cache'> => 
                   errors: [],
                 });
               } else {
-                const { data: staleData, stale: isStale } = cache.readQuery(op.artifact, op.variables);
-                if (isStale) {
-                  if (staleData !== null) {
-                    results.next({
-                      operation: op,
-                      data: staleData,
-                      metadata: { cache: { stale: true } },
-                      errors: [],
-                    });
-                  }
-                  if (shouldRefetchStaleQuery(op)) {
-                    refetch$.next(op);
-                  }
+                if (!cache.isStale(subId)) return;
+                const { data: staleData } = cache.readQuery(op.artifact, op.variables);
+                if (staleData !== null) {
+                  results.next({
+                    operation: op,
+                    data: staleData,
+                    metadata: { cache: { stale: true } },
+                    errors: [],
+                  });
+                }
+                if (shouldRefetchStaleQuery(op)) {
+                  refetch$.next(op);
                 }
               }
             };
 
-            const { data, stale, unsubscribe } = cache.subscribeQuery(op.artifact, op.variables, listener);
+            const { data, stale, subId: id, unsubscribe } = cache.subscribeQuery(op.artifact, op.variables, listener);
+            subId = id;
 
             subscriptionHasData.set(op.key, data !== null);
 

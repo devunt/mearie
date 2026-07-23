@@ -1611,6 +1611,122 @@ describe('cacheExchange', () => {
       vi.useRealTimers();
     });
 
+    it('should refetch stale query after $field invalidation even when the cached query is partial', async () => {
+      vi.useFakeTimers();
+
+      let fullCallCount = 0;
+      const exchange = cacheExchange({ fetchPolicy: 'cache-and-network' });
+      const forward: ExchangeIO = (ops$) =>
+        pipe(
+          ops$,
+          filter((op): op is RequestOperation => op.variant === 'request'),
+          map((op) => {
+            if (op.artifact.name === 'GetUserFavoritePostPartial') {
+              fullCallCount++;
+              return {
+                operation: op,
+                data: {
+                  user: {
+                    __typename: 'User',
+                    id: '1',
+                    favoritePost: { __typename: 'Post', id: '10', title: 'Old' },
+                  },
+                },
+              } as OperationResult;
+            }
+            return {
+              operation: op,
+              data: { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '20' } } },
+            } as OperationResult;
+          }),
+        );
+
+      const subject = makeSubject<Operation>();
+      const result = exchange({ forward, client: client as never });
+      const results: OperationResult[] = [];
+
+      const sub = pipe(subject.source, result.io, subscribe({ next: (r) => results.push(r) }));
+
+      const fullOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserFavoritePostPartial',
+        key: 'q1',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'Field',
+                name: 'favoritePost',
+                type: 'Post',
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                  { kind: 'Field', name: 'title', type: 'String' },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const sparseOp = makeTestOperation({
+        kind: 'query',
+        name: 'GetUserFavoritePostId',
+        key: 'q2',
+        selections: [
+          {
+            kind: 'Field',
+            name: 'user',
+            type: 'User',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              {
+                kind: 'Field',
+                name: 'favoritePost',
+                type: 'Post',
+                selections: [
+                  { kind: 'Field', name: '__typename', type: 'String' },
+                  { kind: 'Field', name: 'id', type: 'ID' },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      subject.next(fullOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(fullCallCount).toBe(1);
+
+      // The sparse query relinks user.favoritePost to Post:20, which lacks
+      // title — the full query can no longer be read from cache.
+      subject.next(sparseOp);
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(results.filter((r) => r.operation.key === 'q1').every((r) => !r.errors || r.errors.length === 0)).toBe(
+        true,
+      );
+
+      result.extension.invalidate({ __typename: 'User', id: '1', $field: 'favoritePost' });
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+
+      expect(fullCallCount).toBe(2);
+
+      sub();
+      vi.useRealTimers();
+    });
+
     it('should refetch query after $field invalidation when field is inside a fragment spread', async () => {
       vi.useFakeTimers();
 

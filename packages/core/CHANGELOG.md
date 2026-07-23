@@ -1,5 +1,20 @@
 # @mearie/core
 
+## 0.7.0
+
+### Minor Changes
+
+- 17eca5d: Add alternative query API based on TypeScript DSL. Compared to the existing template-string-based API, the alternative API provides real-time output type inference without codegen process.
+
+### Patch Changes
+
+- 7975124: Notify subscribers when a singular entity link field is replaced by a different entity. Previously, for fields with sub-selections where both the old and new values were non-null, normalize skipped the accessor callback whenever the normalized value was an entity link — so replacing the link updated storage silently: no field change was recorded, structural patches never reached subscribers, and the stale flag set by invalidate was never cleared. Arrays of links and null transitions were unaffected, which is why only singular link swaps were broken. The accessor is now always invoked for non-null nested selection writes; the equality guards in writeQuery/writeOptimistic already suppress spurious change records.
+- a882622: Refetch stale queries after invalidation even when the cached query is partial. The cache exchange decided whether to refetch by re-reading the query and checking the derived stale flag, but readQuery returns { data: null, stale: false } for partial results — so once a subscribed query became unreadable from cache (e.g. a link was rewritten to an entity with fewer cached fields), invalidate could never trigger a refetch, which is exactly when the network is needed most. The stale notification listener now consults the subscription's own stale flag via cache.isStale and refetches regardless of readability, emitting the cached data alongside only when it is still complete.
+- 8d41089: Re-register subscription cursors when a stalled (partially cached) query is re-traced after a write that still leaves it incomplete. Previously only the complete branch of the stalled-subscription check refreshed the cursor registry — the structural-change path already refreshes unconditionally — so a subscription that started out partial kept its initial shallow cursors. Dependencies on deeper fields were invisible to invalidate, and the stale notification never reached the subscription until it happened to become complete.
+- d51b495: Implement per-operation query fetch policies. Query options now carry `fetchPolicy` into operation metadata, and `cacheExchange` respects operation-level overrides before falling back to its configured default.
+- Updated dependencies [17eca5d]
+  - @mearie/shared@0.5.0
+
 ## 0.6.7
 
 ### Patch Changes

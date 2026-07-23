@@ -1,5 +1,17 @@
 # @mearie/vue
 
+## 0.4.8
+
+### Patch Changes
+
+- d51b495: Implement per-operation query fetch policies. Query options now carry `fetchPolicy` into operation metadata, and `cacheExchange` respects operation-level overrides before falling back to its configured default.
+- Updated dependencies [7975124]
+- Updated dependencies [a882622]
+- Updated dependencies [8d41089]
+- Updated dependencies [d51b495]
+- Updated dependencies [17eca5d]
+  - @mearie/core@0.7.0
+
 ## 0.4.7
 
 ### Patch Changes

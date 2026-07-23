@@ -1,5 +1,18 @@
 # @mearie/codegen
 
+## 0.2.0
+
+### Minor Changes
+
+- 17eca5d: Add alternative query API based on TypeScript DSL. Compared to the existing template-string-based API, the alternative API provides real-time output type inference without codegen process.
+
+### Patch Changes
+
+- Updated dependencies [24bc2d0]
+- Updated dependencies [17eca5d]
+  - @mearie/native@0.5.0
+  - @mearie/shared@0.5.0
+
 ## 0.1.7
 
 ### Patch Changes

@@ -28,10 +28,13 @@ import { collect } from './stream/sinks/collect.ts';
 import { fromAbortSignal } from './stream/sources/from-abort-signal.ts';
 import { AggregatedError } from './errors.ts';
 
+export type FetchPolicy = 'cache-first' | 'cache-and-network' | 'network-only' | 'cache-only';
+
 export type QueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = {
   initialData?: DataOf<T>;
-  metadata?: OperationMetadata;
+  metadata?: OperationMetadata<T>;
   signal?: AbortSignal;
+  fetchPolicy?: FetchPolicy;
 };
 export type MutationOptions<T extends Artifact<'mutation'> = Artifact<'mutation'>> = {
   metadata?: OperationMetadata<T>;
@@ -48,6 +51,24 @@ export type ClientOptions<T extends SchemaMeta> = {
   schema: T;
   exchanges: Exchange[];
 } & (T['scalars'] extends Record<string, never> ? { scalars?: undefined } : { scalars: ScalarsConfig<T> });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const withFetchPolicyMetadata = <T extends Artifact<'query'>>(
+  metadata: OperationMetadata<T> | undefined,
+  fetchPolicy: FetchPolicy | undefined,
+): OperationMetadata<T> | undefined => {
+  if (!fetchPolicy) return metadata;
+
+  return {
+    ...metadata,
+    cache: {
+      ...(isRecord(metadata?.cache) ? metadata.cache : {}),
+      fetchPolicy,
+    },
+  } as OperationMetadata<T>;
+};
 
 export class Client<TMeta extends SchemaMeta = SchemaMeta> {
   #schema: TMeta;
@@ -96,6 +117,18 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     };
   }
 
+  private createQueryOperation<T extends Artifact<'query'>>(
+    artifact: T,
+    variables: VariablesOf<T> | undefined,
+    options: QueryOptions<T> | undefined,
+  ): Operation<'query'> {
+    return this.createOperation(
+      artifact,
+      variables,
+      withFetchPolicyMetadata(options?.metadata, options?.fetchPolicy),
+    ) as Operation<'query'>;
+  }
+
   executeOperation(operation: Operation, options?: { signal?: AbortSignal }): Source<OperationResult> {
     let source = pipe(
       this.results$,
@@ -120,7 +153,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
       ? [undefined?, QueryOptions<T>?]
       : [VariablesOf<T>, QueryOptions<T>?]
   ): Source<OperationResult> {
-    const operation = this.createOperation(artifact, variables, options?.metadata);
+    const operation = this.createQueryOperation(artifact, variables, options);
     return this.executeOperation(operation, { signal: options?.signal });
   }
 
@@ -174,7 +207,7 @@ export class Client<TMeta extends SchemaMeta = SchemaMeta> {
     const signal = options?.signal;
     signal?.throwIfAborted();
 
-    const operation = this.createOperation(artifact, variables, options?.metadata);
+    const operation = this.createQueryOperation(artifact, variables, options);
 
     let result: OperationResult;
     try {

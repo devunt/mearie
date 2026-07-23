@@ -127,6 +127,65 @@ describe('Client.query()', () => {
 
     await expect(client.query(query)).rejects.toThrow(AggregatedError);
   });
+
+  it('should attach fetchPolicy to query operation metadata', async () => {
+    const operations: Operation[] = [];
+    const exchange = makeMockExchange((op) => {
+      operations.push(op);
+      return { data: { test: true } };
+    });
+
+    const client = createClient({
+      schema: testSchema,
+      exchanges: [exchange],
+    });
+
+    const query = makeArtifact('query', 'GetUser');
+
+    await client.query(query, undefined, {
+      fetchPolicy: 'network-only',
+      metadata: { traceId: 'query-1' },
+    });
+
+    expect(operations[0]!.metadata).toMatchObject({
+      traceId: 'query-1',
+      cache: { fetchPolicy: 'network-only' },
+    });
+  });
+
+  it('should attach fetchPolicy to executeQuery operation metadata', async () => {
+    const operations: Operation[] = [];
+    const exchange = makeMockExchange((op) => {
+      operations.push(op);
+      return { data: { test: true } };
+    });
+
+    const client = createClient({
+      schema: testSchema,
+      exchanges: [exchange],
+    });
+
+    const query = makeArtifact('query', 'GetUser');
+
+    let unsubscribe: (() => void) | undefined;
+    await new Promise<void>((resolve) => {
+      unsubscribe = pipe(
+        client.executeQuery(query, undefined, {
+          fetchPolicy: 'cache-and-network',
+          metadata: { traceId: 'execute-query-1' },
+        }),
+        subscribe({
+          next: () => resolve(),
+        }),
+      );
+    });
+    unsubscribe?.();
+
+    expect(operations[0]!.metadata).toMatchObject({
+      traceId: 'execute-query-1',
+      cache: { fetchPolicy: 'cache-and-network' },
+    });
+  });
 });
 
 describe('Client.mutation()', () => {

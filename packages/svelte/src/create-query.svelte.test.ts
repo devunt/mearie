@@ -84,6 +84,17 @@ describe('createQuery', () => {
     destroy();
   });
 
+  it('should pass fetchPolicy to executeQuery', () => {
+    const { client } = createMockClient();
+    const { destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as Artifact<'query'>, undefined, () => ({ fetchPolicy: 'network-only' })),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledWith(mockQuery, undefined, { fetchPolicy: 'network-only' });
+    destroy();
+  });
+
   it('should update data after initialData when fetch completes', () => {
     const { client, subjects } = createMockClient();
     const initialData = { id: '1', name: 'Prefetched' };

@@ -4988,6 +4988,39 @@ describe('Cache', () => {
     });
   });
 
+  describe('stalled subscription cursor refresh', () => {
+    it('should keep invalidate reachable while a subscription stays partially filled', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+            { kind: 'Field', name: 'email', type: 'String' },
+          ],
+        },
+      ]);
+
+      const listener = vi.fn();
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      // email is still missing after this write, so the subscription stays stalled
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+      listener.mockClear();
+
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'name' });
+
+      expect(cache.isStale(subId)).toBe(true);
+      expect(listener).toHaveBeenCalledWith({ type: 'stale' });
+
+      unsubscribe();
+    });
+  });
+
   describe('subscribeFragment incomplete trace not stalled', () => {
     it('should not be called when missing fields are filled because fragment does not use stalled tracking', () => {
       const cache = new Cache(schema);

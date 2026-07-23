@@ -614,12 +614,13 @@ export class Cache {
         sub.id,
       );
 
+      this.#registry.removeAll(sub.cursors);
+      sub.cursors = new Set(traceResult.cursors.map((c) => c.entry));
+      for (const { depKey, entry } of traceResult.cursors) {
+        this.#registry.add(depKey, entry);
+      }
+
       if (traceResult.complete) {
-        this.#registry.removeAll(sub.cursors);
-        sub.cursors = new Set(traceResult.cursors.map((c) => c.entry));
-        for (const { depKey, entry } of traceResult.cursors) {
-          this.#registry.add(depKey, entry);
-        }
         this.#stalled.delete(subId);
 
         const entityArrayChanges = buildEntityArrayContext(changes, traceResult.cursors);

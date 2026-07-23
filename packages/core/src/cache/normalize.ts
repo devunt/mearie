@@ -125,14 +125,7 @@ export const normalize = (
           : fieldValue;
         fields[fieldKey] = normalized;
 
-        if (
-          storageKey !== null &&
-          selection.selections &&
-          !isNullish(oldValue) &&
-          !isNullish(fieldValue) &&
-          !isEntityLink(fields[fieldKey]) &&
-          !isEqual(oldValue, fields[fieldKey])
-        ) {
+        if (storageKey !== null && selection.selections && !isNullish(oldValue) && !isNullish(fieldValue)) {
           callAccessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
         }
       } else if (selection.kind === 'FragmentSpread' || inlineFragmentMatches(selection, typename)) {

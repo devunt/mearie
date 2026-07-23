@@ -4819,6 +4819,134 @@ describe('Cache', () => {
       unsubscribe();
     });
 
+    it('should emit patches when entity link pointer changes to different entity', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            { kind: 'Field', name: 'name', type: 'String' },
+          ],
+        },
+      ]);
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', name: 'Alice' } });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '2', name: 'Bob' } });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        let data: unknown = { user: { __typename: 'User', id: '1', name: 'Alice' } };
+        const root = applyPatchesMutable(data, notification.patches);
+        if (root !== undefined) data = root;
+        expect(data).toEqual({ user: { __typename: 'User', id: '2', name: 'Bob' } });
+      }
+
+      unsubscribe();
+    });
+
+    it('should emit patches when a nested entity link is replaced by another entity', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'favoritePost',
+              type: 'Post',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'title', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } } },
+      );
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '20', title: 'New' } } },
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const notification = listener.mock.calls[0]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        let data: unknown = {
+          user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } },
+        };
+        const root = applyPatchesMutable(data, notification.patches);
+        if (root !== undefined) data = root;
+        expect(data).toEqual({
+          user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '20', title: 'New' } },
+        });
+      }
+
+      unsubscribe();
+    });
+
+    it('should clear stale flag when a link field is rewritten with the same entity', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'favoritePost',
+              type: 'Post',
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'title', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+      const data = {
+        user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } },
+      };
+      cache.writeQuery(artifact, {}, data);
+
+      const { subId, unsubscribe } = cache.subscribeQuery(artifact, {}, vi.fn());
+
+      cache.invalidate({ __typename: 'User', id: '1', $field: 'favoritePost' });
+      expect(cache.isStale(subId)).toBe(true);
+
+      cache.writeQuery(artifact, {}, data);
+      expect(cache.isStale(subId)).toBe(false);
+
+      unsubscribe();
+    });
+
     it('should emit patch when entity pointer changes from null to entity', () => {
       const cache = new Cache(schema);
       const artifact = createArtifact('query', 'GetUser', [

@@ -319,6 +319,8 @@ describe('createQuery data ownership', () => {
     flushSync();
 
     expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('[mearie]');
+    expect(warn.mock.calls[0]?.[0]).toContain('initialData');
     warn.mockRestore();
     destroy();
   });

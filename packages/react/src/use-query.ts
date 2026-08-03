@@ -29,10 +29,10 @@ export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = Q
 
 export type Query<T extends Artifact<'query'>> =
   | {
-      data: undefined;
+      data: DataOf<T> | undefined;
       previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
@@ -58,7 +58,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
       data: DataOf<T>;
       previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
@@ -118,7 +118,16 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, options.initialData);
   });
 
-  const view = useMemo(() => deriveObserverView(state, currentKey, skip), [state, currentKey, skip]);
+  // Must stay in the render phase: deferring to the effect would expose one render of `data: undefined`
+  // per variables change (and forever under `skip`), which `DefinedQuery<T>` licenses callers to deref.
+  let currentState = state;
+  if (options?.initialData !== undefined && state.emission?.key !== currentKey) {
+    lastInitialData.current = trackInitialData(lastInitialData.current, currentKey, options.initialData);
+    currentState = acceptInitialData(state, currentKey, options.initialData);
+    setState(currentState);
+  }
+
+  const view = useMemo(() => deriveObserverView(currentState, currentKey, skip), [currentState, currentKey, skip]);
 
   const unsubscribe = useRef<(() => void) | null>(null);
   const optionsRef = useRef(options);
@@ -135,20 +144,7 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
 
       const key = currentKey;
 
-      setState((s) => {
-        let next = s;
-        if (force || next.emission?.key !== key) {
-          next = beginFetch(next);
-          if (!force) {
-            const initialData = optionsRef.current?.initialData;
-            if (initialData !== undefined) {
-              lastInitialData.current = trackInitialData(lastInitialData.current, key, initialData);
-              next = acceptInitialData(next, key, initialData);
-            }
-          }
-        }
-        return next;
-      });
+      setState((s) => (force || s.emission?.key !== key ? beginFetch(s) : s));
 
       const currentVariables = variablesRef.current;
       const currentOptions = optionsRef.current;

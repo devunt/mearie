@@ -29,10 +29,10 @@ export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> 
 
 export type Query<T extends Artifact<'query'>> =
   | {
-      data: undefined;
+      data: DataOf<T> | undefined;
       previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
@@ -58,7 +58,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
       data: DataOf<T>;
       previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }

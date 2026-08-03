@@ -2,8 +2,8 @@ import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { vi } from 'vitest';
 import type { Client, OperationResult } from '@mearie/core';
-import { GraphQLError } from '@mearie/core';
-import { makeSubject } from '@mearie/core/stream';
+import { GraphQLError, stringify } from '@mearie/core';
+import { fromValue, makeSubject } from '@mearie/core/stream';
 import { ClientProvider } from './client-provider.tsx';
 
 export const createMockClient = () => {
@@ -22,6 +22,14 @@ export const createMockClient = () => {
   } as unknown as Client;
 
   return { client, subjects };
+};
+
+export const createSyncMockClient = (resultsByVariables: Record<string, OperationResult>) => {
+  const executeQuery = vi.fn((_artifact: unknown, variables: unknown) =>
+    fromValue(resultsByVariables[stringify(variables)]!),
+  );
+  const client = { executeQuery } as unknown as Client;
+  return { client, executeQuery };
 };
 
 export const renderHook = <T>(hook: () => T, client: Client): { result: { current: T }; unmount: () => void } => {

@@ -4,9 +4,18 @@ import type { Artifact, Client } from '@mearie/core';
 import { AggregatedError, stringify } from '@mearie/core';
 import { fromValue } from '@mearie/core/stream';
 import { useQuery } from './use-query.ts';
-import { createMockClient, renderHook, renderHookWithProps, mockQuery, makeResult } from './test-utils.ts';
+import {
+  createMockClient,
+  createSyncMockClient,
+  renderHook,
+  renderHookWithProps,
+  mockQuery,
+  makeResult,
+} from './test-utils.ts';
 
 type MockQueryWithVars = Artifact<'query', string, unknown, { id: string }>;
+type MockQueryWithIds = Artifact<'query', string, unknown, { ids: string[] }>;
+type MockNamedQuery = Artifact<'query', string, { id: string; name: string }, { id: string }>;
 
 describe('useQuery', () => {
   it('should transition from loading to data', () => {
@@ -239,6 +248,90 @@ describe('useQuery data ownership', () => {
     expect(result.current.data).toBeUndefined();
     expect(result.current.loading).toBe(false);
     expect(result.current.previousData).toEqual({ id: 'a' });
+    unmount();
+  });
+
+  it('attributes fresh initialData to the new key on variable change', () => {
+    const { client } = createMockClient();
+    const seen: string[] = [];
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { id: string; initialData: { id: string; name: string } }) => {
+        const query = useQuery(mockQuery as MockNamedQuery, { id: props.id }, { initialData: props.initialData });
+        seen.push(query.data.name);
+        return query;
+      },
+      { id: 'a', initialData: { id: 'a', name: 'first' } },
+      client,
+    );
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+    expect(result.current.loading).toBe(false);
+
+    const before = seen.length;
+    rerender({ id: 'b', initialData: { id: 'b', name: 'second' } });
+
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.loading).toBe(false);
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+    expect(seen.slice(before).length).toBeGreaterThan(0);
+    expect(seen.slice(before).every((name) => name === 'second')).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it('warns when the same initialData reference is reused across keys', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { client } = createMockClient();
+    const shared = { id: 'a', name: 'first' };
+    const { rerender, unmount } = renderHookWithProps(
+      (props: { id: string }) => useQuery(mockQuery as MockNamedQuery, { id: props.id }, { initialData: shared }),
+      { id: 'a' },
+      client,
+    );
+
+    rerender({ id: 'b' });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('[mearie]');
+    expect(warn.mock.calls[0]?.[0]).toContain('initialData');
+    warn.mockRestore();
+    unmount();
+  });
+});
+
+describe('useQuery modal reopen regression', () => {
+  it('never shows the previous key data when reactivated with a different warmed key', () => {
+    const { client } = createSyncMockClient({
+      [stringify({ ids: ['a'] })]: makeResult({ items: [{ id: 'a', secret: 'alpha' }] }),
+      [stringify({ ids: ['b'] })]: makeResult({ items: [{ id: 'b', secret: null }] }),
+    });
+
+    const seen: unknown[] = [];
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { ids: string[] }) => {
+        const query = useQuery(mockQuery as MockQueryWithIds, { ids: props.ids }, { skip: props.ids.length === 0 });
+        seen.push(query.data);
+        return query;
+      },
+      { ids: ['a'] },
+      client,
+    );
+
+    expect(result.current.data).toEqual({ items: [{ id: 'a', secret: 'alpha' }] });
+
+    // close: skip + variables reset in one change
+    rerender({ ids: [] });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+
+    // reopen with a different key
+    const before = seen.length;
+    rerender({ ids: ['b'] });
+
+    expect(result.current.data).toEqual({ items: [{ id: 'b', secret: null }] });
+    expect(result.current.loading).toBe(false);
+    expect(seen.slice(before)).not.toContainEqual({ items: [{ id: 'a', secret: 'alpha' }] });
     unmount();
   });
 });

@@ -94,7 +94,11 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
   {
     const key = untrack(currentKey);
     if (key !== null) {
-      const initial = readThrough(untrack(fragmentRef));
+      // The whole read-through is untracked, not just the ref read: `executeFragment` receives the live ref
+      // — usually a store node — and whatever it reads off it would otherwise enrol the calling scope. A
+      // caller that evaluates this body inside a tracking scope would then re-create the primitive on a ref
+      // content change instead of letting `currentKey` re-key it.
+      const initial = untrack(() => readThrough(fragmentRef()));
       if (initial.missing) {
         throw new Error('Fragment data not found');
       }

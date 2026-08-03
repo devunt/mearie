@@ -755,10 +755,10 @@ describe('processStructuralChanges', () => {
     };
     const applied = applyPatchesImmutable(oldData, patches);
 
-    expect(applied.posts[0]).toEqual(
+    expect(applied!.posts[0]).toEqual(
       expect.objectContaining({ id: '2', author: { __typename: 'User', id: 'a1', name: 'Alice' } }),
     );
-    expect(applied.posts[1]).toEqual(
+    expect(applied!.posts[1]).toEqual(
       expect.objectContaining({ id: '1', author: { __typename: 'User', id: 'a2', name: 'Bob' } }),
     );
   });
@@ -820,7 +820,7 @@ describe('processStructuralChanges', () => {
     expect(result.has(1)).toBe(true);
     const patches = result.get(1)!;
     const applied = applyPatchesImmutable({ id: '1', name: 'Alice', friend: { id: '2', name: 'Bob' } }, patches);
-    expect(applied.friend).toEqual({ id: '3', name: 'Charlie' });
+    expect(applied!.friend).toEqual({ id: '3', name: 'Charlie' });
   });
 
   it('deduplicates subscriptions across multiple structural changes', () => {
@@ -892,7 +892,7 @@ describe('processStructuralChanges', () => {
       { user: { id: '1', name: 'Alice', friend: { id: '2', name: 'Bob' } } },
       patches,
     );
-    expect(applied.user.friend).toEqual({ id: '3', name: 'Charlie' });
+    expect(applied!.user.friend).toEqual({ id: '3', name: 'Charlie' });
   });
 
   it('emits no patches when resolved data is identical after entity pointer change', () => {

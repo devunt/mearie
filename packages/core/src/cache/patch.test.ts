@@ -14,18 +14,18 @@ describe('applyPatchesImmutable', () => {
       const sibling = { x: 1 };
       const data = { a: sibling, b: 'old' };
       const result = applyPatchesImmutable(data, [{ type: 'set', path: ['b'], value: 'new' }]);
-      expect(result.a).toBe(sibling);
+      expect(result!.a).toBe(sibling);
     });
 
     it('handles deep path', () => {
       const deep = { val: 'original' };
       const data = { a: { b: { c: deep } } };
       const result = applyPatchesImmutable(data, [{ type: 'set', path: ['a', 'b', 'c', 'val'], value: 'updated' }]);
-      expect(result.a.b.c.val).toBe('updated');
+      expect(result!.a.b.c.val).toBe('updated');
       expect(result).not.toBe(data);
-      expect(result.a).not.toBe(data.a);
-      expect(result.a.b).not.toBe(data.a.b);
-      expect(result.a.b.c).not.toBe(data.a.b.c);
+      expect(result!.a).not.toBe(data.a);
+      expect(result!.a.b).not.toBe(data.a.b);
+      expect(result!.a.b.c).not.toBe(data.a.b.c);
     });
 
     it('sets null value', () => {
@@ -39,9 +39,9 @@ describe('applyPatchesImmutable', () => {
       const item1 = { name: 'b' };
       const data = { items: [item0, item1] };
       const result = applyPatchesImmutable(data, [{ type: 'set', path: ['items', 0, 'name'], value: 'A' }]);
-      expect(result.items[0]!.name).toBe('A');
-      expect(result.items[0]).not.toBe(item0);
-      expect(result.items[1]).toBe(item1);
+      expect(result!.items[0]!.name).toBe('A');
+      expect(result!.items[0]).not.toBe(item0);
+      expect(result!.items[1]).toBe(item1);
     });
 
     it('replaces entire data with empty path', () => {
@@ -63,7 +63,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['items'], index: 1, deleteCount: 1, items: [] },
       ]);
-      expect(result.items).toEqual(['a', 'c']);
+      expect(result!.items).toEqual(['a', 'c']);
       expect(result).not.toBe(data);
     });
 
@@ -72,7 +72,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['items'], index: 1, deleteCount: 0, items: ['b'] },
       ]);
-      expect(result.items).toEqual(['a', 'b', 'c']);
+      expect(result!.items).toEqual(['a', 'b', 'c']);
     });
 
     it('replaces an item', () => {
@@ -80,7 +80,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['items'], index: 0, deleteCount: 1, items: ['A'] },
       ]);
-      expect(result.items).toEqual(['A', 'b', 'c']);
+      expect(result!.items).toEqual(['A', 'b', 'c']);
     });
 
     it('handles nested array splice', () => {
@@ -88,7 +88,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['posts', 0, 'tags'], index: 2, deleteCount: 0, items: ['rust'] },
       ]);
-      expect(result.posts[0]!.tags).toEqual(['ts', 'js', 'rust']);
+      expect(result!.posts[0]!.tags).toEqual(['ts', 'js', 'rust']);
     });
 
     it('deletes multiple items', () => {
@@ -96,7 +96,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['items'], index: 1, deleteCount: 2, items: [] },
       ]);
-      expect(result.items).toEqual(['a', 'd']);
+      expect(result!.items).toEqual(['a', 'd']);
     });
 
     it('inserts into empty array', () => {
@@ -104,7 +104,7 @@ describe('applyPatchesImmutable', () => {
       const result = applyPatchesImmutable(data, [
         { type: 'splice', path: ['items'], index: 0, deleteCount: 0, items: ['a'] },
       ]);
-      expect(result.items).toEqual(['a']);
+      expect(result!.items).toEqual(['a']);
     });
   });
 
@@ -112,7 +112,7 @@ describe('applyPatchesImmutable', () => {
     it('swaps two elements', () => {
       const data = { items: ['a', 'b', 'c'] };
       const result = applyPatchesImmutable(data, [{ type: 'swap', path: ['items'], i: 0, j: 2 }]);
-      expect(result.items).toEqual(['c', 'b', 'a']);
+      expect(result!.items).toEqual(['c', 'b', 'a']);
     });
 
     it('preserves unchanged element references', () => {
@@ -121,25 +121,25 @@ describe('applyPatchesImmutable', () => {
       const obj2 = { id: 2 };
       const data = { items: [obj0, obj1, obj2] };
       const result = applyPatchesImmutable(data, [{ type: 'swap', path: ['items'], i: 0, j: 2 }]);
-      expect(result.items[1]).toBe(obj1);
+      expect(result!.items[1]).toBe(obj1);
     });
 
     it('handles adjacent swap', () => {
       const data = { items: ['a', 'b'] };
       const result = applyPatchesImmutable(data, [{ type: 'swap', path: ['items'], i: 0, j: 1 }]);
-      expect(result.items).toEqual(['b', 'a']);
+      expect(result!.items).toEqual(['b', 'a']);
     });
 
     it('same index swap is no-op', () => {
       const data = { items: ['a', 'b'] };
       const result = applyPatchesImmutable(data, [{ type: 'swap', path: ['items'], i: 0, j: 0 }]);
-      expect(result.items).toEqual(['a', 'b']);
+      expect(result!.items).toEqual(['a', 'b']);
     });
 
     it('handles nested array swap', () => {
       const data = { outer: { items: ['x', 'y', 'z'] } };
       const result = applyPatchesImmutable(data, [{ type: 'swap', path: ['outer', 'items'], i: 0, j: 2 }]);
-      expect(result.outer.items).toEqual(['z', 'y', 'x']);
+      expect(result!.outer.items).toEqual(['z', 'y', 'x']);
     });
   });
 
@@ -150,8 +150,8 @@ describe('applyPatchesImmutable', () => {
         { type: 'set', path: ['name'], value: 'Bob' },
         { type: 'splice', path: ['items'], index: 2, deleteCount: 0, items: ['d'] },
       ]);
-      expect(result.name).toBe('Bob');
-      expect(result.items).toEqual(['a', 'b', 'd', 'c']);
+      expect(result!.name).toBe('Bob');
+      expect(result!.items).toEqual(['a', 'b', 'd', 'c']);
     });
 
     it('applies splice + swap', () => {
@@ -160,7 +160,7 @@ describe('applyPatchesImmutable', () => {
         { type: 'splice', path: ['items'], index: 3, deleteCount: 0, items: ['d'] },
         { type: 'swap', path: ['items'], i: 0, j: 3 },
       ]);
-      expect(result.items).toEqual(['d', 'b', 'c', 'a']);
+      expect(result!.items).toEqual(['d', 'b', 'c', 'a']);
     });
 
     it('last set on same path wins', () => {
@@ -169,7 +169,7 @@ describe('applyPatchesImmutable', () => {
         { type: 'set', path: ['name'], value: 'Bob' },
         { type: 'set', path: ['name'], value: 'Charlie' },
       ]);
-      expect(result.name).toBe('Charlie');
+      expect(result!.name).toBe('Charlie');
     });
 
     it('independent paths preserve untouched references', () => {
@@ -177,8 +177,8 @@ describe('applyPatchesImmutable', () => {
       const b = { val: 2 };
       const data = { a, b };
       const result = applyPatchesImmutable(data, [{ type: 'set', path: ['a', 'val'], value: 10 }]);
-      expect(result.b).toBe(b);
-      expect(result.a).not.toBe(a);
+      expect(result!.b).toBe(b);
+      expect(result!.a).not.toBe(a);
     });
   });
 
@@ -192,7 +192,7 @@ describe('applyPatchesImmutable', () => {
     it('handles deeply nested path (5+ levels)', () => {
       const data = { a: { b: { c: { d: { e: 'old' } } } } };
       const result = applyPatchesImmutable(data, [{ type: 'set', path: ['a', 'b', 'c', 'd', 'e'], value: 'new' }]);
-      expect(result.a.b.c.d.e).toBe('new');
+      expect(result!.a.b.c.d.e).toBe('new');
     });
 
     it('applies patches to undefined data via root-level set', () => {

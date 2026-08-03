@@ -51,8 +51,9 @@ export const getPath = (obj: unknown, path: PropertyPath): unknown => {
 
 /**
  * Applies cache patches to data immutably, shallow-copying only along changed paths.
+ * @returns The patched data, or the new root value when a root-level set patch replaced it.
  */
-export const applyPatchesImmutable = <T>(data: T, patches: Patch[]): T => {
+export const applyPatchesImmutable = <T>(data: T, patches: Patch[]): T | null | undefined => {
   if (patches.length === 0) return data;
 
   let result: unknown = data;
@@ -99,7 +100,7 @@ export const applyPatchesImmutable = <T>(data: T, patches: Patch[]): T => {
     }
   }
 
-  return result as T;
+  return result as T | null | undefined;
 };
 
 /**
@@ -108,7 +109,7 @@ export const applyPatchesImmutable = <T>(data: T, patches: Patch[]): T => {
  * @param patches - The patches to apply.
  * @returns The new root value if a root-level set patch was applied, otherwise undefined.
  */
-export const applyPatchesMutable = (target: unknown, patches: Patch[]): unknown => {
+export const applyPatchesMutable = <T>(target: T, patches: Patch[]): T | null | undefined => {
   let root: unknown;
   for (const patch of patches) {
     if (patch.type === 'set') {
@@ -125,5 +126,5 @@ export const applyPatchesMutable = (target: unknown, patches: Patch[]): unknown 
       [arr[patch.i], arr[patch.j]] = [arr[patch.j], arr[patch.i]];
     }
   }
-  return root;
+  return root as T | null | undefined;
 };

@@ -7,7 +7,6 @@ import type {
   OperationResult,
   ObserverState,
   AggregatedError,
-  Patch,
   InitialDataRef,
 } from '@mearie/core';
 import {
@@ -128,9 +127,6 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   let unsubscribe: (() => void) | null = null;
 
-  const applyPatches = (current: DataOf<T>, patches: Patch[]): DataOf<T> | null | undefined =>
-    applyPatchesMutable(current, patches) as DataOf<T> | null | undefined;
-
   const execute = (key: string, skipped: boolean, force: boolean) => {
     unsubscribe?.();
     unsubscribe = null;
@@ -167,7 +163,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
             untrack(() => state),
             key,
             result,
-            { applyPatches },
+            { applyPatches: applyPatchesMutable },
           );
         },
       }),

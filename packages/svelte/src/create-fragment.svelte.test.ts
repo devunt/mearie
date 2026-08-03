@@ -331,6 +331,33 @@ describe('createFragment ref transitions', () => {
     destroy();
   });
 
+  it('re-keys a keyless ref when its content is mutated in place', () => {
+    const { client } = createMockClient();
+    // faithful echo branch: keyless refs get a one-shot result carrying the ref itself, with no cache listener
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) =>
+      fromValue(makeResult(ref)),
+    );
+
+    const box = $state({ ref: { title: 'before' } });
+
+    const { result, destroy } = renderFragment(client, () =>
+      createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never),
+    );
+
+    expect(result.current.data).toEqual({ title: 'before' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(2);
+
+    box.ref.title = 'after';
+    flushSync();
+
+    expect(result.current.data).toEqual({ title: 'after' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(3);
+    destroy();
+  });
+
   it('clears to null atomically for optional fragments', () => {
     const { client } = createMockClient();
     // eslint-disable-next-line @typescript-eslint/unbound-method

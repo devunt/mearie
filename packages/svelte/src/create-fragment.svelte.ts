@@ -104,7 +104,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
       return computeObserverKey(fragment, identity);
     }
 
-    return untrack(() => computeObserverKey(fragment, $state.snapshot(refValue)));
+    return computeObserverKey(fragment, $state.snapshot(refValue));
   });
 
   let state = $state<ObserverState<unknown>>(initObserverState());

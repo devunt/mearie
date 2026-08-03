@@ -155,6 +155,10 @@ export const UserProfile = ({ userId }: { userId: string }) => {
 };
 ```
 
+`previousData` holds the result for the previous variables. While a new set of variables loads, `data` is `undefined` but `previousData` still holds the last result, so `data ?? previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+
+Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy` — that is the hook's entire dependency set. Variables are compared by value, so passing a fresh object literal on every render does not re-trigger the query, and changing any other option does not either.
+
 ### useMutation
 
 Modify data with automatic cache updates:
@@ -268,6 +272,8 @@ export const ChatMessages = ({ chatId }: ChatMessagesProps) => {
   );
 };
 ```
+
+`data` holds the latest event only, and `previousData` holds the last event received under the previous variables.
 
 ## React Suspense
 

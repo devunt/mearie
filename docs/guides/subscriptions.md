@@ -114,6 +114,30 @@ npm install graphql-ws
 
 :::
 
+## Data Ownership
+
+`data` holds the most recent event and nothing else. Each event replaces the previous one wholesale — subscriptions never merge events into an accumulated value. To build up history, collect it yourself in `onData` (see [Accumulating Events](#accumulating-events)).
+
+Every event belongs to the variables it was requested with. When variables change, Mearie tears down the stream and opens a new one: `data` is released, `loading` returns to `true` until the first event arrives for the new variables, and the released event stays available as `previousData`.
+
+```tsx
+const { data, previousData } = useSubscription(
+  graphql(`
+    subscription UserStatusSubscription($userId: ID!) {
+      userStatus(userId: $userId) {
+        online
+      }
+    }
+  `),
+  { userId },
+);
+
+// Keeps showing the last known status until the new stream emits
+const status = data ?? previousData;
+```
+
+For subscriptions, `loading: true` means no event has arrived for the current variables yet, not that a request is in flight — a stream that stays quiet after opening keeps reporting `loading: true`.
+
 ## Latest State Only
 
 Display only the current state (e.g., online status):

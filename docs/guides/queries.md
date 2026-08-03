@@ -60,6 +60,9 @@ const { data, loading, refetch } = useQuery(
 
     // Cache strategy
     fetchPolicy: 'cache-first', // or 'network-only' | 'cache-only' | 'cache-and-network'
+
+    // Seed the result with data you already have
+    initialData: preloadedData,
   },
 );
 ```
@@ -103,6 +106,42 @@ const { data, refetch } = useQuery(
 
 await refetch();
 ```
+
+## Data Ownership
+
+Every result belongs to exactly one set of variables. Mearie keys results by the query and its variables, so a response is never attributed to variables it was not requested with — a late response for the previous variables is never exposed as `data`.
+
+When variables change, the query releases the result it was holding: `data` becomes `undefined` and `loading` becomes `true` until the new result arrives. The released value stays available as `previousData`, so you can keep the current view on screen while the next one loads:
+
+```tsx
+const { data, previousData } = useQuery(
+  graphql(`
+    query GetUserQuery($id: ID!) {
+      user(id: $id) {
+        id
+        name
+      }
+    }
+  `),
+  { id: userId },
+);
+
+// Renders the previous user until the new one arrives
+const user = data ?? previousData;
+```
+
+`previousData` always describes the previous variables — it is never an earlier value of the current ones. `error` is scoped the same way and never crosses a variables change.
+
+With `initialData` the swap is atomic instead: the new variables are seeded with the data you supply, so `data` goes straight from the old value to the new one with no intermediate `undefined`, and `loading` stays `false` while the result is confirmed in the background. `initialData` must correspond to the current variables, so re-derive it whenever they change.
+
+### Narrowing on `loading`
+
+`loading` makes no claim about the other fields:
+
+- `loading: true` can carry `data` — `refetch()` keeps the current result on screen while it revalidates.
+- `loading: true` can carry `error` — an error is retained until the next result replaces it, including across a refetch.
+
+Narrow on the field you actually need (`if (error)`, `if (data)`) rather than treating `loading: true` as proof that both are absent.
 
 ## Imperative Queries
 

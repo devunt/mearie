@@ -149,6 +149,8 @@ const query = createQuery(
 {/if}
 ```
 
+`query.previousData` holds the result for the previous variables. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds the last result, so `query.data ?? query.previousData` keeps the current view on screen instead of flashing a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+
 ### createMutation
 
 Modify data with automatic cache updates:
@@ -268,6 +270,8 @@ const subscription = createSubscription(
 </div>
 ```
 
+`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under the previous variables.
+
 ## Fine-Grained Reactivity
 
 Svelte's fine-grained reactivity with runes works seamlessly with Mearie:
@@ -305,6 +309,8 @@ const query = createQuery(
   Change User
 </button>
 ```
+
+Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy`. The `variables` and options thunks are read untracked at execution time, so other reactive values you read inside them do not re-trigger the query on their own.
 
 ## Next Steps
 

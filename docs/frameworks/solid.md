@@ -147,6 +147,10 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
 };
 ```
 
+`query.previousData` holds the result for the previous variables. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds the last result, so `query.data ?? query.previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+
+`query.previousData` is a structural snapshot taken when the variables changed, not the same object reference `query.data` exposed before — a consequence of the store-based fine-grained updates, which rewrite the committed nodes in place.
+
 ### createMutation
 
 Modify data with automatic cache updates:
@@ -269,6 +273,8 @@ export const ChatMessages: Component<ChatMessagesProps> = (props) => {
 };
 ```
 
+`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under the previous variables.
+
 ## Fine-Grained Reactivity
 
 Solid's fine-grained reactivity works seamlessly with Mearie:
@@ -306,6 +312,8 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
   );
 };
 ```
+
+Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy`, which are the primitive's explicit `createComputed` sources. Everything else is read untracked at execution time, so other reactive values you read inside the `variables` or options accessors do not re-trigger the query on their own.
 
 ## Next Steps
 

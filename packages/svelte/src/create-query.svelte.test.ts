@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import type { Artifact, Client } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { AggregatedError, stringify } from '@mearie/core';
 import { createQuery } from './create-query.svelte.ts';
-import { createMockClient, mockQuery, makeResult } from './test-utils.svelte.ts';
+import { createMockClient, createSyncMockClient, mockQuery, makeResult } from './test-utils.svelte.ts';
 import TestRunner from './TestRunner.svelte';
 import type { Query } from './create-query.svelte.ts';
+
+type MockQueryWithVars = Artifact<'query', string, unknown, { id: string }>;
 
 const renderQuery = (
   client: Client,
@@ -199,6 +201,125 @@ describe('createQuery', () => {
     flushSync();
 
     expect(result.current.metadata).toEqual(testMetadata);
+    destroy();
+  });
+});
+
+describe('createQuery data ownership', () => {
+  it('resets data atomically when variables change (async source)', () => {
+    const { client, subjects } = createMockClient();
+    const vars = $state({ id: 'a' });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as MockQueryWithVars, () => ({ id: vars.id })),
+    );
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first' }));
+    flushSync();
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    vars.id = 'b';
+    flushSync();
+
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+
+    subjects.query.next(makeResult({ id: 'b', name: 'second' }));
+    flushSync();
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+    destroy();
+  });
+
+  it('shows new data in the same flush on a synchronous cache hit, with no loading frame', () => {
+    const { client } = createSyncMockClient({
+      [stringify({ id: 'a' })]: makeResult({ id: 'a', name: 'first' }),
+      [stringify({ id: 'b' })]: makeResult({ id: 'b', name: 'second' }),
+    });
+    const vars = $state({ id: 'a' });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as MockQueryWithVars, () => ({ id: vars.id })),
+    );
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    vars.id = 'b';
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+
+  it('keeps data while skipped with unchanged variables, resets when variables changed under skip', () => {
+    const { client, subjects } = createMockClient();
+    const controls = $state({ id: 'a', skip: false });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(
+        mockQuery as MockQueryWithVars,
+        () => ({ id: controls.id }),
+        () => ({ skip: controls.skip }),
+      ),
+    );
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first' }));
+    flushSync();
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    controls.skip = true;
+    flushSync();
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+    expect(result.current.loading).toBe(false);
+
+    controls.id = 'b';
+    flushSync();
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+    destroy();
+  });
+
+  it('attributes fresh initialData to the new key on variable change', () => {
+    const { client } = createMockClient();
+    const box = $state({ id: 'a', initialData: { id: 'a', name: 'first' } });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(
+        mockQuery as MockQueryWithVars,
+        () => ({ id: box.id }),
+        () => ({ initialData: box.initialData }),
+      ),
+    );
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    box.initialData = { id: 'b', name: 'second' };
+    box.id = 'b';
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+
+  it('warns when the same initialData reference is reused across keys', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { client } = createMockClient();
+    const shared = { id: 'a', name: 'first' };
+    const box = $state({ id: 'a' });
+    const { destroy } = renderQuery(client, () =>
+      createQuery(
+        mockQuery as MockQueryWithVars,
+        () => ({ id: box.id }),
+        () => ({ initialData: shared }),
+      ),
+    );
+
+    box.id = 'b';
+    flushSync();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
     destroy();
   });
 });

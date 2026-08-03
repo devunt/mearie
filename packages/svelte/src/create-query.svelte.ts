@@ -1,6 +1,23 @@
 import { untrack } from 'svelte';
-import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
-import { AggregatedError, applyPatchesMutable } from '@mearie/core';
+import type {
+  Artifact,
+  VariablesOf,
+  DataOf,
+  QueryOptions,
+  OperationResult,
+  ObserverState,
+  AggregatedError,
+  Patch,
+} from '@mearie/core';
+import {
+  applyPatchesMutable,
+  acceptInitialData,
+  beginFetch,
+  computeObserverKey,
+  deriveObserverView,
+  initObserverState,
+  reduceObserverResult,
+} from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
@@ -11,6 +28,7 @@ export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> 
 export type Query<T extends Artifact<'query'>> =
   | {
       data: undefined;
+      previousData: DataOf<T> | undefined;
       loading: true;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -18,6 +36,7 @@ export type Query<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -25,6 +44,7 @@ export type Query<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -34,6 +54,7 @@ export type Query<T extends Artifact<'query'>> =
 export type DefinedQuery<T extends Artifact<'query'>> =
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: true;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -41,6 +62,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -48,6 +70,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -75,78 +98,100 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 ): Query<T> => {
   const client = getClient();
 
+  const getVariables = () => (typeof variables === 'function' ? variables() : undefined);
+
   const initialOpts = options?.();
-  let data = $state<DataOf<T> | undefined>(initialOpts?.initialData);
-  let loading = $state<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
-  let error = $state<AggregatedError | undefined>();
-  let metadata = $state<OperationResult['metadata']>();
+  let state = $state.raw<ObserverState<DataOf<T>>>(
+    initialOpts?.initialData === undefined
+      ? initObserverState<DataOf<T>>()
+      : acceptInitialData(
+          initObserverState<DataOf<T>>(),
+          computeObserverKey(query, untrack(getVariables)),
+          initialOpts.initialData,
+        ),
+  );
+
+  const currentKey = $derived(computeObserverKey(query, getVariables()));
+  const skip = $derived(options?.().skip ?? false);
+  const view = $derived(deriveObserverView(state, currentKey, skip));
 
   let unsubscribe: (() => void) | null = null;
-  let initialized = false;
 
-  const execute = (force = false) => {
+  const applyPatches = (data: DataOf<T>, patches: Patch[]): DataOf<T> | undefined =>
+    applyPatchesMutable(data, patches) as DataOf<T> | undefined;
+
+  const execute = (key: string, skipped: boolean, force: boolean) => {
     unsubscribe?.();
+    unsubscribe = null;
 
-    if (!force && options?.().skip) {
-      loading = false;
-      return;
+    if (!force && skipped) return;
+
+    if (force || untrack(() => state).emission?.key !== key) {
+      state = beginFetch(untrack(() => state));
+
+      if (!force) {
+        const initialData = untrack(() => options?.())?.initialData;
+        if (initialData !== undefined) {
+          state = acceptInitialData(
+            untrack(() => state),
+            key,
+            initialData,
+          );
+        }
+      }
     }
 
-    if (initialized || !initialOpts?.initialData) {
-      loading = true;
-    }
-
-    initialized = true;
-    error = undefined;
+    const currentVariables = untrack(getVariables);
+    const currentOptions = untrack(() => options?.());
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, typeof variables === 'function' ? variables() : undefined, options?.()),
+      client.executeQuery(query, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
-          metadata = result.metadata;
-          if (result.errors && result.errors.length > 0) {
-            error = new AggregatedError(result.errors);
-            loading = false;
-          } else {
-            const patches = result.metadata?.cache?.patches;
-            if (patches) {
-              const root = applyPatchesMutable(data, patches);
-              if (root !== undefined) data = root as DataOf<T>;
-            } else {
-              data = result.data as DataOf<T>;
-            }
-            loading = false;
-          }
+          state = reduceObserverResult<DataOf<T>>(
+            untrack(() => state),
+            key,
+            result,
+            { applyPatches },
+          );
         },
       }),
     );
   };
 
-  const refetch = () => {
-    untrack(() => execute(true));
-  };
+  $effect.pre(() => {
+    const key = currentKey;
+    const skipped = skip;
+    void options?.().fetchPolicy;
 
-  $effect(() => {
-    execute();
+    untrack(() => execute(key, skipped, false));
 
     return () => {
       unsubscribe?.();
+      unsubscribe = null;
     };
   });
 
+  const refetch = () => {
+    untrack(() => execute(currentKey, skip, true));
+  };
+
   return {
     get data() {
-      return data;
+      return view.data;
+    },
+    get previousData() {
+      return view.previousData;
     },
     get loading() {
-      return loading;
+      return view.loading;
     },
     get error() {
-      return error;
+      return view.error;
     },
     get metadata() {
-      return metadata;
+      return view.metadata;
     },
     refetch,
   } as Query<T>;

@@ -8,6 +8,7 @@ import type {
   ObserverState,
   AggregatedError,
   Patch,
+  InitialDataRef,
 } from '@mearie/core';
 import {
   applyPatchesMutable,
@@ -17,6 +18,7 @@ import {
   deriveObserverView,
   initObserverState,
   reduceObserverResult,
+  trackInitialData,
 } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
@@ -101,24 +103,33 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   const getVariables = () => (typeof variables === 'function' ? variables() : undefined);
 
   const initialOpts = options?.();
-  let state = $state.raw<ObserverState<DataOf<T>>>(
-    initialOpts?.initialData === undefined
-      ? initObserverState<DataOf<T>>()
-      : acceptInitialData(
-          initObserverState<DataOf<T>>(),
-          computeObserverKey(query, untrack(getVariables)),
-          initialOpts.initialData,
-        ),
-  );
+  let lastInitialData: InitialDataRef | undefined;
+
+  const buildInitialState = (): ObserverState<DataOf<T>> => {
+    if (initialOpts?.initialData === undefined) {
+      return initObserverState<DataOf<T>>();
+    }
+
+    const initialKey = computeObserverKey(query, untrack(getVariables));
+    lastInitialData = trackInitialData(lastInitialData, initialKey, initialOpts.initialData);
+    return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, initialOpts.initialData);
+  };
+
+  let state = $state<ObserverState<DataOf<T>>>(buildInitialState());
 
   const currentKey = $derived(computeObserverKey(query, getVariables()));
   const skip = $derived(options?.().skip ?? false);
   const view = $derived(deriveObserverView(state, currentKey, skip));
+  const data = $derived(view.data);
+  const previousData = $derived(view.previousData);
+  const loading = $derived(view.loading);
+  const error = $derived(view.error);
+  const metadata = $derived(view.metadata);
 
   let unsubscribe: (() => void) | null = null;
 
-  const applyPatches = (data: DataOf<T>, patches: Patch[]): DataOf<T> | undefined =>
-    applyPatchesMutable(data, patches) as DataOf<T> | undefined;
+  const applyPatches = (current: DataOf<T>, patches: Patch[]): DataOf<T> | undefined =>
+    applyPatchesMutable(current, patches) as DataOf<T> | undefined;
 
   const execute = (key: string, skipped: boolean, force: boolean) => {
     unsubscribe?.();
@@ -132,6 +143,7 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
       if (!force) {
         const initialData = untrack(() => options?.())?.initialData;
         if (initialData !== undefined) {
+          lastInitialData = trackInitialData(lastInitialData, key, initialData);
           state = acceptInitialData(
             untrack(() => state),
             key,
@@ -179,19 +191,19 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   return {
     get data() {
-      return view.data;
+      return data;
     },
     get previousData() {
-      return view.previousData;
+      return previousData;
     },
     get loading() {
-      return view.loading;
+      return loading;
     },
     get error() {
-      return view.error;
+      return error;
     },
     get metadata() {
-      return view.metadata;
+      return metadata;
     },
     refetch,
   } as Query<T>;

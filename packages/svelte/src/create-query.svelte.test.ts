@@ -323,3 +323,31 @@ describe('createQuery data ownership', () => {
     destroy();
   });
 });
+
+describe('createQuery fine-grained reactivity', () => {
+  it('preserves data reference identity through a patch', () => {
+    const { client, subjects } = createMockClient();
+    const { result, destroy } = renderQuery(client, () => createQuery(mockQuery as Artifact<'query'>));
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first' }));
+    flushSync();
+
+    const before = result.current.data;
+    expect(before).toEqual({ id: 'a', name: 'first' });
+
+    subjects.query.next(
+      makeResult(undefined, {
+        metadata: {
+          cache: {
+            patches: [{ type: 'set', path: ['name'], value: 'second' }],
+          },
+        },
+      }),
+    );
+    flushSync();
+
+    expect(result.current.data).toBe(before);
+    expect(result.current.data).toEqual({ id: 'a', name: 'second' });
+    destroy();
+  });
+});

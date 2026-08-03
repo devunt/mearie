@@ -4,6 +4,7 @@ import {
   acceptResult,
   applyPatchesMutable,
   computeObserverKey,
+  FragmentRefKey,
   initObserverState,
   reduceFragmentResult,
 } from '@mearie/core';
@@ -25,6 +26,21 @@ export type FragmentList<T extends Artifact<'fragment'>> = {
 export type OptionalFragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T> | null;
   metadata: OperationResult['metadata'];
+};
+
+const readRefIdentity = (refValue: object): string | string[] | undefined => {
+  if (Array.isArray(refValue)) {
+    const identities: string[] = [];
+    for (const element of refValue) {
+      const identity = (element as Record<string, unknown> | null | undefined)?.[FragmentRefKey];
+      if (typeof identity !== 'string') return undefined;
+      identities.push(identity);
+    }
+    return identities;
+  }
+
+  const identity = (refValue as Record<string, unknown>)[FragmentRefKey];
+  return typeof identity === 'string' ? identity : undefined;
 };
 
 type CreateFragmentFn = {
@@ -67,13 +83,24 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
     return { data: result.data, metadata: result.metadata };
   };
 
+  const currentKey = $derived.by(() => {
+    const refValue = fragmentRef();
+    if (refValue == null) return;
+
+    const identity = readRefIdentity(refValue);
+    if (identity !== undefined) {
+      return computeObserverKey(fragment, identity);
+    }
+
+    return untrack(() => computeObserverKey(fragment, $state.snapshot(refValue)));
+  });
+
   let state = $state<ObserverState<unknown>>(initObserverState());
 
   {
-    const snapshot = untrack(() => $state.snapshot(fragmentRef()));
-    if (snapshot != null) {
-      const key = computeObserverKey(fragment, snapshot);
-      const initial = readThrough(snapshot);
+    const key = untrack(() => currentKey);
+    if (key !== undefined) {
+      const initial = readThrough(untrack(() => $state.snapshot(fragmentRef())));
       state = acceptResult(initObserverState(), {
         key,
         data: initial.data,
@@ -85,28 +112,26 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 
   const view = $derived.by(() => {
     const refValue = fragmentRef();
-    if (refValue == null) {
+    const key = currentKey;
+    if (refValue == null || key === undefined) {
       return { data: null as unknown, metadata: undefined as OperationResult['metadata'] };
     }
 
-    const snapshot = $state.snapshot(refValue);
-    const key = computeObserverKey(fragment, snapshot);
     if (state.emission?.key === key) {
       return { data: state.emission.data, metadata: state.emission.metadata };
     }
 
-    return untrack(() => readThrough(snapshot));
+    return untrack(() => readThrough($state.snapshot(refValue)));
   });
 
   const data = $derived(view.data);
   const metadata = $derived(view.metadata);
 
   $effect.pre(() => {
-    const refValue = fragmentRef();
-    if (refValue == null) return;
+    const key = currentKey;
+    if (key === undefined) return;
 
-    const snapshot = untrack(() => $state.snapshot(refValue));
-    const key = computeObserverKey(fragment, snapshot);
+    const snapshot = untrack(() => $state.snapshot(fragmentRef()));
 
     const unsubscribe = pipe(
       client.executeFragment(

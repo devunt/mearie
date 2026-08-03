@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import type { Artifact, Client, OperationResult, FragmentRefs } from '@mearie/core';
+import { FragmentRefKey } from '@mearie/core';
 import type { Sink, Subscription as StreamSubscription } from '@mearie/core/stream';
 import { makeSubject, fromValue } from '@mearie/core/stream';
 import { createFragment } from './create-fragment.svelte.ts';
@@ -181,57 +182,120 @@ describe('createFragment', () => {
   });
 });
 
+const createIdentityRef = (storageKey: string) => ({ [FragmentRefKey]: storageKey });
+
+const readStorageKey = (ref: unknown) => (ref as Record<string, unknown>)[FragmentRefKey] as string;
+
+const mockByIdentity = (client: Client) => {
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
+    const storageKey = readStorageKey(ref);
+    return fromValue(makeResult({ id: storageKey, name: storageKey === 'Entity:a' ? 'first' : 'second' }));
+  });
+};
+
 describe('createFragment ref transitions', () => {
   it('serves the new ref data synchronously in the same flush, never the old ref data', () => {
     const { client } = createMockClient();
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
-      const { id } = ref as { id: string };
-      return fromValue(makeResult({ id, name: id === 'a' ? 'first' : 'second' }));
-    });
+    mockByIdentity(client);
 
-    const box = $state({ ref: { id: 'a', __fragment: true } });
+    const box = $state({ ref: createIdentityRef('Entity:a') });
     const { result, destroy } = renderFragment(client, () =>
       createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never),
     );
 
-    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+    expect(result.current.data).toEqual({ id: 'Entity:a', name: 'first' });
 
-    box.ref = { id: 'b', __fragment: true };
+    box.ref = createIdentityRef('Entity:b');
     flushSync();
 
-    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.data).toEqual({ id: 'Entity:b', name: 'second' });
     destroy();
   });
 
-  it('never lets a reader observe the new ref paired with the old ref data', () => {
+  it('never lets a reader that runs before the hook observe the new ref with the old ref data', () => {
     const { client } = createMockClient();
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
-      const { id } = ref as { id: string };
-      return fromValue(makeResult({ id, name: id === 'a' ? 'first' : 'second' }));
-    });
+    mockByIdentity(client);
 
-    const box = $state({ ref: { id: 'a', __fragment: true } });
+    const box = $state({ ref: createIdentityRef('Entity:a') });
     const observed: { id: string; name: string }[] = [];
+    let fragment: { data: unknown } | undefined;
 
     const { destroy } = renderFragment(client, () => {
+      $effect.pre(() => {
+        const id = readStorageKey(box.ref);
+        observed.push({ id, name: fragment ? (fragment.data as { name: string }).name : 'none' });
+      });
+
+      fragment = createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never) as { data: unknown };
+      return fragment;
+    });
+
+    box.ref = createIdentityRef('Entity:b');
+    flushSync();
+
+    expect(observed).not.toContainEqual({ id: 'Entity:b', name: 'first' });
+    expect(observed).toContainEqual({ id: 'Entity:b', name: 'second' });
+    destroy();
+  });
+
+  it('throws when a ref transition finds no data in the cache', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) =>
+      readStorageKey(ref) === 'Entity:a'
+        ? fromValue(makeResult({ id: 'Entity:a', name: 'first' }))
+        : // eslint-disable-next-line unicorn/no-useless-undefined
+          fromValue(makeResult(undefined)),
+    );
+
+    const box = $state({ ref: createIdentityRef('Entity:a') });
+
+    renderFragment(client, () => {
       const fragment = createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never);
 
       $effect.pre(() => {
-        observed.push({ id: box.ref.id, name: (fragment.data as unknown as { name: string }).name });
+        void (fragment.data as unknown as { name: string }).name;
       });
 
       return fragment;
     });
 
-    box.ref = { id: 'b', __fragment: true };
+    expect(() => {
+      box.ref = createIdentityRef('Entity:b');
+      flushSync();
+    }).toThrow('Fragment data not found');
+  });
+
+  it('keeps accepting emissions after an unrelated parent field is patched in place', () => {
+    const { client, subjects } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment)
+      .mockImplementationOnce(() => fromValue(makeResult({ id: '1', name: 'first' })))
+      .mockImplementation(() => subjects.fragment.source);
+
+    const parentNode = $state({ [FragmentRefKey]: 'Entity:a', title: 'before' });
+    const { result, destroy } = renderFragment(client, () =>
+      createFragment(mockFragment as Artifact<'fragment'>, () => parentNode as never),
+    );
+
+    expect(result.current.data).toEqual({ id: '1', name: 'first' });
+
+    parentNode.title = 'after';
     flushSync();
 
-    expect(observed).toEqual([
-      { id: 'a', name: 'first' },
-      { id: 'b', name: 'second' },
-    ]);
+    // the parent patch must not be tracked: no key change, so no re-read and no resubscription
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(2);
+
+    subjects.fragment.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['name'], value: 'second' }] } },
+      }),
+    );
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: '1', name: 'second' });
     destroy();
   });
 

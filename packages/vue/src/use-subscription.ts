@@ -1,24 +1,35 @@
-import { ref, watchEffect, toValue, type Ref, type MaybeRefOrGetter } from 'vue';
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { computed, reactive, shallowRef, toValue, watchEffect, type Ref, type MaybeRefOrGetter } from 'vue';
+import type {
+  VariablesOf,
+  DataOf,
+  Artifact,
+  SubscriptionOptions,
+  OperationResult,
+  ObserverState,
+  AggregatedError,
+} from '@mearie/core';
+import { computeObserverKey, deriveObserverView, initObserverState, reduceObserverResult } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: Ref<undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<true>;
       error: Ref<undefined>;
       metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<undefined>;
       metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<AggregatedError>;
       metadata: Ref<OperationResult['metadata']>;
@@ -38,61 +49,56 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
 ): Subscription<T> => {
   const client = useClient();
 
-  const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(!toValue(options)?.skip);
-  const error = ref<AggregatedError | undefined>(undefined);
-  const metadata = ref<OperationResult['metadata']>();
+  const wrap = (data: unknown) => reactive(data as object) as DataOf<T>;
 
-  let unsubscribe: (() => void) | null = null;
+  // `raw` mirrors `state` for reads inside `watchEffect`: vue has no `untrack`, so reading `state.value`
+  // there would make the effect depend on its own writes.
+  let raw = initObserverState<DataOf<T>>();
+  const state = shallowRef<ObserverState<DataOf<T>>>(raw);
+  const commit = (next: ObserverState<DataOf<T>>) => {
+    raw = next;
+    state.value = next;
+  };
 
-  const execute = () => {
-    unsubscribe?.();
+  const currentKey = computed(() => computeObserverKey(subscription, toValue(variables)));
+  const skip = computed(() => toValue(options)?.skip ?? false);
+  const view = computed(() => deriveObserverView(state.value, currentKey.value, skip.value));
 
-    if (toValue(options)?.skip) {
-      return;
-    }
+  watchEffect((onCleanup) => {
+    const key = currentKey.value;
+    if (skip.value) return;
 
-    loading.value = true;
-    error.value = undefined;
+    const currentVariables = toValue(variables);
+    const currentOptions = toValue(options);
 
-    unsubscribe = pipe(
+    const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, toValue(variables), toValue(options)),
+      client.executeSubscription(subscription, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
-          metadata.value = result.metadata;
-          if (result.errors && result.errors.length > 0) {
-            const err = new AggregatedError(result.errors);
+          commit(reduceObserverResult<DataOf<T>>(raw, key, result, { mapData: wrap }));
 
-            error.value = err;
-            loading.value = false;
-
-            toValue(options)?.onError?.(err);
-          } else {
-            const resultData = result.data as DataOf<T>;
-
-            data.value = resultData;
-            loading.value = false;
-
-            toValue(options)?.onData?.(resultData);
+          const emitted = raw.emission;
+          const opts = toValue(options);
+          if (emitted?.error) {
+            opts?.onError?.(emitted.error);
+          } else if (emitted?.key === key) {
+            opts?.onData?.(emitted.data!);
           }
         },
       }),
     );
-  };
-
-  watchEffect((onCleanup) => {
-    execute();
 
     onCleanup(() => {
-      unsubscribe?.();
+      unsubscribe();
     });
   });
 
   return {
-    data,
-    loading,
-    error,
-    metadata,
+    data: computed(() => view.value.data),
+    previousData: computed(() => view.value.previousData),
+    loading: computed(() => view.value.loading),
+    error: computed(() => view.value.error),
+    metadata: computed(() => view.value.metadata),
   } as Subscription<T>;
 };

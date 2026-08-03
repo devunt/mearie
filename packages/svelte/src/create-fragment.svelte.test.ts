@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import type { Artifact, Client, OperationResult, FragmentRefs } from '@mearie/core';
-import { FragmentRefKey } from '@mearie/core';
+import { FragmentRefKey, FragmentVarsKey } from '@mearie/core';
 import type { Sink, Subscription as StreamSubscription } from '@mearie/core/stream';
 import { makeSubject, fromValue } from '@mearie/core/stream';
 import { createFragment } from './create-fragment.svelte.ts';
@@ -296,6 +296,38 @@ describe('createFragment ref transitions', () => {
     flushSync();
 
     expect(result.current.data).toEqual({ id: '1', name: 'second' });
+    destroy();
+  });
+
+  it('resubscribes when only the fragment arguments change', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
+      const vars = (ref as Record<string, Record<string, { limit: number }> | undefined>)[FragmentVarsKey]?.[
+        mockFragment.name
+      ];
+      return fromValue(makeResult({ id: 'Entity:a', limit: vars?.limit ?? 0 }));
+    });
+
+    const box = $state({
+      ref: { [FragmentRefKey]: 'Entity:a', [FragmentVarsKey]: { [mockFragment.name]: { limit: 10 } } },
+    });
+
+    const { result, destroy } = renderFragment(client, () =>
+      createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never),
+    );
+
+    expect(result.current.data).toEqual({ id: 'Entity:a', limit: 10 });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(2);
+
+    // a re-projection replaces the fragment's vars entry with a new object (see cache/denormalize.ts)
+    box.ref[FragmentVarsKey] = { [mockFragment.name]: { limit: 20 } };
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'Entity:a', limit: 20 });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(3);
     destroy();
   });
 

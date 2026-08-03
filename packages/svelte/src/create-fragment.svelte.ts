@@ -5,6 +5,7 @@ import {
   applyPatchesMutable,
   computeObserverKey,
   FragmentRefKey,
+  FragmentVarsKey,
   initObserverState,
   reduceFragmentResult,
 } from '@mearie/core';
@@ -28,19 +29,30 @@ export type OptionalFragment<T extends Artifact<'fragment'>> = {
   metadata: OperationResult['metadata'];
 };
 
-const readRefIdentity = (refValue: object): string | string[] | undefined => {
+type RefIdentity = [storageKey: string, args: unknown];
+
+const readElementIdentity = (element: unknown, fragmentName: string): RefIdentity | undefined => {
+  const record = element as Record<string, unknown> | null | undefined;
+
+  const storageKey = record?.[FragmentRefKey];
+  if (typeof storageKey !== 'string') return;
+
+  const args = (record?.[FragmentVarsKey] as Record<string, unknown> | undefined)?.[fragmentName];
+  return [storageKey, args];
+};
+
+const readRefIdentity = (refValue: object, fragmentName: string): RefIdentity | RefIdentity[] | undefined => {
   if (Array.isArray(refValue)) {
-    const identities: string[] = [];
+    const identities: RefIdentity[] = [];
     for (const element of refValue) {
-      const identity = (element as Record<string, unknown> | null | undefined)?.[FragmentRefKey];
-      if (typeof identity !== 'string') return undefined;
+      const identity = readElementIdentity(element, fragmentName);
+      if (identity === undefined) return;
       identities.push(identity);
     }
     return identities;
   }
 
-  const identity = (refValue as Record<string, unknown>)[FragmentRefKey];
-  return typeof identity === 'string' ? identity : undefined;
+  return readElementIdentity(refValue, fragmentName);
 };
 
 type CreateFragmentFn = {
@@ -87,7 +99,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
     const refValue = fragmentRef();
     if (refValue == null) return;
 
-    const identity = readRefIdentity(refValue);
+    const identity = readRefIdentity(refValue, fragment.name);
     if (identity !== undefined) {
       return computeObserverKey(fragment, identity);
     }

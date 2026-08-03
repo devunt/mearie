@@ -60,8 +60,9 @@ export {
   beginFetch,
   acceptResult,
   acceptInitialData,
+  trackInitialData,
   reduceObserverResult,
   reduceFragmentResult,
   deriveObserverView,
 } from './observer.ts';
-export type { ObserverEmission, ObserverState, ObserverView } from './observer.ts';
+export type { ObserverEmission, ObserverState, ObserverView, InitialDataRef } from './observer.ts';

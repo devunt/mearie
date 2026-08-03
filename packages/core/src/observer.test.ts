@@ -5,6 +5,7 @@ import {
   initObserverState,
   beginFetch,
   acceptInitialData,
+  trackInitialData,
   reduceObserverResult,
   reduceFragmentResult,
   deriveObserverView,
@@ -168,14 +169,33 @@ describe('acceptInitialData', () => {
     const state = acceptInitialData(beginFetch(initObserverState()), keyA, { id: 'a' });
     expect(deriveObserverView(state, keyA, false).loading).toBe(false);
   });
+});
 
-  it('warns in dev when the same object reference is reused across different keys', () => {
+describe('trackInitialData', () => {
+  it('warns once when the same object reference is reused across different keys', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const shared = { id: 'a' };
-    const state = acceptInitialData(initObserverState(), keyA, shared);
+    const last = trackInitialData(undefined, keyA, shared);
     expect(warn).not.toHaveBeenCalled();
-    acceptInitialData(state, keyB, shared);
+    trackInitialData(last, keyB, shared);
     expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('does not warn when the same object reference is reused for the same key', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const shared = { id: 'a' };
+    const last = trackInitialData(undefined, keyA, shared);
+    trackInitialData(last, keyA, shared);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('does not warn when a different object reference is used for a different key', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const last = trackInitialData(undefined, keyA, { id: 'a' });
+    trackInitialData(last, keyB, { id: 'b' });
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 });

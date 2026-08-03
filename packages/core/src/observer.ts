@@ -14,7 +14,6 @@ export type ObserverState<D> = {
   emission: ObserverEmission<D> | undefined;
   previous: { key: string; data: D } | undefined;
   fetching: boolean;
-  lastInitialData: { ref: unknown; key: string } | undefined;
 };
 
 export type ObserverView<D> = {
@@ -33,7 +32,6 @@ export const initObserverState = <D>(): ObserverState<D> => ({
   emission: undefined,
   previous: undefined,
   fetching: false,
-  lastInitialData: undefined,
 });
 
 export const beginFetch = <D>(state: ObserverState<D>): ObserverState<D> => ({ ...state, fetching: true });
@@ -50,28 +48,28 @@ export const acceptResult = <D>(state: ObserverState<D>, emission: ObserverEmiss
   emission,
   previous: succession(state, emission.key),
   fetching: false,
-  lastInitialData: state.lastInitialData,
 });
 
-export const acceptInitialData = <D>(state: ObserverState<D>, key: string, data: D): ObserverState<D> => {
+export const acceptInitialData = <D>(state: ObserverState<D>, key: string, data: D): ObserverState<D> =>
+  acceptResult(state, { key, data, error: undefined, metadata: undefined });
+
+export type InitialDataRef = { ref: unknown; key: string };
+
+export const trackInitialData = (last: InitialDataRef | undefined, key: string, data: unknown): InitialDataRef => {
   if (
     typeof process !== 'undefined' &&
     process.env.NODE_ENV !== 'production' &&
     typeof data === 'object' &&
     data !== null &&
-    state.lastInitialData?.ref === data &&
-    state.lastInitialData.key !== key
+    last?.ref === data &&
+    last.key !== key
   ) {
     console.warn(
       '[mearie] the same initialData object was attributed to two different sets of variables. ' +
         'initialData must always correspond to the current variables; re-derive it when variables change.',
     );
   }
-
-  return {
-    ...acceptResult(state, { key, data, error: undefined, metadata: undefined }),
-    lastInitialData: { ref: data, key },
-  };
+  return { ref: data, key };
 };
 
 type ReduceOptions<D> = {

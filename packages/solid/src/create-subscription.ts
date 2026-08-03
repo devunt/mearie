@@ -1,5 +1,4 @@
-import { createComputed, createMemo, onCleanup, untrack, type Accessor } from 'solid-js';
-import { createStore, reconcile } from 'solid-js/store';
+import { createComputed, createMemo, createSignal, onCleanup, untrack, type Accessor } from 'solid-js';
 import type {
   VariablesOf,
   DataOf,
@@ -12,7 +11,6 @@ import type {
 import { computeObserverKey, deriveObserverView, initObserverState, reduceObserverResult } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
-import { snapshotData } from './utils.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
@@ -53,34 +51,25 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 
   const getVariables = () => (typeof variables === 'function' ? variables() : undefined);
 
-  // `raw` mirrors the store so the reducer and the emission callbacks read the last committed value as a plain
-  // immutable object. The store node is not that object: `reconcile` diffs into the previously committed nodes,
-  // so reading state back out of the store would feed proxies (and reconcile's in-place edits) into the reducer.
+  // A subscription event replaces `data` wholesale — an event stream has no leaf-level granularity to save — so
+  // the state is held in a signal of plain objects rather than a reconciled store. Every commit publishes a new
+  // payload reference, which is what a whole-`data` reader needs to re-run, and nothing ever rewrites a payload a
+  // consumer already captured.
+  // `raw` mirrors the signal so the reducer and the emission callbacks read the last committed value without
+  // going through the accessor: those reads sit in callback scopes that do not track today, and keeping them off
+  // `state()` means no later move back into a tracking scope can make an effect depend on its own writes.
   let raw = initObserverState<DataOf<T>>();
-  const [state, setState] = createStore<{ current: ObserverState<DataOf<T>> }>({ current: raw });
+  const [state, setState] = createSignal<ObserverState<DataOf<T>>>(raw);
   const commit = (next: ObserverState<DataOf<T>>) => {
-    // A fresh succession hands `previous.data` the very node the store is about to rewrite in place:
-    // `reconcile` diffs the incoming emission into the previously committed data node, so without a copy
-    // `previousData` would report the new payload whenever the root is diffable (an id-less root always is).
-    // Snapshot at the transition only — steady-state commits carry `previous` forward by identity.
-    // `untrack` because an emission can land inside a live computation (a synchronous source commits inside
-    // the driver), and this walk must not enroll that computation in the payload's reads.
-    const outgoing = next.previous;
-    let settled = next;
-    if (outgoing !== undefined && outgoing !== raw.previous) {
-      const data = untrack(() => snapshotData(outgoing.data)) as DataOf<T>;
-      settled = { ...next, previous: { ...outgoing, data } };
-    }
-
-    raw = settled;
-    setState('current', reconcile(settled));
+    raw = next;
+    setState(next);
   };
 
   const currentKey = createMemo(() => computeObserverKey(subscription, getVariables()));
   const skip = createMemo(() => options?.()?.skip ?? false);
-  const view = createMemo(() => deriveObserverView(state.current, currentKey(), skip()));
-  // Per-field memos keep the store grain: `view` rebuilds on every commit, but each field only notifies its
-  // readers when that field's value actually changes.
+  const view = createMemo(() => deriveObserverView(state(), currentKey(), skip()));
+  // Per-field memos keep each field's equality gate: `view` rebuilds on every commit, but `loading`, `error` and
+  // `metadata` only notify their readers when that field's value actually changes.
   const data = createMemo(() => view().data);
   const previousData = createMemo(() => view().previousData);
   const loading = createMemo(() => view().loading);

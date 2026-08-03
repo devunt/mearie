@@ -1,5 +1,5 @@
 import { describe, it, expect, vi as vitest } from 'vitest';
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import type { Artifact } from '@mearie/core';
 import { AggregatedError } from '@mearie/core';
 import { createSubscription } from './create-subscription.ts';
@@ -221,6 +221,51 @@ describe('createSubscription data ownership', () => {
 
     expect(result.current.data).toEqual({ event: { id: 'e2', body: 'second' } });
     expect(result.current.previousData).toEqual({ event: { id: 'e1', body: 'first' } });
+    dispose();
+  });
+});
+
+describe('createSubscription event identity', () => {
+  it('re-runs a whole-data reader exactly once per event', () => {
+    const { client, subjects } = createMockClient();
+    let runs = 0;
+
+    const { result, dispose } = renderPrimitive(() => {
+      const subscription = createSubscription(mockSubscription);
+
+      createEffect(() => {
+        void subscription.data;
+        runs += 1;
+      });
+
+      return subscription;
+    }, client);
+
+    expect(runs).toBe(1);
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 1 }));
+    expect(runs).toBe(2);
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 2 }));
+
+    expect(runs).toBe(3);
+    expect(result.current.data).toEqual({ ch: 'a', seq: 2 });
+    dispose();
+  });
+
+  it('leaves an already captured payload untouched when the next event arrives', () => {
+    const { client, subjects } = createMockClient();
+    const { result, dispose } = renderPrimitive(() => createSubscription(mockSubscription), client);
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 1 }));
+    const first = result.current.data;
+    expect(first).toEqual({ ch: 'a', seq: 1 });
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 2 }));
+
+    expect(first).toEqual({ ch: 'a', seq: 1 });
+    expect(result.current.data).toEqual({ ch: 'a', seq: 2 });
+    expect(result.current.data).not.toBe(first);
     dispose();
   });
 });

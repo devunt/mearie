@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { nextTick, ref, watchEffect } from 'vue';
-import type { Artifact, Client, OperationResult } from '@mearie/core';
+import type { Artifact, Client, FetchPolicy, OperationResult } from '@mearie/core';
 import { AggregatedError, stringify } from '@mearie/core';
 import { fromValue } from '@mearie/core/stream';
 import { useQuery } from './use-query.ts';
@@ -300,6 +300,45 @@ describe('useQuery data ownership', () => {
     expect(result.data.value).toEqual({ id: 'b', name: 'second' });
     expect(result.loading.value).toBe(false);
     expect(client.executeQuery).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('does not re-execute when the variables source is replaced but the key is unchanged', async () => {
+    const { client, subjects } = createMockClient();
+    const source = ref({ id: 'a' });
+    const composable = () => useQuery(mockQuery as MockQueryWithVars, () => ({ id: source.value.id }));
+    const { result, unmount } = withSetup(composable, client);
+
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+
+    source.value = { id: 'a' };
+    await nextTick();
+
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first' }));
+    await nextTick();
+    expect(result.data.value).toEqual({ id: 'a', name: 'first' });
+
+    source.value = { id: 'b' };
+    await nextTick();
+
+    expect(client.executeQuery).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it('re-executes when fetchPolicy changes', async () => {
+    const { client } = createMockClient();
+    const fetchPolicy = ref<FetchPolicy>('cache-first');
+    const composable = () => useQuery(mockQuery, undefined, () => ({ fetchPolicy: fetchPolicy.value }));
+    const { unmount } = withSetup(composable, client);
+
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+
+    fetchPolicy.value = 'network-only';
+    await nextTick();
+
+    expect(client.executeQuery).toHaveBeenCalledTimes(2);
     unmount();
   });
 

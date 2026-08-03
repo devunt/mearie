@@ -1,4 +1,4 @@
-import { computed, reactive, shallowRef, toValue, watchEffect, type Ref, type MaybeRefOrGetter } from 'vue';
+import { computed, reactive, shallowRef, toValue, watch, type Ref, type MaybeRefOrGetter } from 'vue';
 import type {
   Artifact,
   VariablesOf,
@@ -121,8 +121,9 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
     return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, wrap(initialData));
   };
 
-  // `raw` mirrors `state` for reads inside `watchEffect`: vue has no `untrack`, so reading `state.value`
-  // there would make the effect depend on its own writes.
+  // `raw` mirrors `state` so `execute` and the reducer read the last committed value without going through the
+  // ref. Those reads sit in callback scopes that do not track today; keeping them off `state.value` means no later
+  // move back into a tracking scope can make an effect depend on its own writes.
   let raw = buildInitialState();
   const state = shallowRef<ObserverState<DataOf<T>>>(raw);
   const commit = (next: ObserverState<DataOf<T>>) => {
@@ -172,18 +173,22 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
 
   const refetch = () => execute(currentKey.value, skip.value, true);
 
-  watchEffect((onCleanup) => {
-    const key = currentKey.value;
-    const skipped = skip.value;
-    void toValue(options)?.fetchPolicy;
+  // The watched sources are the whole dependency set: `watch` tracks its sources, not its callback, so the thunk
+  // reads inside `execute` cannot enroll the caller's reactive graph in effect re-execution. A `variables` thunk
+  // reading a replaced-but-key-equal source must not re-execute the query. fetchPolicy stays a source because
+  // changing it is meant to re-execute.
+  watch(
+    [currentKey, skip, () => toValue(options)?.fetchPolicy],
+    ([key, skipped], _previous, onCleanup) => {
+      execute(key, skipped, false);
 
-    execute(key, skipped, false);
-
-    onCleanup(() => {
-      unsubscribe?.();
-      unsubscribe = null;
-    });
-  });
+      onCleanup(() => {
+        unsubscribe?.();
+        unsubscribe = null;
+      });
+    },
+    { immediate: true },
+  );
 
   return {
     data: computed(() => view.value.data),

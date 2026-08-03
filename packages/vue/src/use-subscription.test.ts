@@ -219,6 +219,31 @@ describe('useSubscription data ownership', () => {
     unmount();
   });
 
+  it('does not resubscribe when the variables source is replaced but the key is unchanged', async () => {
+    const { client, subjects } = createMockClient();
+    const source = ref({ ch: 'a' });
+    const composable = () =>
+      useSubscription(mockSubscription as MockSubscriptionWithVars, () => ({ ch: source.value.ch }));
+    const { result, unmount } = withSetup(composable, client);
+
+    expect(client.executeSubscription).toHaveBeenCalledTimes(1);
+
+    source.value = { ch: 'a' };
+    await nextTick();
+
+    expect(client.executeSubscription).toHaveBeenCalledTimes(1);
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 1 }));
+    await nextTick();
+    expect(result.data.value).toEqual({ ch: 'a', seq: 1 });
+
+    source.value = { ch: 'b' };
+    await nextTick();
+
+    expect(client.executeSubscription).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
   it('fires onError instead of onData when a result carries errors', async () => {
     const onData = vitest.fn();
     const onError = vitest.fn();

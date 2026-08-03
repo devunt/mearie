@@ -105,16 +105,21 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   let lastInitialData: InitialDataRef | undefined;
 
-  const buildInitialState = (): ObserverState<DataOf<T>> => {
-    const initialData = untrack(() => options?.())?.initialData;
-    if (initialData === undefined) {
-      return initObserverState<DataOf<T>>();
-    }
+  // The seed must not create dependencies by design, so the whole body is untracked rather than just the two
+  // accessor calls: reading `.initialData` off the options object and walking `variables` through
+  // `computeObserverKey` are themselves reads, and would enrol a caller that evaluates this body in a
+  // tracking scope whenever either is a live reactive node.
+  const buildInitialState = (): ObserverState<DataOf<T>> =>
+    untrack(() => {
+      const initialData = options?.()?.initialData;
+      if (initialData === undefined) {
+        return initObserverState<DataOf<T>>();
+      }
 
-    const initialKey = computeObserverKey(query, untrack(getVariables));
-    lastInitialData = trackInitialData(lastInitialData, initialKey, initialData);
-    return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, initialData);
-  };
+      const initialKey = computeObserverKey(query, getVariables());
+      lastInitialData = trackInitialData(lastInitialData, initialKey, initialData);
+      return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, initialData);
+    });
 
   // `raw` mirrors the store so `execute` and the reducer read the last committed value as a plain immutable
   // object. The store node is not that object: `reconcile` diffs into the previously committed nodes, so

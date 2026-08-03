@@ -8,6 +8,7 @@ import TestRunner from './TestRunner.svelte';
 import type { Query } from './create-query.svelte.ts';
 
 type MockQueryWithVars = Artifact<'query', string, unknown, { id: string }>;
+type MockQueryWithIds = Artifact<'query', string, unknown, { ids: string[] }>;
 
 const renderQuery = (
   client: Client,
@@ -326,6 +327,40 @@ describe('createQuery data ownership', () => {
   });
 });
 
+describe('createQuery modal reopen regression', () => {
+  it('never shows the previous key data when reactivated with a different warmed key', () => {
+    const { client } = createSyncMockClient({
+      [stringify({ ids: ['a'] })]: makeResult({ items: [{ id: 'a', secret: 'alpha' }] }),
+      [stringify({ ids: ['b'] })]: makeResult({ items: [{ id: 'b', secret: null }] }),
+    });
+
+    const controls = $state({ ids: ['a'] as string[] });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(
+        mockQuery as MockQueryWithIds,
+        () => ({ ids: controls.ids }),
+        () => ({ skip: controls.ids.length === 0 }),
+      ),
+    );
+
+    expect(result.current.data).toEqual({ items: [{ id: 'a', secret: 'alpha' }] });
+
+    // close: skip + variables reset in one change
+    controls.ids = [];
+    flushSync();
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+
+    // reopen with a different key
+    controls.ids = ['b'];
+    flushSync();
+
+    expect(result.current.data).toEqual({ items: [{ id: 'b', secret: null }] });
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+});
+
 describe('createQuery fine-grained reactivity', () => {
   it('preserves data reference identity through a patch', () => {
     const { client, subjects } = createMockClient();
@@ -350,6 +385,64 @@ describe('createQuery fine-grained reactivity', () => {
 
     expect(result.current.data).toBe(before);
     expect(result.current.data).toEqual({ id: 'a', name: 'second' });
+    destroy();
+  });
+
+  it('re-runs only the effects that read the changed field, and no data reader on refetch', () => {
+    const { client, subjects } = createMockClient();
+    let nameRuns = 0;
+    let otherRuns = 0;
+
+    const { result, destroy } = renderQuery(client, () => {
+      const query = createQuery(mockQuery as Artifact<'query'>);
+
+      $effect(() => {
+        void (query.data as { name: string } | undefined)?.name;
+        nameRuns += 1;
+      });
+
+      $effect(() => {
+        void (query.data as { other: string } | undefined)?.other;
+        otherRuns += 1;
+      });
+
+      return query;
+    });
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first', other: 'x' }));
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first', other: 'x' });
+    const baseNameRuns = nameRuns;
+    const baseOtherRuns = otherRuns;
+
+    subjects.query.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['other'], value: 'y' }] } },
+      }),
+    );
+    flushSync();
+
+    expect(otherRuns).toBe(baseOtherRuns + 1);
+    expect(nameRuns).toBe(baseNameRuns);
+
+    subjects.query.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['name'], value: 'second' }] } },
+      }),
+    );
+    flushSync();
+
+    expect(nameRuns).toBe(baseNameRuns + 1);
+    expect(result.current.data).toEqual({ id: 'a', name: 'second', other: 'y' });
+    expect(otherRuns).toBe(baseOtherRuns + 1);
+
+    result.current.refetch();
+    flushSync();
+
+    expect(result.current.loading).toBe(true);
+    expect(nameRuns).toBe(baseNameRuns + 1);
+    expect(otherRuns).toBe(baseOtherRuns + 1);
     destroy();
   });
 });

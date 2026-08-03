@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { act } from 'react';
-import { AggregatedError } from '@mearie/core';
+import type { Artifact, Client } from '@mearie/core';
+import { AggregatedError, stringify } from '@mearie/core';
+import { fromValue } from '@mearie/core/stream';
 import { useQuery } from './use-query.ts';
-import { createMockClient, renderHook, mockQuery, makeResult } from './test-utils.ts';
+import { createMockClient, renderHook, renderHookWithProps, mockQuery, makeResult } from './test-utils.ts';
+
+type MockQueryWithVars = Artifact<'query', string, unknown, { id: string }>;
 
 describe('useQuery', () => {
   it('should transition from loading to data', () => {
@@ -167,6 +171,74 @@ describe('useQuery', () => {
     });
 
     expect(result.current.metadata).toEqual(testMetadata);
+    unmount();
+  });
+});
+
+describe('useQuery data ownership', () => {
+  it('resets data in the same render when variables change', () => {
+    const { client, subjects } = createMockClient();
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { id: string }) => useQuery(mockQuery as MockQueryWithVars, { id: props.id }),
+      { id: 'a' },
+      client,
+    );
+
+    act(() => subjects.query.next(makeResult({ id: 'a', name: 'first' })));
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    rerender({ id: 'b' });
+
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+
+    act(() => subjects.query.next(makeResult({ id: 'b', name: 'second' })));
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.previousData).toEqual({ id: 'a', name: 'first' });
+    unmount();
+  });
+
+  it('settles synchronously before paint on a synchronous source', () => {
+    const executeQuery = vi.fn((_q: unknown, variables: unknown) =>
+      fromValue(makeResult({ echo: stringify(variables) })),
+    );
+    const client = { executeQuery } as unknown as Client;
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { id: string }) => useQuery(mockQuery as MockQueryWithVars, { id: props.id }),
+      { id: 'a' },
+      client,
+    );
+
+    expect(result.current.data).toEqual({ echo: stringify({ id: 'a' }) });
+
+    rerender({ id: 'b' });
+
+    expect(result.current.data).toEqual({ echo: stringify({ id: 'b' }) });
+    expect(result.current.loading).toBe(false);
+    unmount();
+  });
+
+  it('resets when variables changed under skip', () => {
+    const { client, subjects } = createMockClient();
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { id: string; skip: boolean }) =>
+        useQuery(mockQuery as MockQueryWithVars, { id: props.id }, { skip: props.skip }),
+      { id: 'a', skip: false },
+      client,
+    );
+
+    act(() => subjects.query.next(makeResult({ id: 'a' })));
+    expect(result.current.data).toEqual({ id: 'a' });
+
+    rerender({ id: 'a', skip: true });
+    expect(result.current.data).toEqual({ id: 'a' });
+    expect(result.current.loading).toBe(false);
+
+    rerender({ id: 'b', skip: true });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.previousData).toEqual({ id: 'a' });
     unmount();
   });
 });

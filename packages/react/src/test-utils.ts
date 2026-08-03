@@ -44,6 +44,35 @@ export const renderHook = <T>(hook: () => T, client: Client): { result: { curren
   };
 };
 
+export const renderHookWithProps = <P, T>(
+  hook: (props: P) => T,
+  initialProps: P,
+  client: Client,
+): { result: { current: T }; rerender: (props: P) => void; unmount: () => void } => {
+  const result = { current: undefined as T };
+  const container = document.createElement('div');
+  const root = createRoot(container);
+
+  const TestComponent = ({ props }: { props: P }): null => {
+    result.current = hook(props);
+    return null;
+  };
+
+  const renderWith = (props: P) => {
+    act(() => {
+      root.render(createElement(ClientProvider, { client, children: createElement(TestComponent, { props }) }));
+    });
+  };
+
+  renderWith(initialProps);
+
+  return {
+    result,
+    rerender: renderWith,
+    unmount: () => act(() => root.unmount()),
+  };
+};
+
 export const mockQuery = {
   kind: 'query' as const,
   name: 'TestQuery',

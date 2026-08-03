@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import type { Artifact, Client, OperationResult, FragmentRefs } from '@mearie/core';
 import type { Sink, Subscription as StreamSubscription } from '@mearie/core/stream';
-import { makeSubject } from '@mearie/core/stream';
+import { makeSubject, fromValue } from '@mearie/core/stream';
 import { createFragment } from './create-fragment.svelte.ts';
 import { createMockClient, mockFragment, makeResult } from './test-utils.svelte.ts';
 import TestRunner from './TestRunner.svelte';
@@ -46,6 +46,30 @@ const renderFragment = (
   flushSync();
   return { result, destroy: () => void unmount(component) };
 };
+
+describe('render harness', () => {
+  it('re-runs an effect created inside the render setup closure when read state changes', () => {
+    const { client } = createMockClient();
+    const box = $state({ value: 0 });
+    let runs = 0;
+
+    const { destroy } = renderFragment(client, () => {
+      $effect(() => {
+        void box.value;
+        runs += 1;
+      });
+      return { data: null, metadata: undefined };
+    });
+
+    expect(runs).toBe(1);
+
+    box.value = 1;
+    flushSync();
+
+    expect(runs).toBe(2);
+    destroy();
+  });
+});
 
 describe('createFragment', () => {
   it('should read a single fragment ref', () => {
@@ -153,6 +177,138 @@ describe('createFragment', () => {
     );
 
     expect(result.current.metadata).toEqual(testMetadata);
+    destroy();
+  });
+});
+
+describe('createFragment ref transitions', () => {
+  it('serves the new ref data synchronously in the same flush, never the old ref data', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
+      const { id } = ref as { id: string };
+      return fromValue(makeResult({ id, name: id === 'a' ? 'first' : 'second' }));
+    });
+
+    const box = $state({ ref: { id: 'a', __fragment: true } });
+    const { result, destroy } = renderFragment(client, () =>
+      createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never),
+    );
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+
+    box.ref = { id: 'b', __fragment: true };
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    destroy();
+  });
+
+  it('never lets a reader observe the new ref paired with the old ref data', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) => {
+      const { id } = ref as { id: string };
+      return fromValue(makeResult({ id, name: id === 'a' ? 'first' : 'second' }));
+    });
+
+    const box = $state({ ref: { id: 'a', __fragment: true } });
+    const observed: { id: string; name: string }[] = [];
+
+    const { destroy } = renderFragment(client, () => {
+      const fragment = createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never);
+
+      $effect.pre(() => {
+        observed.push({ id: box.ref.id, name: (fragment.data as unknown as { name: string }).name });
+      });
+
+      return fragment;
+    });
+
+    box.ref = { id: 'b', __fragment: true };
+    flushSync();
+
+    expect(observed).toEqual([
+      { id: 'a', name: 'first' },
+      { id: 'b', name: 'second' },
+    ]);
+    destroy();
+  });
+
+  it('clears to null atomically for optional fragments', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation(() => fromValue(makeResult({ id: 'a' })));
+
+    const box = $state<{ ref: { id: string } | null }>({ ref: { id: 'a' } });
+    const { result, destroy } = renderFragment(client, () =>
+      createFragment(mockFragment as Artifact<'fragment'>, () => box.ref as never),
+    );
+
+    expect(result.current.data).toEqual({ id: 'a' });
+
+    box.ref = null;
+    flushSync();
+    expect(result.current.data).toBeNull();
+    destroy();
+  });
+});
+
+describe('createFragment fine-grained reactivity', () => {
+  it('re-runs only the effects that read the patched field', () => {
+    const { client, subjects } = createMockClient();
+    const initialResult = makeResult({ id: '1', name: 'first', other: 'one' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment)
+      .mockImplementationOnce(() => fromValue(initialResult))
+      .mockImplementation(() => subjects.fragment.source);
+
+    const ref = createFragmentRef();
+    let nameRuns = 0;
+    let otherRuns = 0;
+    let observedName: unknown;
+
+    const { destroy } = renderFragment(client, () => {
+      const fragment = createFragment(mockFragment as Artifact<'fragment'>, () => ref as FragmentRefs<string>);
+
+      $effect(() => {
+        observedName = (fragment.data as { name: string }).name;
+        nameRuns += 1;
+      });
+
+      $effect(() => {
+        void (fragment.data as { other: string }).other;
+        otherRuns += 1;
+      });
+
+      return fragment;
+    });
+
+    expect(nameRuns).toBe(1);
+    expect(otherRuns).toBe(1);
+    expect(observedName).toBe('first');
+
+    subjects.fragment.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['other'], value: 'two' }] } },
+      }),
+    );
+    flushSync();
+
+    expect(otherRuns).toBe(2);
+    expect(nameRuns).toBe(1);
+    expect(observedName).toBe('first');
+
+    subjects.fragment.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['name'], value: 'second' }] } },
+      }),
+    );
+    flushSync();
+
+    expect(nameRuns).toBe(2);
+    expect(observedName).toBe('second');
+    expect(otherRuns).toBe(2);
     destroy();
   });
 });

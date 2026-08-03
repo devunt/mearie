@@ -1,6 +1,12 @@
 import { untrack } from 'svelte';
-import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
-import { applyPatchesMutable } from '@mearie/core';
+import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions, ObserverState } from '@mearie/core';
+import {
+  acceptResult,
+  applyPatchesMutable,
+  computeObserverKey,
+  initObserverState,
+  reduceFragmentResult,
+} from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
@@ -46,44 +52,76 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 ) => {
   const client = getClient();
 
-  const ref = fragmentRef();
-
-  let data: unknown;
-  let initialMetadata: OperationResult['metadata'];
-  if (ref == null) {
-    data = null;
-  } else {
-    const result = pipe(client.executeFragment(fragment, $state.snapshot(ref) as typeof ref, options?.()), peek);
+  const readThrough = (snapshot: unknown): { data: unknown; metadata: OperationResult['metadata'] } => {
+    const result = pipe(
+      client.executeFragment(
+        fragment,
+        snapshot as never,
+        untrack(() => options?.()),
+      ),
+      peek,
+    );
     if (result.data === undefined) {
       throw new Error('Fragment data not found');
     }
-    data = result.data;
-    initialMetadata = result.metadata;
+    return { data: result.data, metadata: result.metadata };
+  };
+
+  let state = $state<ObserverState<unknown>>(initObserverState());
+
+  {
+    const snapshot = untrack(() => $state.snapshot(fragmentRef()));
+    if (snapshot != null) {
+      const key = computeObserverKey(fragment, snapshot);
+      const initial = readThrough(snapshot);
+      state = acceptResult(initObserverState(), {
+        key,
+        data: initial.data,
+        error: undefined,
+        metadata: initial.metadata,
+      });
+    }
   }
 
-  let state = $state(data);
-  let metadata = $state<OperationResult['metadata']>(initialMetadata);
-
-  $effect(() => {
-    const currentRef = fragmentRef();
-    if (currentRef == null) {
-      state = null;
-      metadata = undefined;
-      return;
+  const view = $derived.by(() => {
+    const refValue = fragmentRef();
+    if (refValue == null) {
+      return { data: null as unknown, metadata: undefined as OperationResult['metadata'] };
     }
 
+    const snapshot = $state.snapshot(refValue);
+    const key = computeObserverKey(fragment, snapshot);
+    if (state.emission?.key === key) {
+      return { data: state.emission.data, metadata: state.emission.metadata };
+    }
+
+    return untrack(() => readThrough(snapshot));
+  });
+
+  const data = $derived(view.data);
+  const metadata = $derived(view.metadata);
+
+  $effect.pre(() => {
+    const refValue = fragmentRef();
+    if (refValue == null) return;
+
+    const snapshot = untrack(() => $state.snapshot(refValue));
+    const key = computeObserverKey(fragment, snapshot);
+
     const unsubscribe = pipe(
-      client.executeFragment(fragment, untrack(() => $state.snapshot(currentRef)) as typeof currentRef, options?.()),
+      client.executeFragment(
+        fragment,
+        snapshot as never,
+        untrack(() => options?.()),
+      ),
       subscribe({
         next: (result: OperationResult) => {
-          metadata = result.metadata;
-          const patches = result.metadata?.cache?.patches;
-          if (patches) {
-            const root = applyPatchesMutable(state, patches);
-            if (root !== undefined) state = root;
-          } else if (result.data !== undefined) {
-            state = result.data;
-          }
+          state = reduceFragmentResult(
+            untrack(() => state),
+            key,
+            result,
+            { applyPatches: applyPatchesMutable },
+          );
         },
       }),
     );
@@ -95,7 +133,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 
   return {
     get data() {
-      return state;
+      return data;
     },
     get metadata() {
       return metadata;

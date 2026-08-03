@@ -7,6 +7,8 @@ import { createMockClient, mockSubscription, makeResult } from './test-utils.sve
 import TestRunner from './TestRunner.svelte';
 import type { Subscription, CreateSubscriptionOptions } from './create-subscription.svelte.ts';
 
+type MockSubscriptionWithVars = Artifact<'subscription', string, unknown, { ch: string }>;
+
 const renderSubscription = (
   client: Client,
   setupFn: () => unknown,
@@ -167,6 +169,71 @@ describe('createSubscription', () => {
     flushSync();
 
     expect(result.current.metadata).toEqual(testMetadata);
+    destroy();
+  });
+});
+
+describe('createSubscription data ownership', () => {
+  it('resets data atomically when variables change and waits for the first event of the new key', () => {
+    const { client, subjects } = createMockClient();
+    const vars = $state({ ch: 'a' });
+    const { result, destroy } = renderSubscription(client, () =>
+      createSubscription(mockSubscription as MockSubscriptionWithVars, () => ({ ch: vars.ch })),
+    );
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 1 }));
+    flushSync();
+    expect(result.current.data).toEqual({ ch: 'a', seq: 1 });
+    expect(result.current.loading).toBe(false);
+
+    vars.ch = 'b';
+    flushSync();
+
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.previousData).toEqual({ ch: 'a', seq: 1 });
+
+    subjects.subscription.next(makeResult({ ch: 'b', seq: 1 }));
+    flushSync();
+    expect(result.current.data).toEqual({ ch: 'b', seq: 1 });
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+
+  it('stops loading when skip becomes true mid-flight', () => {
+    const { client } = createMockClient();
+    const controls = $state({ skip: false });
+    const { result, destroy } = renderSubscription(client, () =>
+      createSubscription(mockSubscription as Artifact<'subscription'>, undefined, () => ({ skip: controls.skip })),
+    );
+
+    expect(result.current.loading).toBe(true);
+
+    controls.skip = true;
+    flushSync();
+    expect(result.current.loading).toBe(false);
+    destroy();
+  });
+
+  it('does not fire onData on reset, only on real events', () => {
+    const { client, subjects } = createMockClient();
+    const onData = vitest.fn();
+    const vars = $state({ ch: 'a' });
+    const { destroy } = renderSubscription(client, () =>
+      createSubscription(
+        mockSubscription as MockSubscriptionWithVars,
+        () => ({ ch: vars.ch }),
+        () => ({ onData }),
+      ),
+    );
+
+    subjects.subscription.next(makeResult({ ch: 'a', seq: 1 }));
+    flushSync();
+    expect(onData).toHaveBeenCalledTimes(1);
+
+    vars.ch = 'b';
+    flushSync();
+    expect(onData).toHaveBeenCalledTimes(1);
     destroy();
   });
 });

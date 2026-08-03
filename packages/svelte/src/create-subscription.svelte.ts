@@ -66,13 +66,12 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
     const key = currentKey;
     if (skip) return;
 
+    const currentVariables = untrack(getVariables);
+    const currentOptions = untrack(() => options?.());
+
     const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(
-        subscription,
-        untrack(getVariables),
-        untrack(() => options?.()),
-      ),
+      client.executeSubscription(subscription, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
           state = reduceObserverResult(

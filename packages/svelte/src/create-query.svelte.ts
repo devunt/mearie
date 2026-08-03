@@ -135,22 +135,24 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
     unsubscribe?.();
     unsubscribe = null;
 
+    // Must precede the skip early-return: otherwise a variables change under `skip` leaves the emission
+    // keyed to the old variables forever, and `DefinedQuery<T>` promises `data` in every arm.
+    if (!force && untrack(() => state).emission?.key !== key) {
+      const initialData = untrack(() => options?.())?.initialData;
+      if (initialData !== undefined) {
+        lastInitialData = trackInitialData(lastInitialData, key, initialData);
+        state = acceptInitialData(
+          untrack(() => state),
+          key,
+          initialData,
+        );
+      }
+    }
+
     if (!force && skipped) return;
 
     if (force || untrack(() => state).emission?.key !== key) {
       state = beginFetch(untrack(() => state));
-
-      if (!force) {
-        const initialData = untrack(() => options?.())?.initialData;
-        if (initialData !== undefined) {
-          lastInitialData = trackInitialData(lastInitialData, key, initialData);
-          state = acceptInitialData(
-            untrack(() => state),
-            key,
-            initialData,
-          );
-        }
-      }
     }
 
     const currentVariables = untrack(getVariables);

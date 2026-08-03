@@ -303,6 +303,31 @@ describe('createQuery data ownership', () => {
     destroy();
   });
 
+  it('attributes fresh initialData to the new key while skipped', () => {
+    const { client } = createMockClient();
+    const box = $state({ id: 'a', initialData: { id: 'a', name: 'first' } });
+    const { result, destroy } = renderQuery(client, () =>
+      createQuery(
+        mockQuery as MockQueryWithVars,
+        () => ({ id: box.id }),
+        () => ({ initialData: box.initialData, skip: true }),
+      ),
+    );
+
+    expect(result.current.data).toEqual({ id: 'a', name: 'first' });
+    expect(result.current.loading).toBe(false);
+
+    box.initialData = { id: 'b', name: 'second' };
+    box.id = 'b';
+    flushSync();
+
+    expect(result.current.data).toEqual({ id: 'b', name: 'second' });
+    expect(result.current.loading).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).not.toHaveBeenCalled();
+    destroy();
+  });
+
   it('warns when the same initialData reference is reused across keys', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { client } = createMockClient();

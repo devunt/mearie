@@ -1,24 +1,42 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { VariablesOf, DataOf, Artifact, OperationResult, SubscriptionOptions } from '@mearie/core';
-import { AggregatedError, stringify } from '@mearie/core';
+import { useMemo, useRef, useState } from 'react';
+import type {
+  AggregatedError,
+  Artifact,
+  DataOf,
+  ObserverState,
+  OperationResult,
+  SubscriptionOptions,
+  VariablesOf,
+} from '@mearie/core';
+import {
+  computeObserverKey,
+  deriveObserverView,
+  initObserverState,
+  reduceObserverResult,
+  stringify,
+} from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
+import { useIsomorphicLayoutEffect } from './utils.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: undefined;
+      previousData: DataOf<T> | undefined;
       loading: true;
       error: undefined;
       metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -38,61 +56,58 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
 ): Subscription<T> => {
   const client = useClient();
 
-  const [data, setData] = useState<DataOf<T> | undefined>();
-  const [loading, setLoading] = useState(!options?.skip);
-  const [error, setError] = useState<AggregatedError | undefined>();
-  const [metadata, setMetadata] = useState<OperationResult['metadata']>();
-
-  const unsubscribe = useRef<(() => void) | null>(null);
   const stableVariables = useMemo(() => stringify(variables), [variables]);
-  const stableOptions = useMemo(() => options, [options?.skip, options?.onData, options?.onError]);
+  const currentKey = useMemo(() => computeObserverKey(subscription, variables), [subscription, stableVariables]);
+  const skip = options?.skip ?? false;
 
-  const execute = useCallback(() => {
-    unsubscribe.current?.();
+  const [state, setState] = useState<ObserverState<DataOf<T>>>(() => initObserverState<DataOf<T>>());
+  const view = useMemo(() => deriveObserverView(state, currentKey, skip), [state, currentKey, skip]);
 
-    if (stableOptions?.skip) {
-      return;
-    }
+  // Mirrors `state` for the emission reducer so callbacks stay outside the `setState` updater,
+  // which StrictMode invokes twice.
+  const stateRef = useRef(state);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const variablesRef = useRef(variables);
+  variablesRef.current = variables;
 
-    setLoading(true);
-    setError(undefined);
+  useIsomorphicLayoutEffect(() => {
+    if (skip) return;
 
-    unsubscribe.current = pipe(
+    const key = currentKey;
+    const currentVariables = variablesRef.current;
+    const currentOptions = optionsRef.current;
+
+    const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, variables, stableOptions),
+      client.executeSubscription(subscription, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
-          setMetadata(result.metadata);
-          if (result.errors && result.errors.length > 0) {
-            const err = new AggregatedError(result.errors);
+          const next = reduceObserverResult<DataOf<T>>(stateRef.current, key, result);
+          stateRef.current = next;
+          setState(next);
 
-            setError(err);
-            setLoading(false);
-
-            stableOptions?.onError?.(err);
-          } else {
-            const resultData = result.data as DataOf<T>;
-
-            setData(resultData);
-            setLoading(false);
-            setError(undefined);
-
-            stableOptions?.onData?.(resultData);
+          const emitted = next.emission;
+          const opts = optionsRef.current;
+          if (emitted?.error) {
+            opts?.onError?.(emitted.error);
+          } else if (emitted?.key === key) {
+            opts?.onData?.(emitted.data!);
           }
         },
       }),
     );
-  }, [client, subscription, stableVariables, stableOptions]);
 
-  useEffect(() => {
-    execute();
-    return () => unsubscribe.current?.();
-  }, [execute]);
+    return () => {
+      unsubscribe();
+    };
+  }, [client, subscription, currentKey, skip]);
 
   return {
-    data,
-    loading,
-    error,
-    metadata,
+    data: view.data,
+    previousData: view.previousData,
+    loading: view.loading,
+    error: view.error,
+    metadata: view.metadata,
   } as Subscription<T>;
 };

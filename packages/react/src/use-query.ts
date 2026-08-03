@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type {
   AggregatedError,
   Artifact,
@@ -22,6 +22,7 @@ import {
 } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
+import { useIsomorphicLayoutEffect } from './utils.ts';
 
 export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
@@ -92,8 +93,6 @@ type UseQueryFn = {
       : [VariablesOf<T>, UseQueryOptions<T>?]
   ): Query<T>;
 };
-
-const useIsomorphicLayoutEffect = globalThis.window === undefined ? useEffect : useLayoutEffect;
 
 export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   query: T,

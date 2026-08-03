@@ -101,8 +101,12 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
   const client = useClient();
 
   const wrap = (data: unknown) => reactive(data as object) as DataOf<T>;
-  const applyPatches = (current: DataOf<T>, patches: Patch[]): DataOf<T> | undefined =>
-    applyPatchesMutable(current, patches) as DataOf<T> | undefined;
+  const applyPatches = (current: DataOf<T>, patches: Patch[]): DataOf<T> | null | undefined => {
+    const next = applyPatchesMutable(current, patches);
+    if (next === undefined) return undefined;
+    if (next === null) return null;
+    return wrap(next);
+  };
 
   let lastInitialData: InitialDataRef | undefined;
 

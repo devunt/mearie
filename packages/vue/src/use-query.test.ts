@@ -394,6 +394,51 @@ describe('useQuery fine-grained reactivity', () => {
     unmount();
   });
 
+  it('keeps a root-replaced payload reactive for later leaf patches', async () => {
+    const { client, subjects } = createMockClient();
+    let otherRuns = 0;
+    let seenOther: unknown;
+
+    const composable = () => {
+      const query = useQuery(mockQuery);
+
+      watchEffect(() => {
+        seenOther = (query.data.value as { other?: string } | undefined)?.other;
+        otherRuns += 1;
+      });
+
+      return query;
+    };
+    const { result, unmount } = withSetup(composable, client);
+
+    subjects.query.next(makeResult({ id: 'a', name: 'first', other: 'x' }));
+    await nextTick();
+    expect(result.data.value).toEqual({ id: 'a', name: 'first', other: 'x' });
+
+    subjects.query.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: [], value: { id: 'b', name: 'second', other: 'y' } }] } },
+      }),
+    );
+    await nextTick();
+
+    expect(result.data.value).toEqual({ id: 'b', name: 'second', other: 'y' });
+    expect(seenOther).toBe('y');
+    const baseOtherRuns = otherRuns;
+
+    subjects.query.next(
+      makeResult(undefined, {
+        metadata: { cache: { patches: [{ type: 'set', path: ['other'], value: 'z' }] } },
+      }),
+    );
+    await nextTick();
+
+    expect(otherRuns).toBe(baseOtherRuns + 1);
+    expect(seenOther).toBe('z');
+    expect(result.data.value).toEqual({ id: 'b', name: 'second', other: 'z' });
+    unmount();
+  });
+
   it('re-runs only the effects that read the changed field, and no data reader on refetch', async () => {
     const { client, subjects } = createMockClient();
     let nameRuns = 0;

@@ -195,6 +195,17 @@ describe('reduceObserverResult', () => {
     expect(deriveObserverView(state, keyA, false).data).toEqual({ id: 'a', name: 'second' });
   });
 
+  it('serves a null root from the applier instead of retaining stale data', () => {
+    let state = reduceObserverResult(initObserverState(), keyA, result({ id: 'a', name: 'first' }));
+    state = reduceObserverResult(
+      state,
+      keyA,
+      result(undefined, { metadata: { cache: { patches: [{ type: 'set', path: [], value: null }] } } }),
+      { applyPatches: () => null },
+    );
+    expect(deriveObserverView(state, keyA, false).data).toBeNull();
+  });
+
   it('maps fresh full-result data through mapData', () => {
     const state = reduceObserverResult(initObserverState(), keyA, result({ id: 'a' }), {
       mapData: (d) => ({ ...(d as Record<string, unknown>), mapped: true }) as never,
@@ -267,5 +278,16 @@ describe('reduceFragmentResult', () => {
       },
     );
     expect(deriveObserverView(state, keyA, false).data).toEqual({ id: 'a', name: 'second' });
+  });
+
+  it('serves a null root from the applier instead of retaining stale data', () => {
+    let state = reduceFragmentResult(initObserverState(), keyA, result({ id: 'a', name: 'first' }));
+    state = reduceFragmentResult(
+      state,
+      keyA,
+      result(undefined, { metadata: { cache: { patches: [{ type: 'set', path: [], value: null }] } } }),
+      { applyPatches: () => null },
+    );
+    expect(deriveObserverView(state, keyA, false).data).toBeNull();
   });
 });

@@ -100,7 +100,7 @@ export const trackInitialData = (last: InitialDataRef | undefined, key: string, 
 };
 
 type ReduceOptions<D> = {
-  applyPatches?: (data: D, patches: Patch[]) => D | undefined;
+  applyPatches?: (data: D, patches: Patch[]) => D | null | undefined;
   mapData?: (data: unknown) => D;
 };
 
@@ -124,7 +124,7 @@ export const reduceObserverResult = <D>(
     const next = opts.applyPatches(state.emission.data, patches);
     return acceptResult(state, {
       key,
-      data: next ?? state.emission.data,
+      data: (next === undefined ? state.emission.data : next) as D,
       error: undefined,
       metadata: result.metadata,
     });
@@ -145,7 +145,7 @@ export const reduceFragmentResult = <D>(
     const next = opts.applyPatches(state.emission.data, patches);
     return acceptResult(state, {
       key,
-      data: next ?? state.emission.data,
+      data: (next === undefined ? state.emission.data : next) as D,
       error: undefined,
       metadata: result.metadata,
     });

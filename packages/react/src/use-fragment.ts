@@ -4,11 +4,9 @@ import {
   acceptResult,
   applyPatchesImmutable,
   computeObserverKey,
-  FragmentRefKey,
-  FragmentVarsKey,
   initObserverState,
+  readRefIdentity,
   reduceFragmentResult,
-  stringify,
 } from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
@@ -29,32 +27,6 @@ export type FragmentList<T extends Artifact<'fragment'>> = {
 export type OptionalFragment<T extends Artifact<'fragment'>> = {
   data: DataOf<T> | null;
   metadata: OperationResult['metadata'];
-};
-
-type RefIdentity = [storageKey: string, args: unknown];
-
-const readElementIdentity = (element: unknown, fragmentName: string): RefIdentity | undefined => {
-  const record = element as Record<string, unknown> | null | undefined;
-
-  const storageKey = record?.[FragmentRefKey];
-  if (typeof storageKey !== 'string') return;
-
-  const args = (record?.[FragmentVarsKey] as Record<string, unknown> | undefined)?.[fragmentName];
-  return [storageKey, args];
-};
-
-const readRefIdentity = (refValue: object, fragmentName: string): RefIdentity | RefIdentity[] | undefined => {
-  if (Array.isArray(refValue)) {
-    const identities: RefIdentity[] = [];
-    for (const element of refValue) {
-      const identity = readElementIdentity(element, fragmentName);
-      if (identity === undefined) return;
-      identities.push(identity);
-    }
-    return identities;
-  }
-
-  return readElementIdentity(refValue, fragmentName);
 };
 
 type UseFragmentFn = {
@@ -97,13 +69,12 @@ export const useFragment: UseFragmentFn = (<T extends Artifact<'fragment'>>(
   // storage key and the fragment's own arguments select which fragment this is. Refs without a storage key
   // (keyless or non-normalized) have no identity to key by, so their content is the identity — and since react
   // data is immutable, a content change always arrives as a new object, hence a new string here.
-  const stableRef = useMemo(() => stringify(fragmentRef), [fragmentRef]);
   const currentKey = useMemo(() => {
     if (fragmentRef == null) return null;
 
     const identity = readRefIdentity(fragmentRef, fragment.name);
     return computeObserverKey(fragment, identity ?? fragmentRef);
-  }, [fragment, stableRef]);
+  }, [fragment, fragmentRef]);
 
   const [state, setState] = useState<ObserverState<unknown>>(() => {
     if (fragmentRef == null || currentKey === null) {

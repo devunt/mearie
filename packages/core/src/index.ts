@@ -57,6 +57,8 @@ export { stringify } from './utils.ts';
 
 export {
   computeObserverKey,
+  readElementIdentity,
+  readRefIdentity,
   initObserverState,
   beginFetch,
   acceptResult,
@@ -66,4 +68,4 @@ export {
   reduceFragmentResult,
   deriveObserverView,
 } from './observer.ts';
-export type { ObserverEmission, ObserverState, ObserverView, InitialDataRef } from './observer.ts';
+export type { ObserverEmission, ObserverState, ObserverView, InitialDataRef, RefIdentity } from './observer.ts';

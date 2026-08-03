@@ -1,11 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GraphQLError } from './errors.ts';
+import { FragmentRefKey, FragmentVarsKey } from './cache/constants.ts';
 import {
   computeObserverKey,
   initObserverState,
   beginFetch,
   acceptInitialData,
   trackInitialData,
+  readElementIdentity,
+  readRefIdentity,
   reduceObserverResult,
   reduceFragmentResult,
   deriveObserverView,
@@ -33,6 +36,49 @@ describe('computeObserverKey', () => {
     expect(keyA).not.toBe(keyB);
     // eslint-disable-next-line unicorn/no-useless-undefined
     expect(computeObserverKey(artifact, undefined)).toBe(computeObserverKey(artifact, undefined));
+  });
+});
+
+describe('readRefIdentity', () => {
+  const fragmentName = 'TestFragment';
+  const keyedRef = (storageKey: string, args?: Record<string, unknown>, name = fragmentName) => ({
+    [FragmentRefKey]: storageKey,
+    ...(args && { [FragmentVarsKey]: { [name]: args } }),
+  });
+
+  it('reads a storage key and the fragment arguments from a single ref', () => {
+    expect(readRefIdentity(keyedRef('Entity:1'), fragmentName)).toEqual(['Entity:1', undefined]);
+    expect(readRefIdentity(keyedRef('Entity:1', { limit: 10 }), fragmentName)).toEqual(['Entity:1', { limit: 10 }]);
+  });
+
+  it('reads the arguments entry keyed by fragment name, ignoring other fragments', () => {
+    const ref = keyedRef('Entity:1', { limit: 10 }, 'OtherFragment');
+    expect(readRefIdentity(ref, fragmentName)).toEqual(['Entity:1', undefined]);
+    expect(readRefIdentity(ref, 'OtherFragment')).toEqual(['Entity:1', { limit: 10 }]);
+  });
+
+  it('reads a list as order-preserving tuples', () => {
+    expect(readRefIdentity([keyedRef('Entity:1'), keyedRef('Entity:2', { limit: 10 })], fragmentName)).toEqual([
+      ['Entity:1', undefined],
+      ['Entity:2', { limit: 10 }],
+    ]);
+  });
+
+  it('gives up on the whole ref when any element carries no storage key', () => {
+    expect(readRefIdentity({ title: 'keyless' }, fragmentName)).toBeUndefined();
+    expect(readRefIdentity([keyedRef('Entity:1'), { title: 'keyless' }], fragmentName)).toBeUndefined();
+    expect(readElementIdentity(null, fragmentName)).toBeUndefined();
+    expect(readElementIdentity({ [FragmentRefKey]: 1 }, fragmentName)).toBeUndefined();
+  });
+
+  it('keys a list by order: the same elements reordered are a different observer', () => {
+    const forward = readRefIdentity([keyedRef('Entity:1'), keyedRef('Entity:2')], fragmentName);
+    const reversed = readRefIdentity([keyedRef('Entity:2'), keyedRef('Entity:1')], fragmentName);
+
+    expect(computeObserverKey(artifact, forward)).not.toBe(computeObserverKey(artifact, reversed));
+    expect(computeObserverKey(artifact, forward)).toBe(
+      computeObserverKey(artifact, readRefIdentity([keyedRef('Entity:1'), keyedRef('Entity:2')], fragmentName)),
+    );
   });
 });
 

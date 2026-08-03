@@ -336,6 +336,41 @@ describe('useFragment ref transitions', () => {
     unmount();
   });
 
+  it('keys a list by element identity and order', () => {
+    const { client } = createMockClient();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(client.executeFragment).mockImplementation((_fragment: unknown, ref: unknown) =>
+      fromValue(makeResult((ref as unknown[]).map((element) => ({ id: readStorageKey(element) })))),
+    );
+
+    const { result, rerender, unmount } = renderHookWithProps(
+      (props: { order: string[] }) =>
+        useFragment(
+          mockFragment,
+          props.order.map((storageKey) => createIdentityRef(storageKey)),
+        ),
+      { order: ['Entity:a', 'Entity:b'] },
+      client,
+    );
+
+    expect(result.current.data).toEqual([{ id: 'Entity:a' }, { id: 'Entity:b' }]);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(2);
+
+    // a new array of new element objects with the same identities is the same list
+    rerender({ order: ['Entity:a', 'Entity:b'] });
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(2);
+
+    rerender({ order: ['Entity:b', 'Entity:a'] });
+
+    expect(result.current.data).toEqual([{ id: 'Entity:b' }, { id: 'Entity:a' }]);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeFragment).toHaveBeenCalledTimes(4);
+    unmount();
+  });
+
   it('clears to null atomically for optional fragments', () => {
     const { client } = createMockClient();
     mockByIdentity(client);

@@ -1,5 +1,6 @@
 import { AggregatedError } from './errors.ts';
 import { stringify } from './utils.ts';
+import { FragmentRefKey, FragmentVarsKey } from './cache/constants.ts';
 import type { OperationResult } from './exchange.ts';
 import type { Patch } from './cache/types.ts';
 
@@ -26,6 +27,32 @@ export type ObserverView<D> = {
 
 export const computeObserverKey = (artifact: { name: string }, variables: unknown): string => {
   return `${artifact.name}:${stringify(variables)}`;
+};
+
+export type RefIdentity = [storageKey: string, args: unknown];
+
+export const readElementIdentity = (element: unknown, fragmentName: string): RefIdentity | undefined => {
+  const record = element as Record<string, unknown> | null | undefined;
+
+  const storageKey = record?.[FragmentRefKey];
+  if (typeof storageKey !== 'string') return;
+
+  const args = (record?.[FragmentVarsKey] as Record<string, unknown> | undefined)?.[fragmentName];
+  return [storageKey, args];
+};
+
+export const readRefIdentity = (refValue: object, fragmentName: string): RefIdentity | RefIdentity[] | undefined => {
+  if (Array.isArray(refValue)) {
+    const identities: RefIdentity[] = [];
+    for (const element of refValue) {
+      const identity = readElementIdentity(element, fragmentName);
+      if (identity === undefined) return;
+      identities.push(identity);
+    }
+    return identities;
+  }
+
+  return readElementIdentity(refValue, fragmentName);
 };
 
 export const initObserverState = <D>(): ObserverState<D> => ({

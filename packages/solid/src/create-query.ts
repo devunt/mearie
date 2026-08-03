@@ -79,6 +79,30 @@ export type DefinedQuery<T extends Artifact<'query'>> =
       refetch: () => void;
     };
 
+/**
+ * Copies the nodes `reconcile` is able to rewrite in place — plain objects and arrays, the exact set the
+ * solid store wraps reactively and `applyState` walks via `Object.keys`. Everything else (custom scalar
+ * values such as `Date`, class instances, primitives) is carried by reference: reconcile replaces those at
+ * their parent instead of mutating them, so sharing them is safe and avoids the lossy conversions a
+ * `structuredClone` or JSON round-trip would apply.
+ */
+const snapshotData = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item: unknown) => snapshotData(item));
+  }
+
+  if (typeof value !== 'object' || value === null) return value;
+
+  const proto: unknown = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+
+  const copy = (proto === null ? Object.create(null) : {}) as Record<string, unknown>;
+  for (const key of Object.keys(value)) {
+    copy[key] = snapshotData((value as Record<string, unknown>)[key]);
+  }
+  return copy;
+};
+
 type CreateQueryFn = {
   <T extends Artifact<'query'>>(
     query: T,
@@ -121,8 +145,21 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
   let raw = buildInitialState();
   const [state, setState] = createStore<{ current: ObserverState<DataOf<T>> }>({ current: raw });
   const commit = (next: ObserverState<DataOf<T>>) => {
-    raw = next;
-    setState('current', reconcile(next));
+    // A fresh succession hands `previous.data` the very node the store is about to rewrite in place:
+    // `reconcile` diffs the incoming emission into the previously committed data node, so without a copy
+    // `previousData` would report the new payload whenever the root is diffable (an id-less root always is).
+    // Snapshot at the transition only — steady-state commits carry `previous` forward by identity.
+    // `untrack` because `initialData` may itself be reactive, and this walk must not enroll the caller's
+    // graph in a commit that runs inside the driving computation.
+    const outgoing = next.previous;
+    let settled = next;
+    if (outgoing !== undefined && outgoing !== raw.previous) {
+      const data = untrack(() => snapshotData(outgoing.data)) as DataOf<T>;
+      settled = { ...next, previous: { ...outgoing, data } };
+    }
+
+    raw = settled;
+    setState('current', reconcile(settled));
   };
 
   const currentKey = createMemo(() => computeObserverKey(query, getVariables()));

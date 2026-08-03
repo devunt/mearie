@@ -196,6 +196,45 @@ describe('createQuery data ownership', () => {
     dispose();
   });
 
+  it('keeps previousData faithful across a key change with an id-less payload root', () => {
+    const { client, subjects } = createMockClient();
+    const [id, setId] = createSignal('a');
+    const { result, dispose } = renderPrimitive(
+      () => createQuery(mockQuery as MockQueryWithVars, () => ({ id: id() })),
+      client,
+    );
+
+    subjects.query.next(makeResult({ user: { id: 'u1', name: 'first' } }));
+    expect(result.current.data).toEqual({ user: { id: 'u1', name: 'first' } });
+
+    setId('b');
+    expect(result.current.previousData).toEqual({ user: { id: 'u1', name: 'first' } });
+
+    subjects.query.next(makeResult({ user: { id: 'u2', name: 'second' } }));
+
+    expect(result.current.data).toEqual({ user: { id: 'u2', name: 'second' } });
+    expect(result.current.previousData).toEqual({ user: { id: 'u1', name: 'first' } });
+    dispose();
+  });
+
+  it('carries non-plain scalar values into previousData by reference', () => {
+    const { client, subjects } = createMockClient();
+    const stamp = new Date('2020-01-01T00:00:00.000Z');
+    const [id, setId] = createSignal('a');
+    const { result, dispose } = renderPrimitive(
+      () => createQuery(mockQuery as MockQueryWithVars, () => ({ id: id() })),
+      client,
+    );
+
+    subjects.query.next(makeResult({ user: { id: 'u1', createdAt: stamp } }));
+
+    setId('b');
+    subjects.query.next(makeResult({ user: { id: 'u2', createdAt: new Date('2021-01-01T00:00:00.000Z') } }));
+
+    expect((result.current.previousData as { user: { createdAt: Date } }).user.createdAt).toBe(stamp);
+    dispose();
+  });
+
   it('shows new data with no loading frame on a synchronous source', () => {
     const executeQuery = vi.fn((_artifact: unknown, variables: unknown) =>
       fromValue(makeResult({ echo: stringify(variables) })),

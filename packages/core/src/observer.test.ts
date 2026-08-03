@@ -144,6 +144,23 @@ describe('previousData succession', () => {
     expect(deriveObserverView(state, keyB, false).previousData).toEqual({ id: 'a' });
   });
 
+  it('carries a null-resolved key through previousData, before and after acceptance', () => {
+    let state = reduceObserverResult(initObserverState(), keyA, result({ id: 'a', name: 'first' }));
+    state = reduceObserverResult(
+      state,
+      keyA,
+      result(undefined, { metadata: { cache: { patches: [{ type: 'set', path: [], value: null }] } } }),
+      { applyPatches: () => null },
+    );
+
+    expect(deriveObserverView(state, keyB, false).previousData).toBeNull();
+
+    state = reduceObserverResult(state, keyB, result({ id: 'b' }));
+    const view = deriveObserverView(state, keyB, false);
+    expect(view.data).toEqual({ id: 'b' });
+    expect(view.previousData).toBeNull();
+  });
+
   it('skips keys that ended without data (A load -> B error-only -> C)', () => {
     let state = reduceObserverResult(initObserverState(), keyA, result({ id: 'a' }));
     state = reduceObserverResult(state, keyB, result(undefined, { errors: ['boom'] }));

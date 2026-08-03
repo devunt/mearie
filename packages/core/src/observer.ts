@@ -177,7 +177,9 @@ export const deriveObserverView = <D>(state: ObserverState<D>, currentKey: strin
 
   return {
     data: undefined,
-    previousData: emission?.data ?? previous?.data,
+    // `??` would swallow a null emission: a root-null patch is defined-but-empty data, not "no data".
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    previousData: emission?.data === undefined ? previous?.data : emission.data,
     loading: !skip,
     error: undefined,
     metadata: undefined,

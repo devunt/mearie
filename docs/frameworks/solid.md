@@ -147,6 +147,10 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
 };
 ```
 
+`query.previousData` holds data from a previous set of variables — never an earlier value of the current ones. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds that earlier result, so `query.data ?? query.previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+
+Once the new variables produce a result, `query.previousData` becomes a structural snapshot rather than the live store node. While the new variables are still loading it is still the node `query.data` was, and the store rewrites that node in place when the result lands — so read `query.previousData` where you need it instead of retaining it across the transition.
+
 ### createMutation
 
 Modify data with automatic cache updates:
@@ -269,6 +273,8 @@ export const ChatMessages: Component<ChatMessagesProps> = (props) => {
 };
 ```
 
+`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under a previous set of variables.
+
 ## Fine-Grained Reactivity
 
 Solid's fine-grained reactivity works seamlessly with Mearie:
@@ -306,6 +312,10 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
   );
 };
 ```
+
+Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. Each is tracked through an equality-gated `createMemo`, and everything else is read untracked at execution time, so other reactive values you read inside the `variables` or options accessors do not re-trigger the query on their own.
+
+An unbatched variables write propagates synchronously: the observer key, the view and the execution driver have all updated by the time the write returns, so the next read already sees the new state. Inside `batch()` — or when writing from within another computation — propagation is deferred to the end of the batch, so reads taken in that window can still observe the transitional state.
 
 ## Next Steps
 

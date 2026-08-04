@@ -1,6 +1,13 @@
 import { untrack } from 'svelte';
-import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions } from '@mearie/core';
-import { applyPatchesMutable } from '@mearie/core';
+import type { Artifact, DataOf, FragmentRefs, OperationResult, FragmentOptions, ObserverState } from '@mearie/core';
+import {
+  acceptResult,
+  applyPatchesMutable,
+  computeObserverKey,
+  initObserverState,
+  readRefIdentity,
+  reduceFragmentResult,
+} from '@mearie/core';
 import { pipe, subscribe, peek } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
@@ -46,44 +53,85 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 ) => {
   const client = getClient();
 
-  const ref = fragmentRef();
-
-  let data: unknown;
-  let initialMetadata: OperationResult['metadata'];
-  if (ref == null) {
-    data = null;
-  } else {
-    const result = pipe(client.executeFragment(fragment, $state.snapshot(ref) as typeof ref, options?.()), peek);
+  const readThrough = (snapshot: unknown): { data: unknown; metadata: OperationResult['metadata'] } => {
+    const result = pipe(
+      client.executeFragment(
+        fragment,
+        snapshot as never,
+        untrack(() => options?.()),
+      ),
+      peek,
+    );
     if (result.data === undefined) {
       throw new Error('Fragment data not found');
     }
-    data = result.data;
-    initialMetadata = result.metadata;
-  }
+    return { data: result.data, metadata: result.metadata };
+  };
 
-  let state = $state(data);
-  let metadata = $state<OperationResult['metadata']>(initialMetadata);
+  const currentKey = $derived.by(() => {
+    const refValue = fragmentRef();
+    if (refValue == null) return;
 
-  $effect(() => {
-    const currentRef = fragmentRef();
-    if (currentRef == null) {
-      state = null;
-      metadata = undefined;
-      return;
+    const identity = readRefIdentity(refValue, fragment.name);
+    if (identity !== undefined) {
+      return computeObserverKey(fragment, identity);
     }
 
+    return computeObserverKey(fragment, $state.snapshot(refValue));
+  });
+
+  let state = $state<ObserverState<unknown>>(initObserverState());
+
+  {
+    const key = untrack(() => currentKey);
+    if (key !== undefined) {
+      const initial = readThrough(untrack(() => $state.snapshot(fragmentRef())));
+      state = acceptResult(initObserverState(), {
+        key,
+        data: initial.data,
+        error: undefined,
+        metadata: initial.metadata,
+      });
+    }
+  }
+
+  const view = $derived.by(() => {
+    const refValue = fragmentRef();
+    const key = currentKey;
+    if (refValue == null || key === undefined) {
+      return { data: null as unknown, metadata: undefined as OperationResult['metadata'] };
+    }
+
+    if (state.emission?.key === key) {
+      return { data: state.emission.data, metadata: state.emission.metadata };
+    }
+
+    return untrack(() => readThrough($state.snapshot(refValue)));
+  });
+
+  const data = $derived(view.data);
+  const metadata = $derived(view.metadata);
+
+  $effect.pre(() => {
+    const key = currentKey;
+    if (key === undefined) return;
+
+    const snapshot = untrack(() => $state.snapshot(fragmentRef()));
+
     const unsubscribe = pipe(
-      client.executeFragment(fragment, untrack(() => $state.snapshot(currentRef)) as typeof currentRef, options?.()),
+      client.executeFragment(
+        fragment,
+        snapshot as never,
+        untrack(() => options?.()),
+      ),
       subscribe({
         next: (result: OperationResult) => {
-          metadata = result.metadata;
-          const patches = result.metadata?.cache?.patches;
-          if (patches) {
-            const root = applyPatchesMutable(state, patches);
-            if (root !== undefined) state = root;
-          } else if (result.data !== undefined) {
-            state = result.data;
-          }
+          state = reduceFragmentResult(
+            untrack(() => state),
+            key,
+            result,
+            { applyPatches: applyPatchesMutable },
+          );
         },
       }),
     );
@@ -95,7 +143,7 @@ export const createFragment: CreateFragmentFn = (<T extends Artifact<'fragment'>
 
   return {
     get data() {
-      return state;
+      return data;
     },
     get metadata() {
       return metadata;

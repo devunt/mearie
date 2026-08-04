@@ -1,9 +1,28 @@
-import { createSignal, createEffect, onCleanup, untrack, type Accessor } from 'solid-js';
-import { createStore, produce, reconcile } from 'solid-js/store';
-import type { Artifact, VariablesOf, DataOf, QueryOptions, OperationResult } from '@mearie/core';
-import { AggregatedError, applyPatchesMutable } from '@mearie/core';
+import { createComputed, createMemo, onCleanup, untrack, type Accessor } from 'solid-js';
+import { createStore, reconcile } from 'solid-js/store';
+import type {
+  Artifact,
+  VariablesOf,
+  DataOf,
+  QueryOptions,
+  OperationResult,
+  ObserverState,
+  AggregatedError,
+  InitialDataRef,
+} from '@mearie/core';
+import {
+  acceptInitialData,
+  applyPatchesImmutable,
+  beginFetch,
+  computeObserverKey,
+  deriveObserverView,
+  initObserverState,
+  reduceObserverResult,
+  trackInitialData,
+} from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
+import { snapshotData } from './utils.ts';
 
 export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
@@ -11,14 +30,16 @@ export type CreateQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> 
 
 export type Query<T extends Artifact<'query'>> =
   | {
-      data: undefined;
+      data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -26,6 +47,7 @@ export type Query<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -35,13 +57,15 @@ export type Query<T extends Artifact<'query'>> =
 export type DefinedQuery<T extends Artifact<'query'>> =
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -49,6 +73,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -76,77 +101,127 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 ): Query<T> => {
   const client = useClient();
 
-  const initialOpts = options?.();
-  const [data, setData] = createStore<{ value: DataOf<T> | undefined }>({
-    value: initialOpts?.initialData,
-  });
-  const [loading, setLoading] = createSignal<boolean>(!initialOpts?.skip && !initialOpts?.initialData);
-  const [error, setError] = createSignal<AggregatedError | undefined>();
-  const [metadata, setMetadata] = createSignal<OperationResult['metadata']>();
+  const getVariables = () => (typeof variables === 'function' ? variables() : undefined);
+
+  let lastInitialData: InitialDataRef | undefined;
+
+  // The seed must not create dependencies by design, so the whole body is untracked rather than just the two
+  // accessor calls: reading `.initialData` off the options object and walking `variables` through
+  // `computeObserverKey` are themselves reads, and would enrol a caller that evaluates this body in a
+  // tracking scope whenever either is a live reactive node.
+  const buildInitialState = (): ObserverState<DataOf<T>> =>
+    untrack(() => {
+      const initialData = options?.()?.initialData;
+      if (initialData === undefined) {
+        return initObserverState<DataOf<T>>();
+      }
+
+      const initialKey = computeObserverKey(query, getVariables());
+      lastInitialData = trackInitialData(lastInitialData, initialKey, initialData);
+      return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, initialData);
+    });
+
+  // `raw` mirrors the store so `execute` and the reducer read the last committed value as a plain immutable
+  // object. The store node is not that object: `reconcile` diffs into the previously committed nodes, so
+  // reading state back out of the store would feed proxies (and reconcile's in-place edits) into the reducer.
+  let raw = buildInitialState();
+  const [state, setState] = createStore<{ current: ObserverState<DataOf<T>> }>({ current: raw });
+  const commit = (next: ObserverState<DataOf<T>>) => {
+    // A fresh succession hands `previous.data` the very node the store is about to rewrite in place:
+    // `reconcile` diffs the incoming emission into the previously committed data node, so without a copy
+    // `previousData` would report the new payload whenever the root is diffable (an id-less root always is).
+    // Snapshot at the transition only — steady-state commits carry `previous` forward by identity.
+    // `untrack` because `initialData` may itself be reactive, and this walk must not enroll the caller's
+    // graph in a commit that runs inside the driving computation.
+    const outgoing = next.previous;
+    let settled = next;
+    if (outgoing !== undefined && outgoing !== raw.previous) {
+      const data = untrack(() => snapshotData(outgoing.data)) as DataOf<T>;
+      settled = { ...next, previous: { ...outgoing, data } };
+    }
+
+    raw = settled;
+    setState('current', reconcile(settled));
+  };
+
+  const currentKey = createMemo(() => computeObserverKey(query, getVariables()));
+  const skip = createMemo(() => options?.()?.skip ?? false);
+  // Hoisted out of the driver so the thunk runs in an equality-gated scope: a memo re-evaluates whenever anything
+  // it read changes, but only notifies its readers when the value it produced differs. Calling the thunk inside
+  // the driver instead would make every reactive value the caller happens to read in it a dependency of the
+  // driver, re-executing the query on churn that left the key and the policy alone.
+  const fetchPolicy = createMemo(() => options?.()?.fetchPolicy);
+  const view = createMemo(() => deriveObserverView(state.current, currentKey(), skip()));
+  // Per-field memos keep the store grain: `view` rebuilds on every commit, but each field only notifies its
+  // readers when that field's value actually changes, so a patched leaf never invalidates a `data` reader.
+  const data = createMemo(() => view().data);
+  const previousData = createMemo(() => view().previousData);
+  const loading = createMemo(() => view().loading);
+  const error = createMemo(() => view().error);
+  const metadata = createMemo(() => view().metadata);
 
   let unsubscribe: (() => void) | null = null;
-  let initialized = false;
 
-  const execute = (force = false) => {
+  const execute = (key: string, skipped: boolean, force: boolean) => {
     unsubscribe?.();
+    unsubscribe = null;
 
-    if (!force && options?.()?.skip) {
-      setLoading(false);
-      return;
+    // Must precede the skip early-return: otherwise a variables change under `skip` leaves the emission
+    // keyed to the old variables forever, and `DefinedQuery<T>` promises `data` in every arm.
+    if (!force && raw.emission?.key !== key) {
+      const initialData = untrack(() => options?.())?.initialData;
+      if (initialData !== undefined) {
+        lastInitialData = trackInitialData(lastInitialData, key, initialData);
+        commit(acceptInitialData(raw, key, initialData));
+      }
     }
 
-    if (initialized || !initialOpts?.initialData) {
-      setLoading(true);
+    if (!force && skipped) return;
+
+    if (force || raw.emission?.key !== key) {
+      commit(beginFetch(raw));
     }
 
-    initialized = true;
-    setError(undefined);
+    const currentVariables = untrack(getVariables);
+    const currentOptions = untrack(() => options?.());
 
     unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeQuery(query, typeof variables === 'function' ? variables() : variables, options?.()),
+      client.executeQuery(query, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
-          setMetadata(result.metadata);
-          if (result.errors && result.errors.length > 0) {
-            setError(new AggregatedError(result.errors));
-            setLoading(false);
-          } else {
-            const patches = result.metadata?.cache?.patches;
-            if (patches) {
-              setData(
-                'value',
-                produce((draft) => {
-                  const root = applyPatchesMutable(draft, patches);
-                  if (root !== undefined) return root;
-                }),
-              );
-            } else {
-              setData('value', reconcile(result.data as DataOf<T>));
-            }
-            setLoading(false);
-            setError(undefined);
-          }
+          commit(reduceObserverResult<DataOf<T>>(raw, key, result, { applyPatches: applyPatchesImmutable }));
         },
       }),
     );
   };
 
-  const refetch = () => {
-    untrack(() => execute(true));
-  };
+  // The tracked reads are the whole dependency set, and each is equality-gated: everything `execute` touches is
+  // untracked, so a `variables` or options thunk whose source was replaced without changing the key or the policy
+  // must not re-execute the query. fetchPolicy stays tracked because changing its value is meant to re-execute.
+  createComputed(() => {
+    const key = currentKey();
+    const skipped = skip();
+    void fetchPolicy();
 
-  createEffect(() => {
-    execute();
-
-    onCleanup(() => {
-      unsubscribe?.();
-    });
+    untrack(() => execute(key, skipped, false));
   });
+
+  onCleanup(() => {
+    unsubscribe?.();
+    unsubscribe = null;
+  });
+
+  const refetch = () => {
+    untrack(() => execute(currentKey(), skip(), true));
+  };
 
   return {
     get data() {
-      return data.value;
+      return data();
+    },
+    get previousData() {
+      return previousData();
     },
     get loading() {
       return loading();

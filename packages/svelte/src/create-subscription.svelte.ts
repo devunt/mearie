@@ -1,23 +1,35 @@
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { untrack } from 'svelte';
+import type {
+  VariablesOf,
+  DataOf,
+  Artifact,
+  SubscriptionOptions,
+  OperationResult,
+  ObserverState,
+  AggregatedError,
+} from '@mearie/core';
+import { computeObserverKey, deriveObserverView, initObserverState, reduceObserverResult } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { getClient } from './client-context.svelte.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: undefined;
+      previousData: DataOf<T> | undefined;
       loading: true;
       error: undefined;
       metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -37,39 +49,42 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
 ): Subscription<T> => {
   const client = getClient();
 
-  let data = $state.raw<DataOf<T> | undefined>();
-  let loading = $state<boolean>(!options?.().skip);
-  let error = $state<AggregatedError | undefined>();
-  let metadata = $state<OperationResult['metadata']>();
+  const getVariables = () => (typeof variables === 'function' ? variables() : undefined);
 
-  $effect(() => {
-    if (options?.().skip) {
-      return;
-    }
+  let state = $state.raw<ObserverState<DataOf<T>>>(initObserverState<DataOf<T>>());
 
-    loading = true;
-    error = undefined;
+  const currentKey = $derived(computeObserverKey(subscription, getVariables()));
+  const skip = $derived(options?.().skip ?? false);
+  const view = $derived(deriveObserverView(state, currentKey, skip));
+  const data = $derived(view.data);
+  const previousData = $derived(view.previousData);
+  const loading = $derived(view.loading);
+  const error = $derived(view.error);
+  const metadata = $derived(view.metadata);
+
+  $effect.pre(() => {
+    const key = currentKey;
+    if (skip) return;
+
+    const currentVariables = untrack(getVariables);
+    const currentOptions = untrack(() => options?.());
 
     const unsubscribe = pipe(
       // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, typeof variables === 'function' ? variables() : undefined, options?.()),
+      client.executeSubscription(subscription, currentVariables, currentOptions),
       subscribe({
         next: (result) => {
-          metadata = result.metadata;
-          if (result.errors && result.errors.length > 0) {
-            const err = new AggregatedError(result.errors);
-
-            error = err;
-            loading = false;
-
-            options?.().onError?.(err);
-          } else {
-            const resultData = result.data as DataOf<T>;
-
-            data = resultData;
-            loading = false;
-
-            options?.().onData?.(resultData);
+          state = reduceObserverResult(
+            untrack(() => state),
+            key,
+            result,
+          );
+          const emitted = untrack(() => state).emission;
+          const opts = untrack(() => options?.());
+          if (emitted?.error) {
+            opts?.onError?.(emitted.error);
+          } else if (emitted?.key === key) {
+            opts?.onData?.(emitted.data!);
           }
         },
       }),
@@ -83,6 +98,9 @@ export const createSubscription = <T extends Artifact<'subscription'>>(
   return {
     get data() {
       return data;
+    },
+    get previousData() {
+      return previousData;
     },
     get loading() {
       return loading;

@@ -53,3 +53,17 @@ export {
 } from './client.ts';
 
 export { stringify } from './utils.ts';
+
+export {
+  computeObserverKey,
+  readRefIdentity,
+  initObserverState,
+  beginFetch,
+  acceptResult,
+  acceptInitialData,
+  trackInitialData,
+  reduceObserverResult,
+  reduceFragmentResult,
+  deriveObserverView,
+} from './observer.ts';
+export type { ObserverEmission, ObserverState, ObserverView, InitialDataRef, RefIdentity } from './observer.ts';

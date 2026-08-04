@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { Client, OperationResult } from '@mearie/core';
-import { GraphQLError } from '@mearie/core';
-import { makeSubject } from '@mearie/core/stream';
+import { GraphQLError, stringify } from '@mearie/core';
+import { fromValue, makeSubject } from '@mearie/core/stream';
 
 export const createMockClient = () => {
   const subjects = {
@@ -58,3 +58,11 @@ export const makeResult = (
   metadata: opts?.metadata,
   operation: {} as OperationResult['operation'],
 });
+
+export const createSyncMockClient = (resultsByVariables: Record<string, OperationResult>) => {
+  const executeQuery = vi.fn((_artifact: unknown, variables: unknown) =>
+    fromValue(resultsByVariables[stringify(variables)]!),
+  );
+  const client = { executeQuery } as unknown as Client;
+  return { client, executeQuery };
+};

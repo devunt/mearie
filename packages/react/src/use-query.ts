@@ -1,8 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Artifact, DataOf, OperationResult, QueryOptions, VariablesOf } from '@mearie/core';
-import { AggregatedError, stringify, applyPatchesImmutable } from '@mearie/core';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type {
+  AggregatedError,
+  Artifact,
+  DataOf,
+  InitialDataRef,
+  ObserverState,
+  OperationResult,
+  QueryOptions,
+  VariablesOf,
+} from '@mearie/core';
+import {
+  acceptInitialData,
+  applyPatchesImmutable,
+  beginFetch,
+  computeObserverKey,
+  deriveObserverView,
+  initObserverState,
+  reduceObserverResult,
+  stringify,
+  trackInitialData,
+} from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-provider.tsx';
+import { useIsomorphicLayoutEffect } from './utils.ts';
 
 export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = QueryOptions<T> & {
   skip?: boolean;
@@ -10,14 +30,16 @@ export type UseQueryOptions<T extends Artifact<'query'> = Artifact<'query'>> = Q
 
 export type Query<T extends Artifact<'query'>> =
   | {
-      data: undefined;
+      data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -25,6 +47,7 @@ export type Query<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T> | undefined;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -34,13 +57,15 @@ export type Query<T extends Artifact<'query'>> =
 export type DefinedQuery<T extends Artifact<'query'>> =
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: true;
-      error: undefined;
+      error: AggregatedError | undefined;
       metadata: OperationResult['metadata'];
       refetch: () => void;
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: undefined;
       metadata: OperationResult['metadata'];
@@ -48,6 +73,7 @@ export type DefinedQuery<T extends Artifact<'query'>> =
     }
   | {
       data: DataOf<T>;
+      previousData: DataOf<T> | undefined;
       loading: false;
       error: AggregatedError;
       metadata: OperationResult['metadata'];
@@ -75,70 +101,82 @@ export const useQuery: UseQueryFn = (<T extends Artifact<'query'>>(
 ): Query<T> => {
   const client = useClient();
 
-  const [data, setData] = useState<DataOf<T> | undefined>(options?.initialData);
-  const [loading, setLoading] = useState(!options?.skip && !options?.initialData);
-  const [error, setError] = useState<AggregatedError | undefined>();
-  const [metadata, setMetadata] = useState<OperationResult['metadata']>();
+  const stableVariables = useMemo(() => stringify(variables), [variables]);
+  const currentKey = useMemo(() => computeObserverKey(query, variables), [query, stableVariables]);
+  const skip = options?.skip ?? false;
+
+  const lastInitialData = useRef<InitialDataRef | undefined>(undefined);
+
+  const [state, setState] = useState<ObserverState<DataOf<T>>>(() => {
+    if (options?.initialData === undefined) {
+      return initObserverState<DataOf<T>>();
+    }
+
+    const initialKey = computeObserverKey(query, variables);
+    lastInitialData.current = trackInitialData(lastInitialData.current, initialKey, options.initialData);
+    return acceptInitialData(initObserverState<DataOf<T>>(), initialKey, options.initialData);
+  });
+
+  // Must stay in the render phase: deferring to the effect would expose one render of `data: undefined`
+  // per variables change (and forever under `skip`), which `DefinedQuery<T>` licenses callers to deref.
+  let currentState = state;
+  if (options?.initialData !== undefined && state.emission?.key !== currentKey) {
+    lastInitialData.current = trackInitialData(lastInitialData.current, currentKey, options.initialData);
+    currentState = acceptInitialData(state, currentKey, options.initialData);
+    setState(currentState);
+  }
+
+  const view = useMemo(() => deriveObserverView(currentState, currentKey, skip), [currentState, currentKey, skip]);
 
   const unsubscribe = useRef<(() => void) | null>(null);
-  const initialized = useRef(false);
-  const stableVariables = useMemo(() => stringify(variables), [variables]);
-  const stableOptions = useMemo(() => options, [options?.skip, options?.fetchPolicy]);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const variablesRef = useRef(variables);
+  variablesRef.current = variables;
 
   const execute = useCallback(
     (force = false) => {
       unsubscribe.current?.();
+      unsubscribe.current = null;
 
-      if (!force && stableOptions?.skip) {
-        setLoading(false);
-        return;
-      }
+      if (!force && optionsRef.current?.skip) return;
 
-      if (initialized.current || !options?.initialData) {
-        setLoading(true);
-      }
+      const key = currentKey;
 
-      initialized.current = true;
-      setError(undefined);
+      setState((s) => (force || s.emission?.key !== key ? beginFetch(s) : s));
+
+      const currentVariables = variablesRef.current;
+      const currentOptions = optionsRef.current;
 
       unsubscribe.current = pipe(
         // @ts-expect-error - conditional signature makes this hard to type correctly
-        client.executeQuery(query, variables, stableOptions),
+        client.executeQuery(query, currentVariables, currentOptions),
         subscribe({
           next: (result) => {
-            setMetadata(result.metadata);
-            if (result.errors && result.errors.length > 0) {
-              setError(new AggregatedError(result.errors));
-              setLoading(false);
-            } else {
-              const patches = result.metadata?.cache?.patches;
-              if (patches) {
-                setData((prev) => applyPatchesImmutable(prev, patches)!);
-              } else {
-                setData(result.data as DataOf<T>);
-              }
-              setLoading(false);
-              setError(undefined);
-            }
+            setState((s) => reduceObserverResult<DataOf<T>>(s, key, result, { applyPatches: applyPatchesImmutable }));
           },
         }),
       );
     },
-    [client, query, stableVariables, stableOptions],
+    [client, query, currentKey, skip, options?.fetchPolicy],
   );
 
   const refetch = useCallback(() => execute(true), [execute]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     execute();
-    return () => unsubscribe.current?.();
+    return () => {
+      unsubscribe.current?.();
+      unsubscribe.current = null;
+    };
   }, [execute]);
 
   return {
-    data,
-    loading,
-    error,
-    metadata,
+    data: view.data,
+    previousData: view.previousData,
+    loading: view.loading,
+    error: view.error,
+    metadata: view.metadata,
     refetch,
   } as Query<T>;
 }) as unknown as UseQueryFn;

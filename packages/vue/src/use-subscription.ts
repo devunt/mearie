@@ -1,24 +1,35 @@
-import { ref, watchEffect, toValue, type Ref, type MaybeRefOrGetter } from 'vue';
-import type { VariablesOf, DataOf, Artifact, SubscriptionOptions, OperationResult } from '@mearie/core';
-import { AggregatedError } from '@mearie/core';
+import { computed, reactive, shallowRef, toValue, watch, type Ref, type MaybeRefOrGetter } from 'vue';
+import type {
+  VariablesOf,
+  DataOf,
+  Artifact,
+  SubscriptionOptions,
+  OperationResult,
+  ObserverState,
+  AggregatedError,
+} from '@mearie/core';
+import { computeObserverKey, deriveObserverView, initObserverState, reduceObserverResult } from '@mearie/core';
 import { pipe, subscribe } from '@mearie/core/stream';
 import { useClient } from './client-plugin.ts';
 
 export type Subscription<T extends Artifact<'subscription'>> =
   | {
       data: Ref<undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<true>;
       error: Ref<undefined>;
       metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<undefined>;
       metadata: Ref<OperationResult['metadata']>;
     }
   | {
       data: Ref<DataOf<T> | undefined>;
+      previousData: Ref<DataOf<T> | undefined>;
       loading: Ref<false>;
       error: Ref<AggregatedError>;
       metadata: Ref<OperationResult['metadata']>;
@@ -38,61 +49,63 @@ export const useSubscription = <T extends Artifact<'subscription'>>(
 ): Subscription<T> => {
   const client = useClient();
 
-  const data = ref<DataOf<T> | undefined>(undefined);
-  const loading = ref<boolean>(!toValue(options)?.skip);
-  const error = ref<AggregatedError | undefined>(undefined);
-  const metadata = ref<OperationResult['metadata']>();
+  const wrap = (data: unknown) => reactive(data as object) as DataOf<T>;
 
-  let unsubscribe: (() => void) | null = null;
-
-  const execute = () => {
-    unsubscribe?.();
-
-    if (toValue(options)?.skip) {
-      return;
-    }
-
-    loading.value = true;
-    error.value = undefined;
-
-    unsubscribe = pipe(
-      // @ts-expect-error - conditional signature makes this hard to type correctly
-      client.executeSubscription(subscription, toValue(variables), toValue(options)),
-      subscribe({
-        next: (result) => {
-          metadata.value = result.metadata;
-          if (result.errors && result.errors.length > 0) {
-            const err = new AggregatedError(result.errors);
-
-            error.value = err;
-            loading.value = false;
-
-            toValue(options)?.onError?.(err);
-          } else {
-            const resultData = result.data as DataOf<T>;
-
-            data.value = resultData;
-            loading.value = false;
-
-            toValue(options)?.onData?.(resultData);
-          }
-        },
-      }),
-    );
+  // `raw` mirrors `state` so the reducer and the emission callbacks read the last committed value without going
+  // through the ref. Those reads sit in callback scopes that do not track today; keeping them off `state.value`
+  // means no later move back into a tracking scope can make an effect depend on its own writes.
+  let raw = initObserverState<DataOf<T>>();
+  const state = shallowRef<ObserverState<DataOf<T>>>(raw);
+  const commit = (next: ObserverState<DataOf<T>>) => {
+    raw = next;
+    state.value = next;
   };
 
-  watchEffect((onCleanup) => {
-    execute();
+  const currentKey = computed(() => computeObserverKey(subscription, toValue(variables)));
+  const skip = computed(() => toValue(options)?.skip ?? false);
+  const view = computed(() => deriveObserverView(state.value, currentKey.value, skip.value));
 
-    onCleanup(() => {
-      unsubscribe?.();
-    });
-  });
+  // The watched sources are the whole dependency set: `watch` tracks its sources, not its callback, so the thunk
+  // reads below cannot enroll the caller's reactive graph in effect re-execution. A `variables` thunk reading a
+  // replaced-but-key-equal source must not tear down a live subscription.
+  watch(
+    [currentKey, skip],
+    ([key, skipped], _previous, onCleanup) => {
+      if (skipped) return;
+
+      const currentVariables = toValue(variables);
+      const currentOptions = toValue(options);
+
+      const unsubscribe = pipe(
+        // @ts-expect-error - conditional signature makes this hard to type correctly
+        client.executeSubscription(subscription, currentVariables, currentOptions),
+        subscribe({
+          next: (result) => {
+            commit(reduceObserverResult<DataOf<T>>(raw, key, result, { mapData: wrap }));
+
+            const emitted = raw.emission;
+            const opts = toValue(options);
+            if (emitted?.error) {
+              opts?.onError?.(emitted.error);
+            } else if (emitted?.key === key) {
+              opts?.onData?.(emitted.data!);
+            }
+          },
+        }),
+      );
+
+      onCleanup(() => {
+        unsubscribe();
+      });
+    },
+    { immediate: true },
+  );
 
   return {
-    data,
-    loading,
-    error,
-    metadata,
+    data: computed(() => view.value.data),
+    previousData: computed(() => view.value.previousData),
+    loading: computed(() => view.value.loading),
+    error: computed(() => view.value.error),
+    metadata: computed(() => view.value.metadata),
   } as Subscription<T>;
 };

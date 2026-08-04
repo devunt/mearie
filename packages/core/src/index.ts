@@ -30,7 +30,6 @@ export { dedupExchange } from './exchanges/dedup.ts';
 export { cacheExchange, type CacheOptions } from './exchanges/cache.ts';
 export type { CacheSnapshot, CacheOperations, InvalidateTarget, Patch, PropertyPath } from './cache/types.ts';
 export { setPath, getPath, applyPatchesMutable, applyPatchesImmutable } from './cache/patch.ts';
-export { FragmentRefKey, FragmentVarsKey } from './cache/constants.ts';
 export { retryExchange, type RetryOptions } from './exchanges/retry.ts';
 export { fragmentExchange } from './exchanges/fragment.ts';
 export { requiredExchange } from './exchanges/required.ts';
@@ -57,7 +56,6 @@ export { stringify } from './utils.ts';
 
 export {
   computeObserverKey,
-  readElementIdentity,
   readRefIdentity,
   initObserverState,
   beginFetch,

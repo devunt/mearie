@@ -1,13 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import type { Artifact, Client, OperationResult, FragmentRefs } from '@mearie/core';
-import { FragmentRefKey, FragmentVarsKey } from '@mearie/core';
 import type { Sink, Subscription as StreamSubscription } from '@mearie/core/stream';
 import { makeSubject, fromValue } from '@mearie/core/stream';
 import { createFragment } from './create-fragment.svelte.ts';
 import { createMockClient, mockFragment, makeResult } from './test-utils.svelte.ts';
 import TestRunner from './TestRunner.svelte';
 import type { Fragment } from './create-fragment.svelte.ts';
+
+const FragmentRefKey = '__fragmentRef' as const;
+const FragmentVarsKey = '__fragmentVars' as const;
 
 const createFragmentRef = (name = 'TestFragment') => ({
   ' $fragmentRefs': { [name]: true as const },

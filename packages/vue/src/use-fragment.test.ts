@@ -1,13 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { nextTick, ref, watchEffect } from 'vue';
 import type { FragmentRefs, OperationResult } from '@mearie/core';
-import { FragmentRefKey, FragmentVarsKey } from '@mearie/core';
 import type { Sink, Source } from '@mearie/core/stream';
 import { fromValue, makeSubject } from '@mearie/core/stream';
 import { useFragment } from './use-fragment.ts';
 import { createMockClient, withSetup, mockFragment, makeResult } from './test-utils.ts';
 
 type MockClient = ReturnType<typeof createMockClient>['client'];
+
+const FragmentRefKey = '__fragmentRef' as const;
+const FragmentVarsKey = '__fragmentVars' as const;
 
 const createFragmentRef = (): FragmentRefs<'TestFragment'> => ({
   ' $fragmentRefs': { TestFragment: true },

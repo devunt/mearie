@@ -1,11 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act } from 'react';
 import type { Client, FragmentRefs, OperationResult } from '@mearie/core';
-import { FragmentRefKey, FragmentVarsKey } from '@mearie/core';
 import { fromValue, makeSubject } from '@mearie/core/stream';
 import type { Sink, Subscription } from '@mearie/core/stream';
 import { useFragment } from './use-fragment.ts';
 import { createMockClient, renderHook, renderHookWithProps, mockFragment, makeResult } from './test-utils.ts';
+
+const FragmentRefKey = '__fragmentRef' as const;
+const FragmentVarsKey = '__fragmentVars' as const;
 
 const createFragmentRef = (name = 'TestFragment'): FragmentRefs<string> => ({
   ' $fragmentRefs': { [name]: true as const },

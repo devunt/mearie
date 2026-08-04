@@ -3,9 +3,11 @@ import { createComputed, createEffect, createSignal } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { fromValue, makeSubject, type Sink, type Subscription } from '@mearie/core/stream';
 import type { FragmentRefs, OperationResult } from '@mearie/core';
-import { FragmentRefKey, FragmentVarsKey } from '@mearie/core';
 import { createFragment } from './create-fragment.ts';
 import { createMockClient, renderPrimitive, mockFragment, makeResult } from './test-utils.tsx';
+
+const FragmentRefKey = '__fragmentRef' as const;
+const FragmentVarsKey = '__fragmentVars' as const;
 
 const createFragmentRef = <T extends string = 'TestFragment'>(name: T = 'TestFragment' as T) => ({
   ' $fragmentRefs': { [name]: true as const } as Record<T, true>,

@@ -4,6 +4,10 @@ import { FragmentRefKey, FragmentVarsKey } from './cache/constants.ts';
 import type { OperationResult } from './exchange.ts';
 import type { Patch } from './cache/types.ts';
 
+// core must compile under non-node tsconfigs (framework packages type-check this source through
+// their dev exports), so the node global is reached via globalThis instead of @types/node.
+const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
+
 export type ObserverEmission<D> = {
   key: string;
   data: D | undefined;
@@ -84,8 +88,8 @@ export type InitialDataRef = { ref: unknown; key: string };
 
 export const trackInitialData = (last: InitialDataRef | undefined, key: string, data: unknown): InitialDataRef => {
   if (
-    typeof process !== 'undefined' &&
-    process.env.NODE_ENV !== 'production' &&
+    globalProcess !== undefined &&
+    globalProcess.env?.NODE_ENV !== 'production' &&
     typeof data === 'object' &&
     data !== null &&
     last?.ref === data &&

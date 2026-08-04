@@ -149,7 +149,7 @@ const query = createQuery(
 {/if}
 ```
 
-`query.previousData` holds the result for the previous variables. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds the last result, so `query.data ?? query.previousData` keeps the current view on screen instead of flashing a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+`query.previousData` holds data from a previous set of variables — never an earlier value of the current ones. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds that earlier result, so `query.data ?? query.previousData` keeps the current view on screen instead of flashing a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
 
 ### createMutation
 
@@ -270,7 +270,7 @@ const subscription = createSubscription(
 </div>
 ```
 
-`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under the previous variables.
+`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under a previous set of variables.
 
 ## Fine-Grained Reactivity
 
@@ -310,7 +310,9 @@ const query = createQuery(
 </button>
 ```
 
-Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy`. The `variables` and options thunks are read untracked at execution time, so other reactive values you read inside them do not re-trigger the query on their own.
+Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. Each is tracked through an equality-gated `$derived`, and the `variables` and options thunks are otherwise read untracked at execution time, so other reactive values you read inside them do not re-trigger the query on their own.
+
+A variables change is applied before the next render rather than at the moment you write it, so a synchronous read taken immediately after the write — before the update flushes — can still observe the transitional state.
 
 ## Next Steps
 

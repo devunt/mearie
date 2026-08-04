@@ -109,9 +109,9 @@ await refetch();
 
 ## Data Ownership
 
-Every result belongs to exactly one set of variables. Mearie keys results by the query and its variables, so a response is never attributed to variables it was not requested with — a late response for the previous variables is never exposed as `data`.
+Every result belongs to exactly one set of variables. Mearie keys results by the query and its variables, so a response is never attributed to variables it was not requested with — a late response for superseded variables is never exposed as `data`.
 
-When variables change, the query releases the result it was holding: `data` becomes `undefined` and `loading` becomes `true` until the new result arrives. The released value stays available as `previousData`, so you can keep the current view on screen while the next one loads:
+When variables change, the query releases the result it was holding: `data` becomes `undefined` and `loading` becomes `true` until the new result arrives. Under `skip: true` the release still happens, but nothing executes and `loading` stays `false`. The released value stays available as `previousData`, so you can keep the current view on screen while the next one loads:
 
 ```tsx
 const { data, previousData } = useQuery(
@@ -130,9 +130,9 @@ const { data, previousData } = useQuery(
 const user = data ?? previousData;
 ```
 
-`previousData` always describes the previous variables — it is never an earlier value of the current ones. `error` is scoped the same way and never crosses a variables change.
+`previousData` holds data from a previous set of variables — never an earlier value of the current ones. It skips variables that never produced data, so it is not necessarily the set you used immediately before. `error` and `metadata` are scoped the same way: both reset alongside `data` when variables change.
 
-With `initialData` the swap is atomic instead: the new variables are seeded with the data you supply, so `data` goes straight from the old value to the new one with no intermediate `undefined`, and `loading` stays `false` while the result is confirmed in the background. `initialData` must correspond to the current variables, so re-derive it whenever they change.
+With `initialData` the swap is atomic instead: the new variables are seeded with the data you supply, so `data` goes straight from the old value to the new one with no intermediate `undefined`, and `loading` stays `false` while the result is confirmed in the background. `initialData` must correspond to the current variables, so re-derive it whenever they change — in development, reusing one `initialData` object across two different sets of variables logs a console warning.
 
 ### Narrowing on `loading`
 

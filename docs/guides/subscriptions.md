@@ -118,7 +118,7 @@ npm install graphql-ws
 
 `data` holds the most recent event and nothing else. Each event replaces the previous one wholesale — subscriptions never merge events into an accumulated value. To build up history, collect it yourself in `onData` (see [Accumulating Events](#accumulating-events)).
 
-Every event belongs to the variables it was requested with. When variables change, Mearie tears down the stream and opens a new one: `data` is released, `loading` returns to `true` until the first event arrives for the new variables, and the released event stays available as `previousData`.
+Every event belongs to the variables it was requested with. When variables change, Mearie tears down the stream and opens a new one: `data` is released, `loading` returns to `true` until the first event arrives for the new variables, and the released event stays available as `previousData` — data from a previous set of variables, never an earlier event under the current ones. Under `skip: true` the release still happens, but no stream is opened and `loading` stays `false`.
 
 ```tsx
 const { data, previousData } = useSubscription(
@@ -137,6 +137,8 @@ const status = data ?? previousData;
 ```
 
 For subscriptions, `loading: true` means no event has arrived for the current variables yet, not that a request is in flight — a stream that stays quiet after opening keeps reporting `loading: true`.
+
+`onData` and `onError` fire only on real emissions from the server. Releasing `data` on a variables change is not an emission, so it never invokes either callback.
 
 ## Latest State Only
 

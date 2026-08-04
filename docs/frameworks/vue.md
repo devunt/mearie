@@ -139,7 +139,7 @@ const { data, loading, error, refetch } = useQuery(
 </template>
 ```
 
-`previousData` is a ref holding the result for the previous variables. While a new set of variables loads, `data` is `undefined` but `previousData` still holds the last result, so `computed(() => data.value ?? previousData.value)` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+`previousData` is a ref holding data from a previous set of variables — never an earlier value of the current ones. While a new set of variables loads, `data` is `undefined` but `previousData` still holds that earlier result, so `computed(() => data.value ?? previousData.value)` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
 
 ### useMutation
 
@@ -250,7 +250,7 @@ const { data, loading } = useSubscription(
 </template>
 ```
 
-`data` holds the latest event only, and `previousData` holds the last event received under the previous variables.
+`data` holds the latest event only, and `previousData` holds the last event received under a previous set of variables.
 
 ## Reactive Variables
 
@@ -301,7 +301,9 @@ const { data: data2 } = useQuery(
 </template>
 ```
 
-Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy`, which are the composable's explicit `watch` sources. Other reactive values you read inside the `variables` or options getters are read at execution time and do not re-trigger the query on their own.
+Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. They are the composable's explicit `watch` sources and each is compared by value, so other reactive values you read inside the `variables` or options getters are read at execution time and do not re-trigger the query on their own.
+
+A variables change is applied before the next render rather than at the moment you write it, so a synchronous read taken immediately after the write — before the watcher flushes — can still observe the transitional state.
 
 ## Next Steps
 

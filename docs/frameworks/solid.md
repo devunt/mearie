@@ -147,9 +147,9 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
 };
 ```
 
-`query.previousData` holds the result for the previous variables. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds the last result, so `query.data ?? query.previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
+`query.previousData` holds data from a previous set of variables — never an earlier value of the current ones. While a new set of variables loads, `query.data` is `undefined` but `query.previousData` still holds that earlier result, so `query.data ?? query.previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
 
-`query.previousData` is a structural snapshot taken when the variables changed, not the same object reference `query.data` exposed before — a consequence of the store-based fine-grained updates, which rewrite the committed nodes in place.
+Once the new variables produce a result, `query.previousData` becomes a structural snapshot rather than the live store node. While the new variables are still loading it is still the node `query.data` was, and the store rewrites that node in place when the result lands — so read `query.previousData` where you need it instead of retaining it across the transition.
 
 ### createMutation
 
@@ -273,7 +273,7 @@ export const ChatMessages: Component<ChatMessagesProps> = (props) => {
 };
 ```
 
-`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under the previous variables.
+`subscription.data` holds the latest event only, and `subscription.previousData` holds the last event received under a previous set of variables.
 
 ## Fine-Grained Reactivity
 
@@ -313,7 +313,9 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
 };
 ```
 
-Re-execution follows the observer key — the document and its variables — plus `skip` and `fetchPolicy`, which are the primitive's explicit `createComputed` sources. Everything else is read untracked at execution time, so other reactive values you read inside the `variables` or options accessors do not re-trigger the query on their own.
+Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. Each is tracked through an equality-gated `createMemo`, and everything else is read untracked at execution time, so other reactive values you read inside the `variables` or options accessors do not re-trigger the query on their own.
+
+A variables change is applied before the next render rather than at the moment you write it, so a synchronous read taken immediately after the write — before the update propagates — can still observe the transitional state.
 
 ## Next Steps
 

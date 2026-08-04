@@ -146,6 +146,11 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   const currentKey = createMemo(() => computeObserverKey(query, getVariables()));
   const skip = createMemo(() => options?.()?.skip ?? false);
+  // Hoisted out of the driver so the thunk runs in an equality-gated scope: a memo re-evaluates whenever anything
+  // it read changes, but only notifies its readers when the value it produced differs. Calling the thunk inside
+  // the driver instead would make every reactive value the caller happens to read in it a dependency of the
+  // driver, re-executing the query on churn that left the key and the policy alone.
+  const fetchPolicy = createMemo(() => options?.()?.fetchPolicy);
   const view = createMemo(() => deriveObserverView(state.current, currentKey(), skip()));
   // Per-field memos keep the store grain: `view` rebuilds on every commit, but each field only notifies its
   // readers when that field's value actually changes, so a patched leaf never invalidates a `data` reader.
@@ -191,13 +196,13 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
     );
   };
 
-  // The tracked reads are the whole dependency set: everything `execute` touches is untracked, so a
-  // `variables` thunk whose source was replaced without changing the key must not re-execute the query.
-  // fetchPolicy stays tracked because changing it is meant to re-execute.
+  // The tracked reads are the whole dependency set, and each is equality-gated: everything `execute` touches is
+  // untracked, so a `variables` or options thunk whose source was replaced without changing the key or the policy
+  // must not re-execute the query. fetchPolicy stays tracked because changing its value is meant to re-execute.
   createComputed(() => {
     const key = currentKey();
     const skipped = skip();
-    void options?.()?.fetchPolicy;
+    void fetchPolicy();
 
     untrack(() => execute(key, skipped, false));
   });

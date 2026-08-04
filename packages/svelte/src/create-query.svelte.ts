@@ -118,6 +118,11 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
 
   const currentKey = $derived(computeObserverKey(query, getVariables()));
   const skip = $derived(options?.().skip ?? false);
+  // Hoisted out of the effect so the thunk runs in an equality-gated scope: a derived re-evaluates whenever
+  // anything it read changes, but only notifies its readers when the value it produced differs. Calling the
+  // thunk inside the effect instead would make every reactive value the caller happens to read in it an
+  // effect dependency, re-executing the query on churn that left the key and the policy alone.
+  const fetchPolicy = $derived(options?.().fetchPolicy);
   const view = $derived(deriveObserverView(state, currentKey, skip));
   const data = $derived(view.data);
   const previousData = $derived(view.previousData);
@@ -170,10 +175,13 @@ export const createQuery: CreateQueryFn = (<T extends Artifact<'query'>>(
     );
   };
 
+  // The tracked reads are the whole dependency set, and each is equality-gated: everything `execute` touches is
+  // untracked, so a `variables` or options thunk whose source was replaced without changing the key or the policy
+  // must not re-execute the query. fetchPolicy stays tracked because changing its value is meant to re-execute.
   $effect.pre(() => {
     const key = currentKey;
     const skipped = skip;
-    void options?.().fetchPolicy;
+    void fetchPolicy;
 
     untrack(() => execute(key, skipped, false));
 

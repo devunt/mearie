@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import type { Artifact, Client } from '@mearie/core';
+import type { Artifact, Client, FetchPolicy } from '@mearie/core';
 import { AggregatedError, stringify } from '@mearie/core';
 import { createQuery } from './create-query.svelte.ts';
 import { createMockClient, createSyncMockClient, mockQuery, makeResult } from './test-utils.svelte.ts';
@@ -348,6 +348,49 @@ describe('createQuery data ownership', () => {
     expect(warn.mock.calls[0]?.[0]).toContain('[mearie]');
     expect(warn.mock.calls[0]?.[0]).toContain('initialData');
     warn.mockRestore();
+    destroy();
+  });
+});
+
+describe('createQuery re-execution dependencies', () => {
+  it('does not re-execute when a reactive value read inside the options thunk changes', () => {
+    const { client } = createMockClient();
+    const controls = $state({ unrelated: 0 });
+    const { destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as Artifact<'query'>, undefined, () => {
+        void controls.unrelated;
+        return { fetchPolicy: 'cache-first' };
+      }),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+
+    controls.unrelated = 1;
+    flushSync();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+    destroy();
+  });
+
+  it('re-executes when the fetchPolicy value changes', () => {
+    const { client } = createMockClient();
+    const controls = $state<{ fetchPolicy: FetchPolicy }>({ fetchPolicy: 'cache-first' });
+    const { destroy } = renderQuery(client, () =>
+      createQuery(mockQuery as Artifact<'query'>, undefined, () => ({ fetchPolicy: controls.fetchPolicy })),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledTimes(1);
+
+    controls.fetchPolicy = 'network-only';
+    flushSync();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenCalledTimes(2);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(client.executeQuery).toHaveBeenLastCalledWith(mockQuery, undefined, { fetchPolicy: 'network-only' });
     destroy();
   });
 });

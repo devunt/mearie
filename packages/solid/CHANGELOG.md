@@ -1,5 +1,39 @@
 # @mearie/solid
 
+## 0.5.0
+
+### Minor Changes
+
+- 49aae91: Enforce data ownership across variable changes in query, subscription and fragment hooks.
+
+  Every result now belongs to exactly one operation key — the document plus its variables — and a hook only ever exposes values belonging to the key it is currently observing. Previously a query or subscription kept exposing the previous variables' `data` after `variables` changed, with `loading` catching up one flush later or, on synchronous cache hits, never observably at all; consumers could read data that did not belong to the current variables and had no way to detect it, so combining `data` and `loading` correctly was impossible. `data`, `error` and `metadata` are now derived from `(state, current key, skip)` rather than stored as independent imperative cells, so a key change releases all three in the same reactive moment `loading` becomes `true` — the reset is atomic by construction, and a late response for superseded variables can never be attributed to the current ones.
+
+  Query and subscription results gain a `previousData` field. It holds the last non-`undefined` data from a prior key, skipping keys that ended without data — so it is not necessarily the variables you used immediately before, and if you return to a set of variables you used earlier it can carry that earlier result for the key you are on now. Read `data ?? previousData` to keep the current view on screen while the next one loads.
+
+  The `Query` and `DefinedQuery` unions are widened to match: the `loading: true` arm now carries `data` (`DataOf<T> | undefined`, or `DataOf<T>` for `DefinedQuery`) and `error: AggregatedError | undefined`, and every arm gains `previousData`. This makes the types honest about `refetch()`, which keeps the current result — and any retained error — visible while it revalidates. Narrow on the field you actually need (`if (error)`, `if (data)`) rather than treating `loading: true` as proof that both are absent.
+
+  Under `skip: true` a key change still releases the held result, but nothing executes and `loading` stays `false`. Subscriptions no longer report a stale `loading: true` after `skip` flips mid-flight.
+
+  `initialData` is re-evaluated and attributed to the new key whenever variables change, including under `skip`. A seeded query therefore swaps atomically from the old value to the new one with no intermediate `undefined`, and `loading` stays `false` while the result is confirmed in the background. Because `initialData` must correspond to the current variables, reusing one `initialData` object across two different sets of variables logs a warning in development.
+
+  Fragment hooks are keyed by ref identity — the ref's storage key plus that fragment's own arguments — falling back to ref content only when the ref carries no storage key. Immutable query data hands down a fresh ref object on any parent change; identity keying means those no longer force a resubscription, while a genuine ref transition resolves for the very reader that sees it (a render or derivation whose key no longer matches the emission reads through to the cache) instead of arriving one frame late. Ref transitions are atomic in the same sense as variable changes, and the synchronous initial-load contract is unchanged. React's `useFragment` moves off `useSyncExternalStore` to render-phase derivation, which is what makes the atomic ref transition possible there; its concurrent-rendering tearing guarantee no longer applies. One behavior change follows from the contract: a ref transition to an entity absent from the cache now throws `Fragment data not found` on read, where the hook previously kept serving the prior entity's data. The hook has no data it is allowed to serve, so the throw is deliberate rather than incidental.
+
+  Subscriptions replace `data` wholesale on every event and never merge events into an accumulated value — collect history yourself in `onData` if you need it. `loading: true` means no event has arrived for the current variables yet, not that a request is in flight, so a stream that stays quiet after opening keeps reporting `loading: true`. `onData` and `onError` fire only on real emissions from the server; releasing `data` on a variables change is not an emission and never invokes either.
+
+  `applyPatchesImmutable` and `applyPatchesMutable` are now generic over the target type and return `T | null | undefined`, so a root-level `set` patch that replaces the root is representable, and the observer passes a `null` emission through to `previousData` instead of reading it as "no data". No cache path currently reachable produces a root-null patch — these arms close a latent hole in the type and the derivation, not a user-visible bug.
+
+  Re-execution is scoped to an explicit dependency set in every binding, each entry compared by value: query hooks depend on the observer key, `skip` and the `fetchPolicy` value; subscription hooks on the key and `skip`; fragment hooks on the key alone. Other reactive values read inside the `variables` or options thunks are read untracked at execution time and no longer re-trigger the operation, and passing a fresh object literal for unchanged variables no longer re-executes either. React's dependency arrays additionally carry the client and the artifact object, so a changed `ClientProvider` value re-executes there; the other bindings capture the client once at setup.
+
+  The state machine itself lives in `@mearie/core`, which now exports the observer primitives (`computeObserverKey`, `initObserverState`, `beginFetch`, `acceptResult`, `acceptInitialData`, `trackInitialData`, `reduceObserverResult`, `reduceFragmentResult`, `deriveObserverView`, `readRefIdentity` and the accompanying types). All four bindings are thin shells over it, so the contract is identical everywhere while each keeps its native grain: Svelte `$state` + `$derived` + `$effect.pre`, React `useState` with render-phase derivation plus an isomorphic layout effect, Vue `shallowRef` + `computed` + an immediate pre-flush `watch` over enumerated sources, Solid `createStore`/`reconcile` + `createMemo` + `createComputed`. Fine-grained propagation is preserved in Svelte, Vue and Solid — per-field derived values mean a commit only wakes readers of the fields that actually changed; React keeps its component-level re-render model. In Solid's `createQuery`, `previousData` becomes a structural snapshot once the new key produces a result, because `reconcile` rewrites the previously committed node in place; `createSubscription` uses a plain signal rather than a store, since an event stream has no leaf-level granularity to preserve, so its `previousData` is carried by reference.
+
+  If you relied on the old behavior of keeping previous data visible while the next variables load, switch to `data ?? previousData`.
+
+### Patch Changes
+
+- Updated dependencies [49aae91]
+- Updated dependencies [ec201c7]
+  - @mearie/core@0.8.0
+
 ## 0.4.8
 
 ### Patch Changes

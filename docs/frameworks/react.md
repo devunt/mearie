@@ -157,7 +157,7 @@ export const UserProfile = ({ userId }: { userId: string }) => {
 
 `previousData` holds data from a previous set of variables — never an earlier value of the current ones. While a new set of variables loads, `data` is `undefined` but `previousData` still holds that earlier result, so `data ?? previousData` keeps the current view rendered instead of falling back to a loading state. See [Data Ownership](/guides/queries#data-ownership) for the full contract.
 
-Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. They are the hook's entire dependency set and each is compared by value, so passing a fresh object literal for the same variables does not re-trigger the query, and changing any other option does not either.
+Re-execution depends on the observer key (the document and its variables), `skip`, and the `fetchPolicy` value, each compared by value — so passing a fresh object literal for the same variables does not re-trigger the query, and changing any other option does not either. The client is a dependency too: unlike the other integrations, which capture it once at setup, `useQuery` re-executes if the `ClientProvider` value changes.
 
 A variables change resolves within the same render — `previousData` and the `initialData` reseed are both computed during render — so there is no intermediate render in which the new variables read as unresolved.
 

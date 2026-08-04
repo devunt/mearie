@@ -315,7 +315,7 @@ export const UserProfile: Component<UserProfileProps> = (props) => {
 
 Re-execution depends on exactly three things: the observer key (the document and its variables), `skip`, and the `fetchPolicy` value. Each is tracked through an equality-gated `createMemo`, and everything else is read untracked at execution time, so other reactive values you read inside the `variables` or options accessors do not re-trigger the query on their own.
 
-A variables change is applied before the next render rather than at the moment you write it, so a synchronous read taken immediately after the write — before the update propagates — can still observe the transitional state.
+An unbatched variables write propagates synchronously: the observer key, the view and the execution driver have all updated by the time the write returns, so the next read already sees the new state. Inside `batch()` — or when writing from within another computation — propagation is deferred to the end of the batch, so reads taken in that window can still observe the transitional state.
 
 ## Next Steps
 

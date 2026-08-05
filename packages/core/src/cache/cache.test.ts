@@ -4988,6 +4988,164 @@ describe('Cache', () => {
     });
   });
 
+  describe('entity link creation after materialization', () => {
+    const artifactSelections: Artifact['selections'] = [
+      {
+        kind: 'Field',
+        name: 'user',
+        type: 'User',
+        selections: [
+          { kind: 'Field', name: '__typename', type: 'String' },
+          { kind: 'Field', name: 'id', type: 'ID' },
+          {
+            kind: 'Field',
+            name: 'favoritePost',
+            type: 'Post',
+            selections: [
+              { kind: 'Field', name: '__typename', type: 'String' },
+              { kind: 'Field', name: 'id', type: 'ID' },
+              { kind: 'Field', name: 'title', type: 'String' },
+            ],
+          },
+        ],
+      },
+    ];
+
+    it('should notify scalar changes on an entity linked after materialization with null', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', artifactSelections);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', favoritePost: null } });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      // null → newly created entity link
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } } },
+      );
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // scalar-only change on the newly linked entity (link unchanged)
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'New' } } },
+      );
+      expect(listener).toHaveBeenCalledTimes(2);
+      const notification = listener.mock.calls[1]![0] as CacheNotification;
+      expect(notification.type).toBe('patch');
+      if (notification.type === 'patch') {
+        expect(notification.patches).toContainEqual({
+          type: 'set',
+          path: ['user', 'favoritePost', 'title'],
+          value: 'New',
+        });
+      }
+
+      unsubscribe();
+
+      // a freshly materialized subscriber receives subsequent changes
+      const listener2 = vi.fn();
+      const { unsubscribe: unsubscribe2 } = cache.subscribeQuery(artifact, {}, listener2);
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Newer' } } },
+      );
+      expect(listener2).toHaveBeenCalledTimes(1);
+
+      unsubscribe2();
+    });
+
+    it('should notify scalar changes on an entity relinked after the link was removed', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', artifactSelections);
+
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } } },
+      );
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      // link → null
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', favoritePost: null } });
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // null → same entity relinked
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'Old' } } },
+      );
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      // scalar-only change on the relinked entity
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', favoritePost: { __typename: 'Post', id: '10', title: 'New' } } },
+      );
+      expect(listener).toHaveBeenCalledTimes(3);
+
+      unsubscribe();
+    });
+
+    it('should notify scalar changes on entities in an array linked after materialization with null', () => {
+      const cache = new Cache(schema);
+      const artifact = createArtifact('query', 'GetUser', [
+        {
+          kind: 'Field',
+          name: 'user',
+          type: 'User',
+          selections: [
+            { kind: 'Field', name: '__typename', type: 'String' },
+            { kind: 'Field', name: 'id', type: 'ID' },
+            {
+              kind: 'Field',
+              name: 'posts',
+              type: 'Post',
+              array: true,
+              selections: [
+                { kind: 'Field', name: '__typename', type: 'String' },
+                { kind: 'Field', name: 'id', type: 'ID' },
+                { kind: 'Field', name: 'title', type: 'String' },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      cache.writeQuery(artifact, {}, { user: { __typename: 'User', id: '1', posts: null } });
+
+      const listener = vi.fn();
+      const { unsubscribe } = cache.subscribeQuery(artifact, {}, listener);
+
+      // null → array of newly created entities
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', posts: [{ __typename: 'Post', id: '10', title: 'Old' }] } },
+      );
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // scalar-only change on an entity in the array (links unchanged)
+      cache.writeQuery(
+        artifact,
+        {},
+        { user: { __typename: 'User', id: '1', posts: [{ __typename: 'Post', id: '10', title: 'New' }] } },
+      );
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      unsubscribe();
+    });
+  });
+
   describe('stalled subscription cursor refresh', () => {
     it('should keep invalidate reachable while a subscription stays partially filled', () => {
       const cache = new Cache(schema);

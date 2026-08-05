@@ -116,7 +116,7 @@ export const normalize = (
 
         const oldValue = storageKey === null ? undefined : storage[storageKey]?.[fieldKey];
 
-        if (storageKey !== null && (!selection.selections || isNullish(oldValue) || isNullish(fieldValue))) {
+        if (storageKey !== null && !selection.selections) {
           callAccessor?.(storageKey, fieldKey, oldValue, fieldValue);
         }
 
@@ -125,7 +125,10 @@ export const normalize = (
           : fieldValue;
         fields[fieldKey] = normalized;
 
-        if (storageKey !== null && selection.selections && !isNullish(oldValue) && !isNullish(fieldValue)) {
+        // For nested selections the accessor must observe the normalized value
+        // (entity links, not raw response objects) so that link creation is
+        // classified as a structural change and subscriptions are re-traced.
+        if (storageKey !== null && selection.selections) {
           callAccessor?.(storageKey, fieldKey, oldValue, fields[fieldKey]);
         }
       } else if (selection.kind === 'FragmentSpread' || inlineFragmentMatches(selection, typename)) {
